@@ -1,0 +1,51 @@
+{
+  "name": "api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon",
+    "build": "shx rm -rf dist && pnpm exec tsc -p tsconfig.json && pnpm exec cpy \"src/**\" \"!src/**/*.ts\" \"!src/**/*.tsx\" dist --parents",
+    "start": "bun dist/index.js",
+    "check-types": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint \"src/**/*.{ts,tsx}\""
+  },
+  "dependencies": {
+    "@repo/shared-types": "workspace:*",
+    "@types/multer": "^2.1.0",
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^17.3.1",
+    "ejs": "^4.0.1",
+    "express": "^5.2.1",
+    "image-size": "^2.0.2",
+    "ioredis": "^5.9.2",
+    "joi": "^18.0.2",
+    "jsonwebtoken": "^9.0.2",
+    "minio": "^8.0.6",
+    "morgan": "^1.10.1",
+    "multer": "^2.1.1",
+    "nodemailer": "^6.10.1",
+    "pg": "^8.17.2",
+    "reflect-metadata": "^0.2.2",
+    "sanitize-html": "^2.17.1",
+    "stripe": "^17.7.0",
+    "typeorm": "^0.3.28"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cookie-parser": "^1.4.9",
+    "@types/cors": "^2.8.18",
+    "@types/ejs": "^3.1.5",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/morgan": "^1.9.10",
+    "@types/node": "^22.15.3",
+    "@types/sanitize-html": "^2.16.0",
+    "cpy-cli": "^6.0.0",
+    "nodemon": "^3.1.14",
+    "shx": "^0.4.0",
+    "typescript": "^5.9.3"
+  }
+}

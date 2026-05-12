@@ -1,0 +1,90 @@
+name: charity-platform-infra
+
+services:
+  charity-db:
+    image: postgres:16-alpine
+    container_name: charity-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_DB: charity_platform
+      POSTGRES_PASSWORD: admin123
+    ports:
+      - "54322:5432"
+    volumes:
+      - charity_data:/var/lib/postgresql/data
+      - ./postgres/postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d charity_platform"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - charity-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: charity-redis
+    hostname: redis
+    init: true
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "127.0.0.1:63793:6379"
+    volumes:
+      - charity-redis-data:/data
+    networks:
+      - charity-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  minio:
+    image: quay.io/minio/minio:RELEASE.2024-12-18T13-15-44Z
+    container_name: charity-minio
+    hostname: minio
+    init: true
+    ports:
+      - "127.0.0.1:9002:9000"
+      - "127.0.0.1:9003:9001"
+    environment:
+      MINIO_ROOT_USER: "minioadmin"
+      MINIO_ROOT_PASSWORD: "minioadmin"
+      MINIO_BROWSER_REDIRECT_URL: "http://localhost:9003"
+      MINIO_SERVER_URL: "http://localhost:9002"
+    volumes:
+      - charity-minio-data:/data
+      - charity-minio-config:/root/.minio
+    networks:
+      - charity-network
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+networks:
+  charity-network:
+    name: charity-network
+    driver: bridge
+
+volumes:
+  charity_data:
+    driver: local
+  charity-redis-data:
+    name: charity-redis-data
+  charity-minio-data:
+    name: charity-minio-data
+  charity-minio-config:
+    name: charity-minio-config

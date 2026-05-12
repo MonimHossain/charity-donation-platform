@@ -1,0 +1,565 @@
+import { Router } from "express";
+import multer from "multer";
+import { loginAdmin, getAdminProfile, logoutAdmin } from "../modules/admin-auth/adminAuth.controller.js";
+import { requireAdmin } from "../modules/admin-auth/adminAuth.middleware.js";
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 },
+});
+import {
+  getCampaigns,
+  getPublishedCampaigns,
+  getCampaignBySlug,
+  getCampaignById,
+  createCampaign,
+  updateCampaign,
+  deleteCampaign,
+} from "../modules/campaigns/campaigns.controller.js";
+import {
+  createDonation,
+  getDonations,
+  getDonationStats,
+  getDonationById,
+  refundDonation,
+  getRecentPublicDonations,
+  getDonationReceipt,
+} from "../modules/donations/donations.controller.js";
+import {
+  getHeroSlides,
+  createHeroSlide,
+  updateHeroSlide,
+  deleteHeroSlide,
+  getHomepageSections,
+  updateHomepageSection,
+  reorderHomepageSections,
+  getSiteSettings,
+  updateSiteSettings,
+  getDonationPresets,
+  updateDonationPreset,
+  getTestimonials,
+} from "../modules/cms/cms.controller.js";
+import {
+  getBlogPosts,
+  getBlogPostBySlug,
+  createBlogPost,
+  updateBlogPost,
+  deleteBlogPost,
+  getAdminBlogPosts,
+  getAdminBlogPost,
+} from "../modules/blog/blog.controller.js";
+import { subscribe, getSubscribers } from "../modules/newsletter/newsletter.controller.js";
+
+const router = Router();
+
+// ═══════════════════════════════════
+// PUBLIC ROUTES
+// ═══════════════════════════════════
+
+// Campaigns (public – only published)
+router.get("/campaigns", getPublishedCampaigns);
+router.get("/campaigns/:slug", getCampaignBySlug);
+
+// Donations
+router.post("/donations", createDonation);
+router.get("/donations/recent", getRecentPublicDonations);
+router.get("/donations/:id/receipt", getDonationReceipt);
+
+// CMS
+router.get("/cms/hero-slides", getHeroSlides);
+router.get("/cms/homepage-sections", getHomepageSections);
+router.get("/cms/settings", getSiteSettings);
+router.get("/cms/donation-presets", getDonationPresets);
+router.get("/cms/testimonials", getTestimonials);
+
+// Blog
+router.get("/blog", getBlogPosts);
+router.get("/blog/:slug", getBlogPostBySlug);
+
+// Newsletter
+router.post("/newsletter/subscribe", subscribe);
+
+// ═══════════════════════════════════
+// USER AUTH ROUTES (lazy-loaded)
+// ═══════════════════════════════════
+router.post("/auth/register", async (req, res) => {
+  const { registerUser } = await import("../modules/user-auth/userAuth.controller.js");
+  return registerUser(req, res);
+});
+router.post("/auth/login", async (req, res) => {
+  const { loginUser } = await import("../modules/user-auth/userAuth.controller.js");
+  return loginUser(req, res);
+});
+router.post("/auth/logout", async (req, res) => {
+  const { logoutUser } = await import("../modules/user-auth/userAuth.controller.js");
+  return logoutUser(req, res);
+});
+router.get("/auth/profile", async (req, res) => {
+  const { requireUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  requireUser(req, res, async () => {
+    const { getUserProfile } = await import("../modules/user-auth/userAuth.controller.js");
+    return getUserProfile(req, res);
+  });
+});
+router.put("/auth/profile", async (req, res) => {
+  const { requireUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  requireUser(req, res, async () => {
+    const { updateUserProfile } = await import("../modules/user-auth/userAuth.controller.js");
+    return updateUserProfile(req, res);
+  });
+});
+router.put("/auth/change-password", async (req, res) => {
+  const { requireUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  requireUser(req, res, async () => {
+    const { changePassword } = await import("../modules/user-auth/userAuth.controller.js");
+    return changePassword(req, res);
+  });
+});
+
+// Password reset (public)
+router.post("/auth/forgot-password", async (req, res) => {
+  const { forgotPassword } = await import("../modules/user-auth/userAuth.controller.js");
+  return forgotPassword(req, res);
+});
+router.post("/auth/reset-password", async (req, res) => {
+  const { resetPassword } = await import("../modules/user-auth/userAuth.controller.js");
+  return resetPassword(req, res);
+});
+
+// User donations
+router.get("/my/donations", async (req, res) => {
+  const { requireUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  requireUser(req, res, async () => {
+    const { getUserDonations } = await import("../modules/user-auth/userAuth.controller.js");
+    return getUserDonations(req, res);
+  });
+});
+
+// ═══════════════════════════════════
+// RECURRING DONATIONS (lazy-loaded)
+// ═══════════════════════════════════
+router.get("/recurring/my", async (req, res) => {
+  const { requireUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  requireUser(req, res, async () => {
+    const { getUserRecurringDonations } = await import("../modules/recurring/recurring.controller.js");
+    return getUserRecurringDonations(req, res);
+  });
+});
+router.post("/recurring", async (req, res) => {
+  const { createRecurringDonation } = await import("../modules/recurring/recurring.controller.js");
+  return createRecurringDonation(req, res);
+});
+router.put("/recurring/:id/pause", async (req, res) => {
+  const { pauseRecurringDonation } = await import("../modules/recurring/recurring.controller.js");
+  return pauseRecurringDonation(req, res);
+});
+router.put("/recurring/:id/resume", async (req, res) => {
+  const { resumeRecurringDonation } = await import("../modules/recurring/recurring.controller.js");
+  return resumeRecurringDonation(req, res);
+});
+router.put("/recurring/:id/cancel", async (req, res) => {
+  const { cancelRecurringDonation } = await import("../modules/recurring/recurring.controller.js");
+  return cancelRecurringDonation(req, res);
+});
+router.put("/recurring/:id/payment-method", async (req, res) => {
+  const { updateRecurringPaymentMethod } = await import("../modules/recurring/recurring.controller.js");
+  return updateRecurringPaymentMethod(req, res);
+});
+
+// ═══════════════════════════════════
+// PAYMENT ROUTES (lazy-loaded)
+// ═══════════════════════════════════
+router.post("/payments/stripe/create-intent", async (req, res) => {
+  const { createPaymentIntent } = await import("../modules/payments/stripe.controller.js");
+  return createPaymentIntent(req, res);
+});
+router.post("/payments/stripe/create-subscription", async (req, res) => {
+  const { createSubscription } = await import("../modules/payments/stripe.controller.js");
+  return createSubscription(req, res);
+});
+router.get("/payments/stripe/status/:intentId", async (req, res) => {
+  const { getPaymentStatus } = await import("../modules/payments/stripe.controller.js");
+  return getPaymentStatus(req, res);
+});
+router.post("/payments/paypal/create-order", async (req, res) => {
+  const { createPayPalOrder } = await import("../modules/payments/paypal.controller.js");
+  return createPayPalOrder(req, res);
+});
+router.post("/payments/paypal/capture-order", async (req, res) => {
+  const { capturePayPalOrder } = await import("../modules/payments/paypal.controller.js");
+  return capturePayPalOrder(req, res);
+});
+
+// ═══════════════════════════════════
+// PUBLIC CMS EXTENDED (lazy-loaded)
+// ═══════════════════════════════════
+router.get("/cms/navigation", async (req, res) => {
+  const { getNavigationMenus } = await import("../modules/cms/cmsExtended.controller.js");
+  return getNavigationMenus(req, res);
+});
+router.get("/cms/banners", async (req, res) => {
+  const { getBanners } = await import("../modules/cms/cmsExtended.controller.js");
+  return getBanners(req, res);
+});
+router.get("/cms/faqs", async (req, res) => {
+  const { getFaqs } = await import("../modules/cms/cmsExtended.controller.js");
+  return getFaqs(req, res);
+});
+router.get("/cms/seo", async (req, res) => {
+  const { getSeoSettings } = await import("../modules/cms/cmsExtended.controller.js");
+  return getSeoSettings(req, res);
+});
+router.get("/cms/page-blocks", async (req, res) => {
+  const { getPageBlocks } = await import("../modules/cms/cmsExtended.controller.js");
+  return getPageBlocks(req, res);
+});
+router.get("/cms/translations", async (req, res) => {
+  const { getTranslations } = await import("../modules/cms/cmsExtended.controller.js");
+  return getTranslations(req, res);
+});
+router.get("/blog/categories", async (req, res) => {
+  const { getBlogCategories } = await import("../modules/cms/cmsExtended.controller.js");
+  return getBlogCategories(req, res);
+});
+
+// ═══════════════════════════════════
+// ADMIN AUTH
+// ═══════════════════════════════════
+router.post("/admin/login", loginAdmin);
+router.post("/admin/logout", requireAdmin, logoutAdmin);
+router.get("/admin/profile", requireAdmin, getAdminProfile);
+
+// ═══════════════════════════════════
+// ADMIN CAMPAIGNS
+// ═══════════════════════════════════
+router.get("/admin/campaigns", requireAdmin, getCampaigns);
+router.get("/admin/campaigns/:id", requireAdmin, getCampaignById);
+router.post("/admin/campaigns", requireAdmin, createCampaign);
+router.put("/admin/campaigns/:id", requireAdmin, updateCampaign);
+router.delete("/admin/campaigns/:id", requireAdmin, deleteCampaign);
+
+// ═══════════════════════════════════
+// ADMIN DONATIONS
+// ═══════════════════════════════════
+router.get("/admin/donations", requireAdmin, getDonations);
+router.get("/admin/donations/stats", requireAdmin, getDonationStats);
+router.get("/admin/donations/:id", requireAdmin, getDonationById);
+router.put("/admin/donations/:id/refund", requireAdmin, refundDonation);
+
+// ═══════════════════════════════════
+// ADMIN CMS
+// ═══════════════════════════════════
+router.post("/admin/cms/hero-slides", requireAdmin, createHeroSlide);
+router.put("/admin/cms/hero-slides/:id", requireAdmin, updateHeroSlide);
+router.delete("/admin/cms/hero-slides/:id", requireAdmin, deleteHeroSlide);
+router.put("/admin/cms/homepage-sections/:id", requireAdmin, updateHomepageSection);
+router.post("/admin/cms/homepage-sections/reorder", requireAdmin, reorderHomepageSections);
+router.put("/admin/cms/settings", requireAdmin, updateSiteSettings);
+router.put("/admin/cms/donation-presets/:id", requireAdmin, updateDonationPreset);
+
+// Admin CMS Extended (lazy-loaded)
+router.post("/admin/cms/navigation", requireAdmin, async (req, res) => {
+  const { createNavigationMenu } = await import("../modules/cms/cmsExtended.controller.js");
+  return createNavigationMenu(req, res);
+});
+router.put("/admin/cms/navigation/:id", requireAdmin, async (req, res) => {
+  const { updateNavigationMenu } = await import("../modules/cms/cmsExtended.controller.js");
+  return updateNavigationMenu(req, res);
+});
+router.delete("/admin/cms/navigation/:id", requireAdmin, async (req, res) => {
+  const { deleteNavigationMenu } = await import("../modules/cms/cmsExtended.controller.js");
+  return deleteNavigationMenu(req, res);
+});
+router.post("/admin/cms/navigation/reorder", requireAdmin, async (req, res) => {
+  const { reorderNavigationMenus } = await import("../modules/cms/cmsExtended.controller.js");
+  return reorderNavigationMenus(req, res);
+});
+router.post("/admin/cms/banners", requireAdmin, async (req, res) => {
+  const { createBanner } = await import("../modules/cms/cmsExtended.controller.js");
+  return createBanner(req, res);
+});
+router.put("/admin/cms/banners/:id", requireAdmin, async (req, res) => {
+  const { updateBanner } = await import("../modules/cms/cmsExtended.controller.js");
+  return updateBanner(req, res);
+});
+router.delete("/admin/cms/banners/:id", requireAdmin, async (req, res) => {
+  const { deleteBanner } = await import("../modules/cms/cmsExtended.controller.js");
+  return deleteBanner(req, res);
+});
+router.post("/admin/cms/faqs", requireAdmin, async (req, res) => {
+  const { createFaq } = await import("../modules/cms/cmsExtended.controller.js");
+  return createFaq(req, res);
+});
+router.put("/admin/cms/faqs/:id", requireAdmin, async (req, res) => {
+  const { updateFaq } = await import("../modules/cms/cmsExtended.controller.js");
+  return updateFaq(req, res);
+});
+router.delete("/admin/cms/faqs/:id", requireAdmin, async (req, res) => {
+  const { deleteFaq } = await import("../modules/cms/cmsExtended.controller.js");
+  return deleteFaq(req, res);
+});
+router.put("/admin/cms/seo", requireAdmin, async (req, res) => {
+  const { upsertSeoSettings } = await import("../modules/cms/cmsExtended.controller.js");
+  return upsertSeoSettings(req, res);
+});
+router.post("/admin/cms/page-blocks", requireAdmin, async (req, res) => {
+  const { createPageBlock } = await import("../modules/cms/cmsExtended.controller.js");
+  return createPageBlock(req, res);
+});
+router.put("/admin/cms/page-blocks/:id", requireAdmin, async (req, res) => {
+  const { updatePageBlock } = await import("../modules/cms/cmsExtended.controller.js");
+  return updatePageBlock(req, res);
+});
+router.delete("/admin/cms/page-blocks/:id", requireAdmin, async (req, res) => {
+  const { deletePageBlock } = await import("../modules/cms/cmsExtended.controller.js");
+  return deletePageBlock(req, res);
+});
+router.post("/admin/cms/page-blocks/reorder", requireAdmin, async (req, res) => {
+  const { reorderPageBlocks } = await import("../modules/cms/cmsExtended.controller.js");
+  return reorderPageBlocks(req, res);
+});
+router.put("/admin/cms/translations", requireAdmin, async (req, res) => {
+  const { upsertTranslation } = await import("../modules/cms/cmsExtended.controller.js");
+  return upsertTranslation(req, res);
+});
+// ─── File Management & Upload ────────────────────────────────────────────────
+router.get("/admin/cms/media/stats", requireAdmin, async (req, res) => {
+  const { getMediaStats } = await import("../modules/media/media.controller.js");
+  return getMediaStats(req, res);
+});
+router.get("/admin/cms/media", requireAdmin, async (req, res) => {
+  const { getMediaFiles } = await import("../modules/media/media.controller.js");
+  return getMediaFiles(req, res);
+});
+router.post("/admin/cms/media/upload", requireAdmin, upload.single("file"), async (req, res) => {
+  const { uploadMediaFile } = await import("../modules/media/media.controller.js");
+  return uploadMediaFile(req, res);
+});
+router.post("/admin/cms/media/upload-multiple", requireAdmin, upload.array("files", 20), async (req, res) => {
+  const { uploadMultipleFiles } = await import("../modules/media/media.controller.js");
+  return uploadMultipleFiles(req, res);
+});
+router.post("/admin/cms/media/bulk-delete", requireAdmin, async (req, res) => {
+  const { bulkDeleteMedia } = await import("../modules/media/media.controller.js");
+  return bulkDeleteMedia(req, res);
+});
+router.post("/admin/cms/media/folders", requireAdmin, async (req, res) => {
+  const { createFolder } = await import("../modules/media/media.controller.js");
+  return createFolder(req, res);
+});
+router.post("/admin/cms/media/move", requireAdmin, async (req, res) => {
+  const { moveFiles } = await import("../modules/media/media.controller.js");
+  return moveFiles(req, res);
+});
+router.put("/admin/cms/media/:id", requireAdmin, async (req, res) => {
+  const { updateMediaFile } = await import("../modules/media/media.controller.js");
+  return updateMediaFile(req, res);
+});
+router.delete("/admin/cms/media/:id", requireAdmin, async (req, res) => {
+  const { deleteMediaFile } = await import("../modules/media/media.controller.js");
+  return deleteMediaFile(req, res);
+});
+
+// Admin CMS Footer
+router.get("/admin/cms/footer", requireAdmin, async (req, res) => {
+  const { getFooterContent } = await import("../modules/cms/cmsExtended.controller.js");
+  return getFooterContent(req, res);
+});
+router.put("/admin/cms/footer", requireAdmin, async (req, res) => {
+  const { updateFooterContent } = await import("../modules/cms/cmsExtended.controller.js");
+  return updateFooterContent(req, res);
+});
+
+// Admin CMS Pages (aliases for page-block operations, grouped by page)
+router.get("/admin/cms/pages", requireAdmin, async (req, res) => {
+  const { getPages } = await import("../modules/cms/cmsExtended.controller.js");
+  return getPages(req, res);
+});
+router.post("/admin/cms/pages", requireAdmin, async (req, res) => {
+  const { createPageBlock } = await import("../modules/cms/cmsExtended.controller.js");
+  return createPageBlock(req, res);
+});
+router.delete("/admin/cms/pages/:id", requireAdmin, async (req, res) => {
+  const { deletePage } = await import("../modules/cms/cmsExtended.controller.js");
+  return deletePage(req, res);
+});
+router.post("/admin/cms/pages/:id/blocks", requireAdmin, async (req, res) => {
+  const { addBlockToPage } = await import("../modules/cms/cmsExtended.controller.js");
+  return addBlockToPage(req, res);
+});
+router.put("/admin/cms/pages/:id/blocks/:blockId", requireAdmin, async (req, res) => {
+  const { updateBlockInPage } = await import("../modules/cms/cmsExtended.controller.js");
+  return updateBlockInPage(req, res);
+});
+router.delete("/admin/cms/pages/:id/blocks/:blockId", requireAdmin, async (req, res) => {
+  const { deleteBlockFromPage } = await import("../modules/cms/cmsExtended.controller.js");
+  return deleteBlockFromPage(req, res);
+});
+
+// Admin CMS SEO stubs (redirects + sitemap)
+router.get("/admin/cms/redirects", requireAdmin, async (req, res) => {
+  const { getRedirects } = await import("../modules/cms/cmsExtended.controller.js");
+  return getRedirects(req, res);
+});
+router.post("/admin/cms/redirects", requireAdmin, async (req, res) => {
+  const { createRedirect } = await import("../modules/cms/cmsExtended.controller.js");
+  return createRedirect(req, res);
+});
+router.delete("/admin/cms/redirects/:id", requireAdmin, async (req, res) => {
+  const { deleteRedirect } = await import("../modules/cms/cmsExtended.controller.js");
+  return deleteRedirect(req, res);
+});
+router.get("/admin/cms/sitemap-settings", requireAdmin, async (req, res) => {
+  const { getSitemapSettings } = await import("../modules/cms/cmsExtended.controller.js");
+  return getSitemapSettings(req, res);
+});
+
+// ═══════════════════════════════════
+// ADMIN BLOG
+// ═══════════════════════════════════
+router.get("/admin/blog", requireAdmin, getAdminBlogPosts);
+router.get("/admin/blog/:id", requireAdmin, getAdminBlogPost);
+router.post("/admin/blog", requireAdmin, createBlogPost);
+router.put("/admin/blog/:id", requireAdmin, updateBlogPost);
+router.delete("/admin/blog/:id", requireAdmin, deleteBlogPost);
+router.post("/admin/blog/categories", requireAdmin, async (req, res) => {
+  const { createBlogCategory } = await import("../modules/cms/cmsExtended.controller.js");
+  return createBlogCategory(req, res);
+});
+router.put("/admin/blog/categories/:id", requireAdmin, async (req, res) => {
+  const { updateBlogCategory } = await import("../modules/cms/cmsExtended.controller.js");
+  return updateBlogCategory(req, res);
+});
+router.delete("/admin/blog/categories/:id", requireAdmin, async (req, res) => {
+  const { deleteBlogCategory } = await import("../modules/cms/cmsExtended.controller.js");
+  return deleteBlogCategory(req, res);
+});
+router.post("/admin/blog/categories/reorder", requireAdmin, async (req, res) => {
+  const { reorderBlogCategories } = await import("../modules/cms/cmsExtended.controller.js");
+  return reorderBlogCategories(req, res);
+});
+
+// ═══════════════════════════════════
+// ADMIN RECURRING
+// ═══════════════════════════════════
+router.get("/admin/recurring", requireAdmin, async (req, res) => {
+  const { getRecurringDonations } = await import("../modules/recurring/recurring.controller.js");
+  return getRecurringDonations(req, res);
+});
+
+// ═══════════════════════════════════
+// ADMIN USERS
+// ═══════════════════════════════════
+router.get("/admin/users", requireAdmin, async (req, res) => {
+  const { getUsers } = await import("../modules/user-auth/userAuth.controller.js");
+  return getUsers(req, res);
+});
+router.put("/admin/users/:id/deactivate", requireAdmin, async (req, res) => {
+  const { deactivateUser } = await import("../modules/user-auth/userAuth.controller.js");
+  return deactivateUser(req, res);
+});
+
+// ═══════════════════════════════════
+// ADMIN ANALYTICS
+// ═══════════════════════════════════
+router.get("/admin/analytics/dashboard", requireAdmin, async (req, res) => {
+  const { getDashboardStats } = await import("../modules/analytics/analytics.controller.js");
+  return getDashboardStats(req, res);
+});
+router.get("/admin/analytics/campaigns", requireAdmin, async (req, res) => {
+  const { getCampaignReport } = await import("../modules/analytics/analytics.controller.js");
+  return getCampaignReport(req, res);
+});
+router.get("/admin/analytics/recurring", requireAdmin, async (req, res) => {
+  const { getRecurringReport } = await import("../modules/analytics/analytics.controller.js");
+  return getRecurringReport(req, res);
+});
+router.get("/admin/analytics/donors", requireAdmin, async (req, res) => {
+  const { getDonorReport } = await import("../modules/analytics/analytics.controller.js");
+  return getDonorReport(req, res);
+});
+router.get("/admin/analytics/revenue", requireAdmin, async (req, res) => {
+  const { getRevenueReport } = await import("../modules/analytics/analytics.controller.js");
+  return getRevenueReport(req, res);
+});
+router.get("/admin/analytics/gift-aid", requireAdmin, async (req, res) => {
+  const { getGiftAidReport } = await import("../modules/analytics/analytics.controller.js");
+  return getGiftAidReport(req, res);
+});
+router.get("/admin/analytics/export/donations", requireAdmin, async (req, res) => {
+  const { exportDonations } = await import("../modules/analytics/analytics.controller.js");
+  return exportDonations(req, res);
+});
+
+// ═══════════════════════════════════
+// ADMIN ACTIVITY LOGS
+// ═══════════════════════════════════
+router.get("/admin/activity-logs", requireAdmin, async (req, res) => {
+  const { getActivityLogs } = await import("../modules/analytics/analytics.controller.js");
+  return getActivityLogs(req, res);
+});
+router.get("/admin/audit-logs", requireAdmin, async (req, res) => {
+  const { getAuditLogs } = await import("../modules/analytics/analytics.controller.js");
+  return getAuditLogs(req, res);
+});
+
+// ═══════════════════════════════════
+// ADMIN NEWSLETTER
+// ═══════════════════════════════════
+router.get("/admin/newsletter/subscribers", requireAdmin, getSubscribers);
+
+// ═══════════════════════════════════
+// ZAKAT CALCULATOR (public)
+// ═══════════════════════════════════
+router.post("/zakat/calculate", async (req, res) => {
+  const { calculateZakat } = await import("../modules/zakat/zakat.controller.js");
+  return calculateZakat(req, res);
+});
+router.post("/zakat/save", async (req, res) => {
+  const { saveZakatCalculation } = await import("../modules/zakat/zakat.controller.js");
+  return saveZakatCalculation(req, res);
+});
+router.get("/zakat/history", async (req, res) => {
+  const { requireUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  requireUser(req, res, async () => {
+    const { getZakatHistory } = await import("../modules/zakat/zakat.controller.js");
+    return getZakatHistory(req, res);
+  });
+});
+
+// ═══════════════════════════════════
+// AUTOMATED DONATIONS (public/user)
+// ═══════════════════════════════════
+router.post("/automated-donations", async (req, res) => {
+  const { createAutomatedSchedule } = await import("../modules/automated/automated.controller.js");
+  return createAutomatedSchedule(req, res);
+});
+router.get("/automated-donations/my", async (req, res) => {
+  const { requireUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  requireUser(req, res, async () => {
+    const { getMyAutomatedSchedules } = await import("../modules/automated/automated.controller.js");
+    return getMyAutomatedSchedules(req, res);
+  });
+});
+router.put("/automated-donations/:id/cancel", async (req, res) => {
+  const { cancelAutomatedSchedule } = await import("../modules/automated/automated.controller.js");
+  return cancelAutomatedSchedule(req, res);
+});
+
+// ═══════════════════════════════════
+// ADMIN AUTOMATED DONATIONS
+// ═══════════════════════════════════
+router.get("/admin/automated-donations", requireAdmin, async (req, res) => {
+  const { getAdminAutomatedSchedules } = await import("../modules/automated/automated.controller.js");
+  return getAdminAutomatedSchedules(req, res);
+});
+
+// ═══════════════════════════════════
+// ACTIVITY TRACKING (public)
+// ═══════════════════════════════════
+router.post("/track", async (req, res) => {
+  const { trackActivity } = await import("../modules/analytics/analytics.controller.js");
+  return trackActivity(req, res);
+});
+
+export default router;

@@ -1,0 +1,43 @@
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
+
+const posts = [
+  { slug: "beyond-food-aid", title: "Beyond Food Aid: How Sustainable Livelihoods Break the Cycle of Poverty", date: "Dec 25, 2025", category: "Livelihood", excerpt: "Food aid saves lives. But to truly end poverty, we must invest in opportunity.", image: "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&w=1200&q=70" },
+  { slug: "monthly-donations", title: "How Monthly Donations Create Long-Term Impact", date: "Dec 25, 2025", category: "Giving", excerpt: "Steady support helps charities plan better and stand by families over time.", image: "https://images.unsplash.com/photo-1593113598332-cd288d649433?auto=format&fit=crop&w=1200&q=70" },
+  { slug: "zakat-uk-families", title: "Zakat in the UK — Supporting Vulnerable Muslim Families", date: "Dec 3, 2025", category: "Zakat", excerpt: "Zakat is one of Islam's most powerful pillars, designed to uplift those facing hardship.", image: "https://images.unsplash.com/photo-1469571486292-0ba58a3f068b?auto=format&fit=crop&w=1200&q=70" },
+];
+
+const Stories = () => (
+  <section className="container-wide py-24">
+    <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+      <div className="max-w-2xl">
+        <p className="text-sm uppercase tracking-[0.25em] text-accent-deep font-semibold">Stories & Insight</p>
+        <h2 className="mt-3 font-serif text-4xl md:text-5xl text-primary text-balance">Latest from the field.</h2>
+      </div>
+      <Link href="/blog" className="inline-flex items-center gap-2 text-primary font-semibold hover:gap-3 transition-all">
+        All stories <ArrowRight className="w-4 h-4" />
+      </Link>
+    </div>
+
+    <div className="grid md:grid-cols-3 gap-6">
+      {posts.map((p) => (
+        <Link href="/blog" key={p.slug} className="group rounded-3xl bg-card border border-border p-2 hover:shadow-lift transition-all">
+          <div className="aspect-[4/3] rounded-2xl overflow-hidden bg-secondary">
+            <img src={p.image} alt={p.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+          </div>
+          <div className="p-5">
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <span>{p.date}</span>
+              <span className="w-1 h-1 rounded-full bg-muted-foreground" />
+              <span className="text-accent-deep font-semibold uppercase tracking-wider">{p.category}</span>
+            </div>
+            <h3 className="mt-3 font-serif text-xl text-primary leading-snug group-hover:text-primary-glow transition-colors">{p.title}</h3>
+            <p className="mt-2 text-sm text-muted-foreground line-clamp-2">{p.excerpt}</p>
+          </div>
+        </Link>
+      ))}
+    </div>
+  </section>
+);
+
+export default Stories;

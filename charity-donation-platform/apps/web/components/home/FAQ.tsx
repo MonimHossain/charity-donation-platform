@@ -1,0 +1,50 @@
+"use client";
+
+import { useState } from "react";
+import { ChevronDown } from "lucide-react";
+
+const faqs = [
+  { q: "What is the best Muslim charity in the UK?", a: "Your Impact Foundation is one of the most trusted Muslim charities to donate to in the UK. We follow a 100% donation policy on Zakat and ensure transparency in all projects." },
+  { q: "How can I donate Zakat online?", a: "You can give Zakat online securely through our donation platform. Choose your amount and project, and donate with peace of mind." },
+  { q: "What is the meaning of Sadaqah in Islam?", a: "Sadaqah is voluntary charity given for the sake of Allah. Sadaqah Jariyah is ongoing charity — like building wells or schools — that benefits people for generations." },
+  { q: "Where does Your Impact provide aid?", a: "We provide humanitarian aid for Muslims and non-Muslims in need across Palestine, Yemen, Syria, Africa, Asia and refugee camps worldwide." },
+];
+
+const AccordionItem = ({ q, a }: { q: string; a: string }) => {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="border-b border-border">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between text-left font-serif text-xl text-primary hover:text-primary/80 py-6 transition-colors"
+      >
+        {q}
+        <ChevronDown className={`w-5 h-5 shrink-0 text-muted-foreground transition-transform duration-300 ${open ? "rotate-180" : ""}`} />
+      </button>
+      <div className={`overflow-hidden transition-all duration-300 ${open ? "max-h-40 pb-6" : "max-h-0"}`}>
+        <p className="text-muted-foreground text-base leading-relaxed">{a}</p>
+      </div>
+    </div>
+  );
+};
+
+const FAQ = () => (
+  <section className="container-wide py-24">
+    <div className="grid lg:grid-cols-12 gap-12">
+      <div className="lg:col-span-4">
+        <p className="text-sm uppercase tracking-[0.25em] text-accent-deep font-semibold">FAQ</p>
+        <h2 className="mt-3 font-serif text-4xl md:text-5xl text-primary leading-tight">Frequently asked questions.</h2>
+        <p className="mt-4 text-muted-foreground">Can&apos;t find your answer? Reach out to our team — we&apos;re happy to help.</p>
+      </div>
+      <div className="lg:col-span-8">
+        {faqs.map((f, i) => (
+          <AccordionItem key={i} q={f.q} a={f.a} />
+        ))}
+      </div>
+    </div>
+  </section>
+);
+
+export default FAQ;

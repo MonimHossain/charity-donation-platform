@@ -1,0 +1,963 @@
+import axios from "axios";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
+
+export const api = axios.create({
+  baseURL: API_BASE,
+  withCredentials: true,
+  headers: { "Content-Type": "application/json" },
+});
+
+api.interceptors.request.use((config) => {
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("admin_token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  }
+  return config;
+});
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (
+      error.response?.status === 401 &&
+      typeof window !== "undefined" &&
+      !window.location.pathname.includes("/admin/login") &&
+      !window.location.pathname.includes("/auth/")
+    ) {
+      localStorage.removeItem("admin_token");
+      localStorage.removeItem("admin_profile");
+    }
+    return Promise.reject(error);
+  }
+);
+
+// ═══════════════════════════════════
+// PUBLIC - CAMPAIGNS
+// ═══════════════════════════════════
+export async function fetchCampaigns(params?: Record<string, string>) {
+  const { data } = await api.get("/campaigns", { params });
+  return data;
+}
+
+export async function fetchCampaignBySlug(slug: string) {
+  const { data } = await api.get(`/campaigns/${slug}`);
+  return data;
+}
+
+// ═══════════════════════════════════
+// PUBLIC - DONATIONS
+// ═══════════════════════════════════
+export async function createDonation(payload: Record<string, unknown>) {
+  const { data } = await api.post("/donations", payload);
+  return data;
+}
+
+export async function fetchRecentDonations() {
+  const { data } = await api.get("/donations/recent");
+  return data;
+}
+
+export async function fetchDonationReceipt(id: string) {
+  const { data } = await api.get(`/donations/${id}/receipt`);
+  return data;
+}
+
+// ═══════════════════════════════════
+// PUBLIC - CMS
+// ═══════════════════════════════════
+export async function fetchHeroSlides() {
+  const { data } = await api.get("/cms/hero-slides");
+  return data;
+}
+
+export async function fetchHomepageSections() {
+  const { data } = await api.get("/cms/homepage-sections");
+  return data;
+}
+
+export async function fetchSiteSettings() {
+  const { data } = await api.get("/cms/settings");
+  return data;
+}
+
+export async function fetchDonationPresets() {
+  const { data } = await api.get("/cms/donation-presets");
+  return data;
+}
+
+export async function fetchTestimonials() {
+  const { data } = await api.get("/cms/testimonials");
+  return data;
+}
+
+export async function fetchNavigationMenus(location?: string) {
+  const { data } = await api.get("/cms/navigation", { params: location ? { location } : {} });
+  return data;
+}
+
+export async function fetchBanners(type?: string) {
+  const { data } = await api.get("/cms/banners", { params: type ? { type } : {} });
+  return data;
+}
+
+export async function fetchFaqs(category?: string) {
+  const { data } = await api.get("/cms/faqs", { params: category ? { category } : {} });
+  return data;
+}
+
+export async function fetchSeoSettings(pagePath: string) {
+  const { data } = await api.get("/cms/seo", { params: { pagePath } });
+  return data;
+}
+
+export async function fetchPageBlocks(pageType: string, pageId?: string) {
+  const { data } = await api.get("/cms/page-blocks", { params: { pageType, pageId } });
+  return data;
+}
+
+export async function fetchTranslations(entityType: string, entityId: string, language: string) {
+  const { data } = await api.get("/cms/translations", { params: { entityType, entityId, language } });
+  return data;
+}
+
+// ═══════════════════════════════════
+// PUBLIC - BLOG
+// ═══════════════════════════════════
+export async function fetchBlogPosts(params?: Record<string, string>) {
+  const { data } = await api.get("/blog", { params });
+  return data;
+}
+
+export async function fetchBlogPostBySlug(slug: string) {
+  const { data } = await api.get(`/blog/${slug}`);
+  return data;
+}
+
+export async function fetchBlogCategories() {
+  const { data } = await api.get("/blog/categories");
+  return data;
+}
+
+// ═══════════════════════════════════
+// PUBLIC - NEWSLETTER
+// ═══════════════════════════════════
+export async function subscribeNewsletter(email: string, name?: string) {
+  const { data } = await api.post("/newsletter/subscribe", { email, name });
+  return data;
+}
+
+// ═══════════════════════════════════
+// USER AUTH
+// ═══════════════════════════════════
+export async function userRegister(payload: { fullName: string; email: string; password: string; phone?: string; marketingConsent?: boolean; smsConsent?: boolean }) {
+  const { data } = await api.post("/auth/register", payload);
+  return data;
+}
+
+export async function userLogin(email: string, password: string) {
+  const { data } = await api.post("/auth/login", { email, password });
+  return data;
+}
+
+export async function userLogout() {
+  const { data } = await api.post("/auth/logout");
+  return data;
+}
+
+export async function fetchUserProfile() {
+  const { data } = await api.get("/auth/profile");
+  return data;
+}
+
+export async function updateUserProfile(payload: Record<string, unknown>) {
+  const { data } = await api.put("/auth/profile", payload);
+  return data;
+}
+
+export async function changeUserPassword(currentPassword: string, newPassword: string) {
+  const { data } = await api.put("/auth/change-password", { currentPassword, newPassword });
+  return data;
+}
+
+export async function fetchUserDonations(params?: Record<string, string>) {
+  const { data } = await api.get("/my/donations", { params });
+  return data;
+}
+
+// ═══════════════════════════════════
+// RECURRING DONATIONS
+// ═══════════════════════════════════
+export async function fetchUserRecurringDonations() {
+  const { data } = await api.get("/recurring/my");
+  return data;
+}
+
+export async function createRecurringDonation(payload: Record<string, unknown>) {
+  const { data } = await api.post("/recurring", payload);
+  return data;
+}
+
+export async function pauseRecurringDonation(id: string) {
+  const { data } = await api.put(`/recurring/${id}/pause`);
+  return data;
+}
+
+export async function resumeRecurringDonation(id: string) {
+  const { data } = await api.put(`/recurring/${id}/resume`);
+  return data;
+}
+
+export async function cancelRecurringDonation(id: string) {
+  const { data } = await api.put(`/recurring/${id}/cancel`);
+  return data;
+}
+
+// ═══════════════════════════════════
+// PAYMENTS
+// ═══════════════════════════════════
+export async function createStripePaymentIntent(payload: { amount: number; currency: string; donationId?: string }) {
+  const { data } = await api.post("/payments/stripe/create-intent", payload);
+  return data;
+}
+
+export async function createStripeSubscription(payload: Record<string, unknown>) {
+  const { data } = await api.post("/payments/stripe/create-subscription", payload);
+  return data;
+}
+
+export async function createPayPalOrder(payload: { amount: number; currency: string }) {
+  const { data } = await api.post("/payments/paypal/create-order", payload);
+  return data;
+}
+
+export async function capturePayPalOrder(orderId: string) {
+  const { data } = await api.post("/payments/paypal/capture-order", { orderId });
+  return data;
+}
+
+// ═══════════════════════════════════
+// ZAKAT CALCULATOR
+// ═══════════════════════════════════
+export async function calculateZakat(payload: Record<string, unknown>) {
+  const { data } = await api.post("/zakat/calculate", payload);
+  return data;
+}
+
+export async function saveZakatCalculation(payload: Record<string, unknown>) {
+  const { data } = await api.post("/zakat/save", payload);
+  return data;
+}
+
+export async function fetchZakatHistory() {
+  const { data } = await api.get("/zakat/history");
+  return data;
+}
+
+// ═══════════════════════════════════
+// AUTOMATED DONATIONS
+// ═══════════════════════════════════
+export async function createAutomatedSchedule(payload: Record<string, unknown>) {
+  const { data } = await api.post("/automated-donations", payload);
+  return data;
+}
+
+export async function fetchMyAutomatedSchedules() {
+  const { data } = await api.get("/automated-donations/my");
+  return data;
+}
+
+export async function cancelAutomatedSchedule(id: string) {
+  const { data } = await api.put(`/automated-donations/${id}/cancel`);
+  return data;
+}
+
+export async function fetchAdminAutomatedSchedules(params?: Record<string, string>) {
+  const { data } = await api.get("/admin/automated-donations", { params });
+  return data;
+}
+
+// ═══════════════════════════════════
+// ACTIVITY TRACKING
+// ═══════════════════════════════════
+export async function trackActivity(payload: { type: string; page?: string; metadata?: Record<string, unknown> }) {
+  try {
+    await api.post("/track", payload);
+  } catch {
+    // silently fail tracking
+  }
+}
+
+// ═══════════════════════════════════
+// ADMIN AUTH
+// ═══════════════════════════════════
+export async function adminLogin(email: string, password: string) {
+  const { data } = await api.post("/admin/login", { email, password });
+  return data;
+}
+
+export async function adminLogout() {
+  const { data } = await api.post("/admin/logout");
+  return data;
+}
+
+export async function fetchAdminProfile() {
+  const { data } = await api.get("/admin/profile");
+  return data;
+}
+
+// ═══════════════════════════════════
+// ADMIN DONATIONS
+// ═══════════════════════════════════
+export async function fetchAdminDonations(params?: Record<string, string>) {
+  const { data } = await api.get("/admin/donations", { params });
+  return data;
+}
+
+export async function fetchDonationStats() {
+  const { data } = await api.get("/admin/donations/stats");
+  return data;
+}
+
+export async function refundDonation(id: string) {
+  const { data } = await api.put(`/admin/donations/${id}/refund`);
+  return data;
+}
+
+// ═══════════════════════════════════
+// ADMIN CAMPAIGNS
+// ═══════════════════════════════════
+export async function fetchAdminCampaigns(params?: Record<string, string>) {
+  const { data } = await api.get("/admin/campaigns", { params });
+  return data;
+}
+
+export async function fetchAdminCampaignById(id: string) {
+  const { data } = await api.get(`/admin/campaigns/${id}`);
+  return data;
+}
+
+export async function adminCreateCampaign(payload: Record<string, unknown>) {
+  const { data } = await api.post("/admin/campaigns", payload);
+  return data;
+}
+
+export async function adminUpdateCampaign(id: string, payload: Record<string, unknown>) {
+  const { data } = await api.put(`/admin/campaigns/${id}`, payload);
+  return data;
+}
+
+export async function adminDeleteCampaign(id: string) {
+  const { data } = await api.delete(`/admin/campaigns/${id}`);
+  return data;
+}
+
+// ═══════════════════════════════════
+// ADMIN CMS
+// ═══════════════════════════════════
+export async function adminCreateHeroSlide(payload: Record<string, unknown>) {
+  const { data } = await api.post("/admin/cms/hero-slides", payload);
+  return data;
+}
+
+export async function adminUpdateHeroSlide(id: string, payload: Record<string, unknown>) {
+  const { data } = await api.put(`/admin/cms/hero-slides/${id}`, payload);
+  return data;
+}
+
+export async function adminDeleteHeroSlide(id: string) {
+  const { data } = await api.delete(`/admin/cms/hero-slides/${id}`);
+  return data;
+}
+
+export async function adminUpdateHomepageSection(id: string, payload: Record<string, unknown>) {
+  const { data } = await api.put(`/admin/cms/homepage-sections/${id}`, payload);
+  return data;
+}
+
+export async function adminReorderSections(sections: Array<{ id: string; sortOrder: number }>) {
+  const { data } = await api.post("/admin/cms/homepage-sections/reorder", { sections });
+  return data;
+}
+
+export async function adminUpdateSiteSettings(payload: Record<string, unknown>) {
+  const { data } = await api.put("/admin/cms/settings", payload);
+  return data;
+}
+
+export async function adminUpdateDonationPreset(id: string, payload: Record<string, unknown>) {
+  const { data } = await api.put(`/admin/cms/donation-presets/${id}`, payload);
+  return data;
+}
+
+// Admin CMS Extended
+export async function adminCreateNavigationMenu(payload: Record<string, unknown>) {
+  const { data } = await api.post("/admin/cms/navigation", payload);
+  return data;
+}
+
+export async function adminUpdateNavigationMenu(id: string, payload: Record<string, unknown>) {
+  const { data } = await api.put(`/admin/cms/navigation/${id}`, payload);
+  return data;
+}
+
+export async function adminDeleteNavigationMenu(id: string) {
+  const { data } = await api.delete(`/admin/cms/navigation/${id}`);
+  return data;
+}
+
+export async function adminCreateBanner(payload: Record<string, unknown>) {
+  const { data } = await api.post("/admin/cms/banners", payload);
+  return data;
+}
+
+export async function adminUpdateBanner(id: string, payload: Record<string, unknown>) {
+  const { data } = await api.put(`/admin/cms/banners/${id}`, payload);
+  return data;
+}
+
+export async function adminDeleteBanner(id: string) {
+  const { data } = await api.delete(`/admin/cms/banners/${id}`);
+  return data;
+}
+
+export async function adminCreateFaq(payload: Record<string, unknown>) {
+  const { data } = await api.post("/admin/cms/faqs", payload);
+  return data;
+}
+
+export async function adminUpdateFaq(id: string, payload: Record<string, unknown>) {
+  const { data } = await api.put(`/admin/cms/faqs/${id}`, payload);
+  return data;
+}
+
+export async function adminDeleteFaq(id: string) {
+  const { data } = await api.delete(`/admin/cms/faqs/${id}`);
+  return data;
+}
+
+export async function adminUpsertSeoSettings(payload: Record<string, unknown>) {
+  const { data } = await api.put("/admin/cms/seo", payload);
+  return data;
+}
+
+export async function adminCreatePageBlock(payload: Record<string, unknown>) {
+  const { data } = await api.post("/admin/cms/page-blocks", payload);
+  return data;
+}
+
+export async function adminUpdatePageBlock(id: string, payload: Record<string, unknown>) {
+  const { data } = await api.put(`/admin/cms/page-blocks/${id}`, payload);
+  return data;
+}
+
+export async function adminDeletePageBlock(id: string) {
+  const { data } = await api.delete(`/admin/cms/page-blocks/${id}`);
+  return data;
+}
+
+export async function adminReorderPageBlocks(items: Array<{ id: string; sortOrder: number }>) {
+  const { data } = await api.post("/admin/cms/page-blocks/reorder", { items });
+  return data;
+}
+
+export async function adminUpsertTranslation(payload: Record<string, unknown>) {
+  const { data } = await api.put("/admin/cms/translations", payload);
+  return data;
+}
+
+export async function fetchAdminMedia(params?: Record<string, string>) {
+  const { data } = await api.get("/admin/cms/media", { params });
+  return data;
+}
+
+export async function adminDeleteMedia(id: string) {
+  const { data } = await api.delete(`/admin/cms/media/${id}`);
+  return data;
+}
+
+// ═══════════════════════════════════
+// ADMIN BLOG
+// ═══════════════════════════════════
+export async function fetchAdminBlogPosts(params?: Record<string, string>) {
+  const { data } = await api.get("/admin/blog", { params });
+  return data;
+}
+
+export async function fetchAdminBlogPost(id: string) {
+  const { data } = await api.get(`/admin/blog/${id}`);
+  return data;
+}
+
+export async function adminCreateBlogPost(payload: Record<string, unknown>) {
+  const { data } = await api.post("/admin/blog", payload);
+  return data;
+}
+
+export async function adminUpdateBlogPost(id: string, payload: Record<string, unknown>) {
+  const { data } = await api.put(`/admin/blog/${id}`, payload);
+  return data;
+}
+
+export async function adminDeleteBlogPost(id: string) {
+  const { data } = await api.delete(`/admin/blog/${id}`);
+  return data;
+}
+
+export async function adminCreateBlogCategory(payload: Record<string, unknown>) {
+  const { data } = await api.post("/admin/blog/categories", payload);
+  return data;
+}
+
+export async function adminUpdateBlogCategory(id: string, payload: Record<string, unknown>) {
+  const { data } = await api.put(`/admin/blog/categories/${id}`, payload);
+  return data;
+}
+
+export async function adminDeleteBlogCategory(id: string) {
+  const { data } = await api.delete(`/admin/blog/categories/${id}`);
+  return data;
+}
+
+// ═══════════════════════════════════
+// ADMIN RECURRING
+// ═══════════════════════════════════
+export async function fetchAdminRecurring(params?: Record<string, string>) {
+  const { data } = await api.get("/admin/recurring", { params });
+  return data;
+}
+
+// ═══════════════════════════════════
+// ADMIN USERS
+// ═══════════════════════════════════
+export async function fetchAdminUsers(params?: Record<string, string>) {
+  const { data } = await api.get("/admin/users", { params });
+  return data;
+}
+
+export async function adminDeactivateUser(id: string) {
+  const { data } = await api.put(`/admin/users/${id}/deactivate`);
+  return data;
+}
+
+// ═══════════════════════════════════
+// ADMIN ANALYTICS
+// ═══════════════════════════════════
+export async function fetchAnalyticsDashboard(params?: Record<string, string>) {
+  const { data } = await api.get("/admin/analytics/dashboard", { params });
+  return data;
+}
+
+export async function fetchAnalyticsCampaigns(params?: Record<string, string>) {
+  const { data } = await api.get("/admin/analytics/campaigns", { params });
+  return data;
+}
+
+export async function fetchAnalyticsRevenue(params?: Record<string, string>) {
+  const { data } = await api.get("/admin/analytics/revenue", { params });
+  return data;
+}
+
+export async function fetchAnalyticsDonors(params?: Record<string, string>) {
+  const { data } = await api.get("/admin/analytics/donors", { params });
+  return data;
+}
+
+export async function fetchAnalyticsGiftAid(params?: Record<string, string>) {
+  const { data } = await api.get("/admin/analytics/gift-aid", { params });
+  return data;
+}
+
+export async function fetchCampaignReport() {
+  const { data } = await api.get("/admin/analytics/campaigns");
+  return data;
+}
+
+export async function fetchRecurringReport() {
+  const { data } = await api.get("/admin/analytics/recurring");
+  return data;
+}
+
+export async function fetchDonorReport() {
+  const { data } = await api.get("/admin/analytics/donors");
+  return data;
+}
+
+export async function fetchRevenueReport(params?: Record<string, string>) {
+  const { data } = await api.get("/admin/analytics/revenue", { params });
+  return data;
+}
+
+export async function fetchGiftAidReport() {
+  const { data } = await api.get("/admin/analytics/gift-aid");
+  return data;
+}
+
+export async function exportDonations(params?: Record<string, string>) {
+  const { data } = await api.get("/admin/analytics/export/donations", { params, responseType: "blob" as any });
+  return data;
+}
+
+// ═══════════════════════════════════
+// ADMIN ACTIVITY / AUDIT LOGS
+// ═══════════════════════════════════
+export async function fetchActivityLogs(params?: Record<string, string>) {
+  const { data } = await api.get("/admin/activity-logs", { params });
+  return data;
+}
+
+export async function fetchAuditLogs(params?: Record<string, string>) {
+  const { data } = await api.get("/admin/audit-logs", { params });
+  return data;
+}
+
+// ═══════════════════════════════════
+// ADMIN NEWSLETTER
+// ═══════════════════════════════════
+export async function fetchNewsletterSubscribers() {
+  const { data } = await api.get("/admin/newsletter/subscribers");
+  return data;
+}
+
+// ═══════════════════════════════════
+// PUBLIC - CHARITIES (ICCA)
+// ═══════════════════════════════════
+export async function fetchPublicCharities(params?: Record<string, string>) {
+  const { data } = await api.get("/public/charities", { params });
+  return data;
+}
+
+export async function fetchCharityBySlug(slug: string) {
+  const { data } = await api.get(`/public/charities/${slug}`);
+  return data;
+}
+
+export async function fetchFeaturedCharities() {
+  const { data } = await api.get("/public/featured-charities");
+  return data;
+}
+
+export async function fetchPublicStats() {
+  const { data } = await api.get("/public/stats");
+  return data;
+}
+
+export async function verifyPublicCertification(params: { certificateId?: string; charityName?: string }) {
+  const { data } = await api.get("/public/verify", { params });
+  return data;
+}
+
+export async function verifyPublicCertificationById(certificateId: string) {
+  const { data } = await api.get(`/public/verify/${certificateId}`);
+  return data;
+}
+
+export async function submitPublicContactMessage(payload: { name: string; email: string; subject: string; message: string }) {
+  const { data } = await api.post("/public/contact-messages", payload);
+  return data;
+}
+
+export async function submitPublicConcernReport(payload: Record<string, unknown>) {
+  const { data } = await api.post("/public/concerns", payload);
+  return data;
+}
+
+export async function submitPublicApplyReview(payload: Record<string, unknown>) {
+  const { data } = await api.post("/public/apply-review", payload);
+  return data;
+}
+
+export async function fetchPublicExperts() {
+  const { data } = await api.get("/public/experts");
+  return data;
+}
+
+// ═══════════════════════════════════
+// ADMIN - CHARITIES MANAGEMENT
+// ═══════════════════════════════════
+export async function fetchAdminCharities(params?: Record<string, string>) {
+  const { data } = await api.get("/admin/charities", { params });
+  return data;
+}
+
+export async function fetchAdminCharityById(id: number) {
+  const { data } = await api.get(`/admin/charities/${id}`);
+  return data;
+}
+
+export async function createAdminCharity(payload: Record<string, unknown>) {
+  const { data } = await api.post("/admin/charities", payload);
+  return data;
+}
+
+export async function updateAdminCharity(id: number, payload: Record<string, unknown>) {
+  const { data } = await api.patch(`/admin/charities/${id}`, payload);
+  return data;
+}
+
+export async function deleteAdminCharity(id: number) {
+  const { data } = await api.delete(`/admin/charities/${id}`);
+  return data;
+}
+
+// ═══════════════════════════════════
+// ADMIN - CERTIFICATIONS
+// ═══════════════════════════════════
+export async function fetchAdminCertifications(params?: Record<string, string>) {
+  const { data } = await api.get("/admin/certifications", { params });
+  return data;
+}
+
+export async function fetchAdminCertificationById(id: number) {
+  const { data } = await api.get(`/admin/certifications/${id}`);
+  return data;
+}
+
+export async function createAdminCertification(payload: Record<string, unknown>) {
+  const { data } = await api.post("/admin/certifications", payload);
+  return data;
+}
+
+export async function updateAdminCertification(id: number, payload: Record<string, unknown>) {
+  const { data } = await api.patch(`/admin/certifications/${id}`, payload);
+  return data;
+}
+
+export async function renewAdminCertification(id: number, payload: Record<string, unknown>) {
+  const { data } = await api.post(`/admin/certifications/${id}/renew`, payload);
+  return data;
+}
+
+export async function deleteAdminCertification(id: number) {
+  const { data } = await api.delete(`/admin/certifications/${id}`);
+  return data;
+}
+
+export async function toggleAdminCertificationBadge(id: number) {
+  const { data } = await api.post(`/admin/certifications/${id}/toggle-badge`);
+  return data;
+}
+
+// ═══════════════════════════════════
+// ADMIN - EXPERTS
+// ═══════════════════════════════════
+export async function fetchAdminExperts(params?: Record<string, string>) {
+  const { data } = await api.get("/admin/experts", { params });
+  return data;
+}
+
+export async function fetchAdminExpertById(id: number) {
+  const { data } = await api.get(`/admin/experts/${id}`);
+  return data;
+}
+
+export async function createAdminExpert(payload: Record<string, unknown>) {
+  const { data } = await api.post("/admin/experts", payload);
+  return data;
+}
+
+export async function updateAdminExpert(id: number, payload: Record<string, unknown>) {
+  const { data } = await api.patch(`/admin/experts/${id}`, payload);
+  return data;
+}
+
+export async function deleteAdminExpert(id: number) {
+  const { data } = await api.delete(`/admin/experts/${id}`);
+  return data;
+}
+
+// ═══════════════════════════════════
+// ADMIN - REPORTS
+// ═══════════════════════════════════
+export async function fetchAdminReports(params?: Record<string, string>) {
+  const { data } = await api.get("/admin/reports", { params });
+  return data;
+}
+
+export async function fetchAdminReportById(id: number) {
+  const { data } = await api.get(`/admin/reports/${id}`);
+  return data;
+}
+
+export async function createAdminReport(payload: Record<string, unknown>) {
+  const { data } = await api.post("/admin/reports", payload);
+  return data;
+}
+
+export async function updateAdminReport(id: number, payload: Record<string, unknown>) {
+  const { data } = await api.patch(`/admin/reports/${id}`, payload);
+  return data;
+}
+
+export async function deleteAdminReport(id: number) {
+  const { data } = await api.delete(`/admin/reports/${id}`);
+  return data;
+}
+
+// ═══════════════════════════════════
+// ADMIN - CONCERNS
+// ═══════════════════════════════════
+export async function fetchAdminConcerns(params?: Record<string, string>) {
+  const { data } = await api.get("/admin/concerns", { params });
+  return data;
+}
+
+export async function updateAdminConcern(id: number, payload: Record<string, unknown>) {
+  const { data } = await api.patch(`/admin/concerns/${id}`, payload);
+  return data;
+}
+
+export async function deleteAdminConcern(id: number) {
+  const { data } = await api.delete(`/admin/concerns/${id}`);
+  return data;
+}
+
+// ═══════════════════════════════════
+// ADMIN - CONTACT MESSAGES
+// ═══════════════════════════════════
+export async function fetchAdminContactMessages(params?: Record<string, string>) {
+  const { data } = await api.get("/admin/contact-messages", { params });
+  return data;
+}
+
+export async function updateAdminContactMessage(id: number, payload: Record<string, unknown>) {
+  const { data } = await api.patch(`/admin/contact-messages/${id}`, payload);
+  return data;
+}
+
+export async function deleteAdminContactMessage(id: number) {
+  const { data } = await api.delete(`/admin/contact-messages/${id}`);
+  return data;
+}
+
+// ═══════════════════════════════════
+// ADMIN - APPLICATIONS / APPLY-REVIEW
+// ═══════════════════════════════════
+export async function fetchAdminApplications(params?: Record<string, string>) {
+  const { data } = await api.get("/admin/apply-review", { params });
+  return data;
+}
+
+export async function updateAdminApplication(id: number, payload: Record<string, unknown>) {
+  const { data } = await api.patch(`/admin/apply-review/${id}`, payload);
+  return data;
+}
+
+export async function deleteAdminApplication(id: number) {
+  const { data } = await api.delete(`/admin/apply-review/${id}`);
+  return data;
+}
+
+// ═══════════════════════════════════
+// ADMIN - IAM (ROLES, USERS, PERMISSIONS)
+// ═══════════════════════════════════
+export async function fetchAdminRoles(params?: Record<string, string>) {
+  const { data } = await api.get("/admin/roles", { params });
+  return data;
+}
+
+export async function createAdminRole(payload: Record<string, unknown>) {
+  const { data } = await api.post("/admin/roles", payload);
+  return data;
+}
+
+export async function updateAdminRole(id: number, payload: Record<string, unknown>) {
+  const { data } = await api.patch(`/admin/roles/${id}`, payload);
+  return data;
+}
+
+export async function deleteAdminRole(id: number) {
+  const { data } = await api.delete(`/admin/roles/${id}`);
+  return data;
+}
+
+export async function fetchAdminPermissions() {
+  const { data } = await api.get("/admin/permissions");
+  return data;
+}
+
+export async function fetchAdminHistory(params?: Record<string, string>) {
+  const { data } = await api.get("/admin/history", { params });
+  return data;
+}
+
+// ═══════════════════════════════════
+// ADMIN - EMAIL MANAGEMENT
+// ═══════════════════════════════════
+export async function fetchSmtpConfig() {
+  const { data } = await api.get("/admin/email-management/smtp");
+  return data;
+}
+
+export async function updateSmtpConfig(payload: Record<string, unknown>) {
+  const { data } = await api.patch("/admin/email-management/smtp", payload);
+  return data;
+}
+
+export async function sendTestEmail(to: string) {
+  const { data } = await api.post("/admin/email-management/test-smtp", { to });
+  return data;
+}
+
+export async function fetchEmailTemplates() {
+  const { data } = await api.get("/admin/email-management/templates");
+  return data;
+}
+
+export async function fetchEmailTemplate(id: number) {
+  const { data } = await api.get(`/admin/email-management/templates/${id}`);
+  return data;
+}
+
+export async function createEmailTemplate(payload: Record<string, unknown>) {
+  const { data } = await api.post("/admin/email-management/templates", payload);
+  return data;
+}
+
+export async function updateEmailTemplate(id: number, payload: Record<string, unknown>) {
+  const { data } = await api.patch(`/admin/email-management/templates/${id}`, payload);
+  return data;
+}
+
+export async function deleteEmailTemplate(id: number) {
+  const { data } = await api.delete(`/admin/email-management/templates/${id}`);
+  return data;
+}
+
+export async function fetchReminderSettings() {
+  const { data } = await api.get("/admin/email-management/reminder-settings");
+  return data;
+}
+
+export async function updateReminderSettings(payload: Record<string, unknown>) {
+  const { data } = await api.patch("/admin/email-management/reminder-settings", payload);
+  return data;
+}
+
+export async function fetchEmailLogs(params?: Record<string, string>) {
+  const { data } = await api.get("/admin/email-management/logs", { params });
+  return data;
+}
+
+// ═══════════════════════════════════
+// ADMIN - DASHBOARD OVERVIEW
+// ═══════════════════════════════════
+export async function fetchAdminDashboardOverview() {
+  const { data } = await api.get("/admin/dashboard/overview");
+  return data;
+}
+
+// ═══════════════════════════════════
+// ADMIN - FORGOT/RESET PASSWORD
+// ═══════════════════════════════════
+export async function adminForgotPassword(email: string) {
+  const { data } = await api.post("/admin/forgot-password", { email });
+  return data;
+}
+
+export async function adminResetPassword(token: string, password: string) {
+  const { data } = await api.post("/admin/reset-password", { token, password });
+  return data;
+}
