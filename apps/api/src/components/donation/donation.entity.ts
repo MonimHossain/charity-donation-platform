@@ -96,6 +96,12 @@ export class Donation {
   @Column({ type: "varchar", length: 255, nullable: true })
   paypalOrderId?: string;
 
+  @Column({ type: "varchar", length: 255, nullable: true })
+  telrOrderRef?: string;
+
+  @Column({ type: "varchar", length: 255, nullable: true })
+  paytabsTransactionRef?: string;
+
   @Column({ type: "boolean", default: false })
   marketingConsent!: boolean;
 

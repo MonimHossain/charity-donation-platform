@@ -8,7 +8,7 @@ export function securityHeaders(_req: Request, res: Response, next: NextFunction
   res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
   res.setHeader(
     "Content-Security-Policy",
-    "default-src 'self'; script-src 'self' 'unsafe-inline' https://js.stripe.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; frame-src https://js.stripe.com https://www.paypal.com; connect-src 'self' https://api.stripe.com https://www.paypal.com"
+    "default-src 'self'; script-src 'self' 'unsafe-inline' https://js.stripe.com https://www.paypal.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; frame-src https://js.stripe.com https://www.paypal.com https://secure.telr.com https://secure.paytabs.com https://secure-egypt.paytabs.com; connect-src 'self' https://api.stripe.com https://www.paypal.com https://secure.telr.com https://secure.paytabs.com"
   );
   res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
 

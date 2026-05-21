@@ -71,6 +71,8 @@ export enum Currency {
 export enum PaymentProvider {
   STRIPE = "stripe",
   PAYPAL = "paypal",
+  TELR = "telr",
+  PAYTABS = "paytabs",
   APPLE_PAY = "apple_pay",
   GOOGLE_PAY = "google_pay",
 }

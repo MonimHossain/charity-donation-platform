@@ -4,6 +4,7 @@ import { AppDataSource } from "../../helper/connectDB.js";
 import { Donation } from "../../components/donation/donation.entity.js";
 import { RecurringDonation } from "../../components/recurringDonation/recurringDonation.entity.js";
 import { PaymentLog } from "../../components/paymentLog/paymentLog.entity.js";
+import { completeDonation, failDonation } from "./paymentCompletion.js";
 
 const getStripe = () => new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-04-10" });
 
@@ -28,6 +29,10 @@ export async function createPaymentIntent(req: Request, res: Response) {
         ...metadata,
       },
     });
+
+    if (donationId) {
+      await donationRepo().update(donationId, { stripePaymentIntentId: paymentIntent.id });
+    }
 
     await paymentLogRepo().save(
       paymentLogRepo().create({
@@ -120,7 +125,8 @@ export async function handleWebhook(req: Request, res: Response) {
         const donationId = pi.metadata.donationId;
 
         if (donationId) {
-          await donationRepo().update(donationId, { status: "completed" });
+          await donationRepo().update(donationId, { stripePaymentIntentId: pi.id });
+          await completeDonation(donationId);
         }
 
         await paymentLogRepo().save(
@@ -142,7 +148,7 @@ export async function handleWebhook(req: Request, res: Response) {
         const donationId = pi.metadata.donationId;
 
         if (donationId) {
-          await donationRepo().update(donationId, { status: "failed" });
+          await failDonation(donationId);
         }
 
         await paymentLogRepo().save(

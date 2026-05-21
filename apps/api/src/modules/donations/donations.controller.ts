@@ -57,22 +57,10 @@ export async function createDonation(req: Request, res: Response) {
       dedicationRecipientEmail: dedication?.recipientEmail,
       dedicationMessage: dedication?.personalMessage,
       receiptNumber: generateReceiptNumber(),
-      status: "completed",
+      status: "pending",
     });
 
     await repo().save(donation);
-
-    if (campaignId) {
-      await campaignRepo()
-        .createQueryBuilder()
-        .update(Campaign)
-        .set({
-          raisedAmount: () => `"raisedAmount" + ${totalAmount}`,
-          donorCount: () => `"donorCount" + 1`,
-        })
-        .where("id = :id", { id: campaignId })
-        .execute();
-    }
 
     return res.status(201).json(donation);
   } catch (error) {
@@ -226,6 +214,25 @@ export async function getDonationStats(_req: Request, res: Response) {
     });
   } catch (error) {
     console.error("getDonationStats error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+export async function getDonationStatus(req: Request, res: Response) {
+  try {
+    const donation = await repo().findOne({
+      where: { id: req.params.id },
+      select: ["id", "status", "totalAmount", "currency", "receiptNumber"],
+    });
+    if (!donation) return res.status(404).json({ message: "Donation not found" });
+    return res.json({
+      id: donation.id,
+      status: donation.status,
+      totalAmount: donation.totalAmount,
+      currency: donation.currency,
+      receiptNumber: donation.receiptNumber,
+    });
+  } catch (error) {
     return res.status(500).json({ message: "Internal server error" });
   }
 }

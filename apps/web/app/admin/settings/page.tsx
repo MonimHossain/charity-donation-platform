@@ -49,8 +49,10 @@ interface SettingsData {
     senderEmail: string;
   };
   payment: {
+    enabledProviders: string[];
     stripePublicKey: string;
     paypalClientId: string;
+    paytabsClientKey: string;
     currency: string;
     minimumDonation: number;
   };
@@ -83,7 +85,14 @@ const defaultSettings: SettingsData = {
     senderName: "",
     senderEmail: "",
   },
-  payment: { stripePublicKey: "", paypalClientId: "", currency: "GBP", minimumDonation: 1 },
+  payment: {
+    enabledProviders: ["stripe"],
+    stripePublicKey: "",
+    paypalClientId: "",
+    paytabsClientKey: "",
+    currency: "GBP",
+    minimumDonation: 1,
+  },
   security: {
     passwordMinLength: 8,
     requireUppercase: true,
@@ -133,7 +142,17 @@ export default function AdminSettingsPage() {
   async function handleSave() {
     setSaving(true);
     try {
-      await api.put("/admin/cms/settings", settings);
+      await api.put("/admin/cms/settings", {
+        siteName: settings.general.siteName,
+        siteDescription: settings.general.siteDescription,
+        logoUrl: settings.general.logoUrl,
+        faviconUrl: settings.general.faviconUrl,
+        contactEmail: settings.contact.email,
+        contactPhone: settings.contact.phone,
+        address: settings.contact.address,
+        socialLinks: settings.social,
+        payment: settings.payment,
+      });
       toast.success("Settings saved");
     } catch {
       toast.error("Failed to save settings");
@@ -166,8 +185,25 @@ export default function AdminSettingsPage() {
   function updateEmail(field: keyof SettingsData["email"], value: boolean | string) {
     setSettings((s) => ({ ...s, email: { ...s.email, [field]: value } }));
   }
-  function updatePayment(field: keyof SettingsData["payment"], value: string | number) {
+  function updatePayment(field: keyof SettingsData["payment"], value: string | number | string[]) {
     setSettings((s) => ({ ...s, payment: { ...s.payment, [field]: value } }));
+  }
+
+  const PAYMENT_PROVIDERS = [
+    { id: "stripe", label: "Stripe" },
+    { id: "paypal", label: "PayPal" },
+    { id: "telr", label: "Telr" },
+    { id: "paytabs", label: "PayTabs" },
+  ] as const;
+
+  function toggleProvider(id: string) {
+    setSettings((s) => {
+      const current = s.payment.enabledProviders || [];
+      const next = current.includes(id)
+        ? current.filter((p) => p !== id)
+        : [...current, id];
+      return { ...s, payment: { ...s.payment, enabledProviders: next.length ? next : ["stripe"] } };
+    });
   }
   function updateSecurity(field: keyof SettingsData["security"], value: boolean | number) {
     setSettings((s) => ({ ...s, security: { ...s.security, [field]: value } }));
@@ -320,14 +356,42 @@ export default function AdminSettingsPage() {
       {tab === "payment" && (
         <div className="rounded-2xl border bg-card shadow-soft p-6 space-y-6">
           <h2 className="text-lg font-serif font-bold">Payment Configuration</h2>
+          <p className="text-sm text-muted-foreground">
+            Enable gateways for checkout. API secrets are configured in server environment variables only.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {PAYMENT_PROVIDERS.map((p) => (
+              <label
+                key={p.id}
+                className={cn(
+                  "flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all",
+                  settings.payment.enabledProviders?.includes(p.id)
+                    ? "border-primary bg-primary/5"
+                    : "border-border"
+                )}
+              >
+                <input
+                  type="checkbox"
+                  checked={settings.payment.enabledProviders?.includes(p.id) ?? false}
+                  onChange={() => toggleProvider(p.id)}
+                  className="h-4 w-4 rounded accent-primary"
+                />
+                <span className="font-medium text-sm">{p.label}</span>
+              </label>
+            ))}
+          </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>Stripe Public Key</Label>
-              <Input value={settings.payment.stripePublicKey} onChange={(e) => updatePayment("stripePublicKey", e.target.value)} placeholder="pk_..." type="password" />
+              <Label>Stripe Publishable Key (optional override)</Label>
+              <Input value={settings.payment.stripePublicKey} onChange={(e) => updatePayment("stripePublicKey", e.target.value)} placeholder="pk_..." />
             </div>
             <div className="space-y-2">
-              <Label>PayPal Client ID</Label>
-              <Input value={settings.payment.paypalClientId} onChange={(e) => updatePayment("paypalClientId", e.target.value)} type="password" />
+              <Label>PayPal Client ID (public)</Label>
+              <Input value={settings.payment.paypalClientId} onChange={(e) => updatePayment("paypalClientId", e.target.value)} placeholder="Client ID from PayPal dashboard" />
+            </div>
+            <div className="space-y-2">
+              <Label>PayTabs Client Key (public)</Label>
+              <Input value={settings.payment.paytabsClientKey} onChange={(e) => updatePayment("paytabsClientKey", e.target.value)} placeholder="Optional public client key" />
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -340,7 +404,7 @@ export default function AdminSettingsPage() {
               </select>
             </div>
             <div className="space-y-2">
-              <Label>Minimum Donation (£)</Label>
+              <Label>Minimum Donation</Label>
               <Input type="number" value={settings.payment.minimumDonation} onChange={(e) => updatePayment("minimumDonation", Number(e.target.value))} min={1} />
             </div>
           </div>

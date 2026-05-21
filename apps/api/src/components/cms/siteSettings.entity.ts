@@ -69,6 +69,16 @@ export class SiteSettings {
   @Column({ type: "json", default: ["en"] })
   enabledLanguages!: string[];
 
+  @Column({ type: "json", default: {} })
+  paymentConfig!: {
+    enabledProviders?: string[];
+    stripePublicKey?: string;
+    paypalClientId?: string;
+    paytabsClientKey?: string;
+    defaultCurrency?: string;
+    minimumDonation?: number;
+  };
+
   @CreateDateColumn()
   createdAt!: Date;
 

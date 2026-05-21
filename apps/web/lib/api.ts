@@ -233,9 +233,55 @@ export async function createPayPalOrder(payload: { amount: number; currency: str
   return data;
 }
 
-export async function capturePayPalOrder(orderId: string) {
-  const { data } = await api.post("/payments/paypal/capture-order", { orderId });
+export async function capturePayPalOrder(payload: { orderId: string; donationId?: string }) {
+  const { data } = await api.post("/payments/paypal/capture-order", payload);
   return data;
+}
+
+export async function fetchPaymentsConfig() {
+  const { data } = await api.get("/payments/config");
+  return data as {
+    providers: Array<{ id: string; enabled: boolean; configured: boolean; publicKey?: string }>;
+    defaultCurrency: string;
+    minimumDonation: number;
+    availableProviders: string[];
+  };
+}
+
+export async function fetchCampaignPaymentsConfig(campaignGateways: string[]) {
+  const { data } = await api.get("/payments/config/campaign", {
+    params: { gateways: campaignGateways.join(",") },
+  });
+  return data as {
+    providers: Array<{ id: string; enabled: boolean; configured: boolean; publicKey?: string }>;
+    availableProviders: string[];
+  };
+}
+
+export async function getDonationStatus(donationId: string) {
+  const { data } = await api.get(`/donations/${donationId}/status`);
+  return data as { id: string; status: string; totalAmount: number; currency: string; receiptNumber?: string };
+}
+
+export async function initTelrPayment(payload: {
+  donationId: string;
+  amount: number;
+  currency: string;
+  returnUrl?: string;
+  cancelUrl?: string;
+}) {
+  const { data } = await api.post("/payments/telr/init", payload);
+  return data as { redirectUrl: string; orderRef: string };
+}
+
+export async function initPayTabsPayment(payload: {
+  donationId: string;
+  amount: number;
+  currency: string;
+  returnUrl?: string;
+}) {
+  const { data } = await api.post("/payments/paytabs/init", payload);
+  return data as { redirectUrl: string; transactionRef: string };
 }
 
 // ═══════════════════════════════════

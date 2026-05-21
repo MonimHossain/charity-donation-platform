@@ -27,11 +27,28 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { CURRENCIES, type CurrencyCode, formatCurrency } from "@/lib/currency";
-import { fetchCampaigns, fetchCampaignBySlug, createDonation } from "@/lib/api";
+import {
+  fetchCampaigns,
+  createDonation,
+  fetchPaymentsConfig,
+  fetchCampaignPaymentsConfig,
+  createStripePaymentIntent,
+  initTelrPayment,
+  initPayTabsPayment,
+} from "@/lib/api";
+import { StripeCheckoutForm } from "@/components/payments/StripeCheckoutForm";
+import { PayPalCheckoutButton } from "@/components/payments/PayPalCheckoutButton";
 
 type DonationFrequency = "single" | "monthly" | "quarterly" | "annually";
 type ZakatType = "zakat" | "sadaqah" | "lillah" | "general";
-type PaymentMethod = "card" | "paypal" | "apple_pay" | "google_pay";
+type GatewayId = "stripe" | "paypal" | "telr" | "paytabs";
+
+const GATEWAY_LABELS: Record<GatewayId, string> = {
+  stripe: "Card",
+  paypal: "PayPal",
+  telr: "Telr",
+  paytabs: "PayTabs",
+};
 
 interface CampaignPreset { amount: number; label: string; description?: string; }
 interface CampaignAttribute { name: string; description?: string; options: Array<{ label: string; priceAdjustment?: number }>; }
@@ -56,6 +73,7 @@ interface Campaign {
   automatedConfig?: { defaultDays?: number; minDays?: number; maxDays?: number };
   upsellEnabled?: boolean;
   upsellOptions?: CampaignUpsell[];
+  paymentGateways?: string[];
 }
 
 const FREQUENCIES: { value: DonationFrequency; label: string; badge?: string }[] = [
@@ -124,8 +142,14 @@ export default function DonatePage() {
   const [emailOptIn, setEmailOptIn] = useState(false);
   const [smsOptIn, setSmsOptIn] = useState(false);
 
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
+  const [selectedGateway, setSelectedGateway] = useState<GatewayId>("stripe");
+  const [availableGateways, setAvailableGateways] = useState<GatewayId[]>(["stripe"]);
+  const [paymentPublicKeys, setPaymentPublicKeys] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [paymentError, setPaymentError] = useState("");
+  const [pendingDonationId, setPendingDonationId] = useState<string | null>(null);
+  const [stripeClientSecret, setStripeClientSecret] = useState<string | null>(null);
+  const [showPayPal, setShowPayPal] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [attributeSelections, setAttributeSelections] = useState<Record<string, string>>({});
   const [selectedUpsells, setSelectedUpsells] = useState<Set<number>>(new Set());
@@ -134,6 +158,15 @@ export default function DonatePage() {
   useEffect(() => {
     fetchCampaigns({ status: "active" })
       .then((res) => setCampaigns(res.items || res || []))
+      .catch(() => {});
+    fetchPaymentsConfig()
+      .then((cfg) => {
+        const keys: Record<string, string> = {};
+        cfg.providers?.forEach((p) => {
+          if (p.publicKey) keys[p.id] = p.publicKey;
+        });
+        setPaymentPublicKeys(keys);
+      })
       .catch(() => {});
   }, []);
 
@@ -147,7 +180,36 @@ export default function DonatePage() {
     } else {
       setActiveCampaign(null);
     }
+    setPendingDonationId(null);
+    setStripeClientSecret(null);
+    setShowPayPal(false);
+    setPaymentError("");
   }, [selectedCampaign, campaigns]);
+
+  useEffect(() => {
+    async function loadGateways() {
+      const campaignGateways = activeCampaign?.paymentGateways?.length
+        ? activeCampaign.paymentGateways
+        : ["stripe"];
+      try {
+        const cfg = await fetchCampaignPaymentsConfig(campaignGateways);
+        const ids = (cfg.availableProviders || ["stripe"]) as GatewayId[];
+        setAvailableGateways(ids.length ? ids : ["stripe"]);
+        if (!ids.includes(selectedGateway)) {
+          setSelectedGateway(ids[0] || "stripe");
+        }
+        const keys: Record<string, string> = {};
+        cfg.providers?.forEach((p) => {
+          if (p.publicKey) keys[p.id] = p.publicKey;
+        });
+        if (Object.keys(keys).length) setPaymentPublicKeys((prev) => ({ ...prev, ...keys }));
+      } catch {
+        setAvailableGateways(["stripe"]);
+      }
+    }
+    loadGateways();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCampaign]);
 
   const baseAmount = Number(customAmount) || amount;
   const effectiveQuantity = activeCampaign?.hasQuantity ? quantity : 1;
@@ -195,51 +257,110 @@ export default function DonatePage() {
 
   const hoveredPreset = activePresets.find((p) => p.amount === amount && !customAmount);
 
+  function buildDonationPayload(): Record<string, unknown> {
+    return {
+      amount: finalAmount,
+      unitPrice: baseAmount,
+      quantity: effectiveQuantity,
+      currency,
+      frequency,
+      giftAid,
+      donationType: zakatType,
+      paymentMethod: selectedGateway,
+      donorName,
+      donorEmail,
+      donorPhone: donorPhone || undefined,
+      campaignId: selectedCampaign || undefined,
+      attributeSelections: Object.keys(attributeSelections).length ? attributeSelections : undefined,
+      upsellTotal: upsellTotal > 0 ? upsellTotal : undefined,
+      marketingConsent: emailOptIn,
+      smsConsent: smsOptIn,
+      dedication: showDedication
+        ? {
+            type: dedicationType,
+            recipientName: dedicationName,
+            recipientEmail: dedicationEmail,
+            personalMessage: dedicationMessage,
+          }
+        : undefined,
+    };
+  }
+
+  const stripePublishableKey =
+    paymentPublicKeys.stripe ||
+    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ||
+    "";
+
+  const paypalClientId =
+    paymentPublicKeys.paypal ||
+    process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ||
+    "";
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (stripeClientSecret) return;
+
     setSubmitting(true);
+    setPaymentError("");
     try {
-      const payload: Record<string, unknown> = {
-        amount: finalAmount,
-        unitPrice: baseAmount,
-        quantity: effectiveQuantity,
-        currency,
-        frequency,
-        giftAid,
-        zakatType,
-        paymentMethod,
-        donorName,
-        donorEmail,
-        donorPhone: donorPhone || undefined,
-        campaignId: selectedCampaign || undefined,
-        attributeSelections: Object.keys(attributeSelections).length ? attributeSelections : undefined,
-        upsellTotal: upsellTotal > 0 ? upsellTotal : undefined,
-        emailOptIn,
-        smsOptIn,
-        address: showAddress
-          ? { line1: address1, line2: address2, city, postcode, country }
-          : undefined,
-        dedication: showDedication
-          ? {
-              type: dedicationType,
-              recipientName: dedicationName,
-              recipientEmail: dedicationEmail,
-              message: dedicationMessage,
-            }
-          : undefined,
-      };
-      await createDonation(payload);
-      const summaryParams = new URLSearchParams({
-        amount: finalAmount.toString(),
-        currency,
-        frequency,
-        giftAid: giftAid.toString(),
-        campaign: selectedCampaign || "",
-      });
-      router.push(`/thank-you?${summaryParams.toString()}`);
-    } catch {
+      const donation = await createDonation(buildDonationPayload());
+      const donationId = donation.id as string;
+      const chargeAmount = giftAid ? totalWithGiftAid : finalAmount;
+
+      if (selectedGateway === "telr") {
+        const { redirectUrl } = await initTelrPayment({
+          donationId,
+          amount: chargeAmount,
+          currency,
+        });
+        window.location.href = redirectUrl;
+        return;
+      }
+
+      if (selectedGateway === "paytabs") {
+        const { redirectUrl } = await initPayTabsPayment({
+          donationId,
+          amount: chargeAmount,
+          currency,
+        });
+        window.location.href = redirectUrl;
+        return;
+      }
+
+      if (selectedGateway === "stripe") {
+        const { clientSecret } = await createStripePaymentIntent({
+          amount: chargeAmount,
+          currency,
+          donationId,
+        });
+        setPendingDonationId(donationId);
+        setStripeClientSecret(clientSecret);
+        setSubmitting(false);
+        return;
+      }
+
+      if (selectedGateway === "paypal") {
+        setPendingDonationId(donationId);
+        setShowPayPal(true);
+        setSubmitting(false);
+        return;
+      }
+    } catch (err: unknown) {
+      setPaymentError(err instanceof Error ? err.message : "Payment could not be started");
       setSubmitting(false);
     }
+  };
+
+  const redirectToThankYou = (donationId?: string) => {
+    const summaryParams = new URLSearchParams({
+      amount: finalAmount.toString(),
+      currency,
+      frequency,
+      giftAid: giftAid.toString(),
+      campaign: selectedCampaign || "",
+    });
+    if (donationId) summaryParams.set("donationId", donationId);
+    router.push(`/thank-you?${summaryParams.toString()}`);
   };
 
   return (
@@ -742,87 +863,63 @@ export default function DonatePage() {
             </div>
           </div>
 
-          {/* ── Express Checkout ── */}
+          {/* ── Payment gateways ── */}
           <div className="rounded-3xl bg-card border border-border p-6 lg:p-8 shadow-soft space-y-5">
             <p className="text-xs uppercase tracking-widest text-accent-deep font-bold">
-              Express Checkout
+              Payment method
             </p>
-            <div className="grid sm:grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setPaymentMethod("apple_pay")}
-                className={cn(
-                  "h-14 rounded-2xl font-semibold text-base flex items-center justify-center gap-2 transition-all border-2",
-                  paymentMethod === "apple_pay"
-                    ? "bg-foreground text-background border-foreground"
-                    : "bg-foreground/90 text-background border-transparent hover:opacity-90"
-                )}
-              >
-                <span className="text-xl"></span> Pay
-              </button>
-              <button
-                type="button"
-                onClick={() => setPaymentMethod("google_pay")}
-                className={cn(
-                  "h-14 rounded-2xl font-semibold text-base flex items-center justify-center gap-2 transition-all border-2",
-                  paymentMethod === "google_pay"
-                    ? "bg-foreground text-background border-foreground"
-                    : "bg-foreground/90 text-background border-transparent hover:opacity-90"
-                )}
-              >
-                <span className="text-lg font-bold">G</span> Pay
-              </button>
-            </div>
+            {availableGateways.length === 0 ? (
+              <p className="text-sm text-destructive">No payment methods are configured. Please contact support.</p>
+            ) : (
+              <div className="grid sm:grid-cols-2 gap-3">
+                {availableGateways.map((gw) => (
+                  <button
+                    key={gw}
+                    type="button"
+                    onClick={() => {
+                      setSelectedGateway(gw);
+                      setStripeClientSecret(null);
+                      setShowPayPal(false);
+                      setPendingDonationId(null);
+                    }}
+                    disabled={!!stripeClientSecret || showPayPal}
+                    className={cn(
+                      "h-14 rounded-2xl font-semibold text-base flex items-center justify-center gap-2 transition-all border-2 capitalize",
+                      selectedGateway === gw
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "border-border hover:border-primary/50"
+                    )}
+                  >
+                    {gw === "stripe" && <CreditCard className="w-5 h-5" />}
+                    {GATEWAY_LABELS[gw]}
+                  </button>
+                ))}
+              </div>
+            )}
 
-            <div className="grid sm:grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setPaymentMethod("paypal")}
-                className={cn(
-                  "h-14 rounded-2xl font-semibold text-base flex items-center justify-center gap-2 transition-all border-2",
-                  paymentMethod === "paypal"
-                    ? "bg-[#0070ba] text-white border-[#0070ba]"
-                    : "bg-[#0070ba]/90 text-white border-transparent hover:opacity-90"
-                )}
-              >
-                PayPal
-              </button>
-              <button
-                type="button"
-                onClick={() => setPaymentMethod("card")}
-                className={cn(
-                  "h-14 rounded-2xl font-semibold text-base flex items-center justify-center gap-2 transition-all border-2",
-                  paymentMethod === "card"
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-primary/90 text-primary-foreground border-transparent hover:opacity-90"
-                )}
-              >
-                <CreditCard className="w-5 h-5" /> Pay by Card
-              </button>
-            </div>
+            {paymentError && (
+              <p className="text-sm text-destructive">{paymentError}</p>
+            )}
 
-            {paymentMethod === "card" && (
-              <>
-                <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                  <span className="flex-1 h-px bg-border" /> Card details{" "}
-                  <span className="flex-1 h-px bg-border" />
-                </div>
-                <div className="grid sm:grid-cols-2 gap-3">
-                  <div className="sm:col-span-2">
-                    <Label htmlFor="card" className="text-xs">
-                      Card number
-                    </Label>
-                    <Input
-                      id="card"
-                      inputMode="numeric"
-                      placeholder="1234 1234 1234 1234"
-                      className="mt-1 h-12 rounded-xl"
-                    />
-                  </div>
-                  <Input placeholder="MM / YY" inputMode="numeric" className="h-12 rounded-xl" />
-                  <Input placeholder="CVC" inputMode="numeric" className="h-12 rounded-xl" />
-                </div>
-              </>
+            {stripeClientSecret && stripePublishableKey && pendingDonationId && (
+              <StripeCheckoutForm
+                publishableKey={stripePublishableKey}
+                clientSecret={stripeClientSecret}
+                donationId={pendingDonationId}
+                onSuccess={() => redirectToThankYou(pendingDonationId)}
+                onError={(msg) => setPaymentError(msg)}
+              />
+            )}
+
+            {showPayPal && paypalClientId && pendingDonationId && (
+              <PayPalCheckoutButton
+                clientId={paypalClientId}
+                amount={giftAid ? totalWithGiftAid : finalAmount}
+                currency={currency}
+                donationId={pendingDonationId}
+                onSuccess={() => redirectToThankYou(pendingDonationId)}
+                onError={(msg) => setPaymentError(msg)}
+              />
             )}
 
             {/* Monthly upsell */}
@@ -850,7 +947,14 @@ export default function DonatePage() {
 
             <Button
               type="submit"
-              disabled={submitting || !donorName || !donorEmail}
+              disabled={
+                submitting ||
+                !donorName ||
+                !donorEmail ||
+                availableGateways.length === 0 ||
+                !!stripeClientSecret ||
+                showPayPal
+              }
               size="lg"
               className="w-full rounded-full text-base bg-accent text-accent-foreground hover:bg-accent/90 h-14"
             >

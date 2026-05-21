@@ -74,6 +74,16 @@ app.post("/api/v1/payments/stripe/webhook", express.raw({ type: "application/jso
   }
 });
 
+app.post("/api/v1/payments/paypal/webhook", express.json(), async (req, res) => {
+  try {
+    const { handlePayPalWebhook } = await import("./modules/payments/paypal.controller.js");
+    return handlePayPalWebhook(req, res);
+  } catch (error) {
+    console.error("PayPal webhook error:", error);
+    return res.status(500).json({ message: "Webhook processing failed" });
+  }
+});
+
 app.use(express.json({ limit: "10mb" }));
 app.use(sanitizeInput);
 app.use(morgan("dev"));

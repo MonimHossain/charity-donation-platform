@@ -66,6 +66,14 @@ export interface SiteSettings {
   };
   gtmId?: string;
   analyticsId?: string;
+  paymentConfig?: {
+    enabledProviders?: string[];
+    stripePublicKey?: string;
+    paypalClientId?: string;
+    paytabsClientKey?: string;
+    defaultCurrency?: string;
+    minimumDonation?: number;
+  };
 }
 
 export interface BlogPostDto {

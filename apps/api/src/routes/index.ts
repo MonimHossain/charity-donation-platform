@@ -24,6 +24,7 @@ import {
   refundDonation,
   getRecentPublicDonations,
   getDonationReceipt,
+  getDonationStatus,
 } from "../modules/donations/donations.controller.js";
 import {
   getHeroSlides,
@@ -63,6 +64,7 @@ router.get("/campaigns/:slug", getCampaignBySlug);
 // Donations
 router.post("/donations", createDonation);
 router.get("/donations/recent", getRecentPublicDonations);
+router.get("/donations/:id/status", getDonationStatus);
 router.get("/donations/:id/receipt", getDonationReceipt);
 
 // CMS
@@ -189,6 +191,34 @@ router.post("/payments/paypal/capture-order", async (req, res) => {
   const { capturePayPalOrder } = await import("../modules/payments/paypal.controller.js");
   return capturePayPalOrder(req, res);
 });
+router.get("/payments/config", async (req, res) => {
+  const { getPaymentsConfig } = await import("../modules/payments/payments.config.controller.js");
+  return getPaymentsConfig(req, res);
+});
+router.get("/payments/config/campaign", async (req, res) => {
+  const { getPaymentsConfigForCampaign } = await import("../modules/payments/payments.config.controller.js");
+  return getPaymentsConfigForCampaign(req, res);
+});
+router.post("/payments/telr/init", async (req, res) => {
+  const { initTelrPayment } = await import("../modules/payments/telr.controller.js");
+  return initTelrPayment(req, res);
+});
+router.get("/payments/telr/return", async (req, res) => {
+  const { handleTelrReturn } = await import("../modules/payments/telr.controller.js");
+  return handleTelrReturn(req, res);
+});
+router.post("/payments/telr/webhook", async (req, res) => {
+  const { handleTelrWebhook } = await import("../modules/payments/telr.controller.js");
+  return handleTelrWebhook(req, res);
+});
+router.post("/payments/paytabs/init", async (req, res) => {
+  const { initPayTabsPayment } = await import("../modules/payments/paytabs.controller.js");
+  return initPayTabsPayment(req, res);
+});
+router.post("/payments/paytabs/callback", async (req, res) => {
+  const { handlePayTabsCallback } = await import("../modules/payments/paytabs.controller.js");
+  return handlePayTabsCallback(req, res);
+});
 
 // ═══════════════════════════════════
 // PUBLIC CMS EXTENDED (lazy-loaded)
@@ -255,6 +285,10 @@ router.delete("/admin/cms/hero-slides/:id", requireAdmin, deleteHeroSlide);
 router.put("/admin/cms/homepage-sections/:id", requireAdmin, updateHomepageSection);
 router.post("/admin/cms/homepage-sections/reorder", requireAdmin, reorderHomepageSections);
 router.put("/admin/cms/settings", requireAdmin, updateSiteSettings);
+router.get("/admin/payments/status", requireAdmin, async (req, res) => {
+  const { getAdminPaymentStatus } = await import("../modules/payments/payments.config.controller.js");
+  return getAdminPaymentStatus(req, res);
+});
 router.put("/admin/cms/donation-presets/:id", requireAdmin, updateDonationPreset);
 
 // Admin CMS Extended (lazy-loaded)

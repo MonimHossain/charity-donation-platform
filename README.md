@@ -232,3 +232,47 @@ cd infra && docker compose down -v
 On first startup, the backend seeds a default admin account using the values in your `.env` file (`ICAC_ADMIN_EMAIL` and the password matching `ICAC_ADMIN_PASSWORD_HASH`).
 
 The admin panel is accessible at: **http://localhost:3001/admin/login**
+
+---
+
+## Payment gateways
+
+The platform supports **Stripe**, **PayPal**, **Telr**, and **PayTabs**. Secrets live in environment variables only; the admin panel controls which providers are enabled and which appear on each campaign.
+
+### Environment variables
+
+Add to `apps/api/.env` (see root `.env.example`):
+
+| Provider | Required variables |
+|----------|-------------------|
+| Stripe | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` |
+| PayPal | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_MODE` (`sandbox` or `live`) |
+| Telr | `TELR_STORE_ID`, `TELR_AUTH_KEY`, `TELR_TEST_MODE` |
+| PayTabs | `PAYTABS_PROFILE_ID`, `PAYTABS_SERVER_KEY`, `PAYTABS_REGION` (e.g. `ARE`) |
+
+Optional public overrides for the frontend: `NEXT_PUBLIC_PAYPAL_CLIENT_ID`, `NEXT_PUBLIC_PAYTABS_CLIENT_KEY`.
+
+### Webhook / callback URLs
+
+Register these URLs in each provider dashboard (use your public API base URL in production):
+
+| Provider | URL |
+|----------|-----|
+| Stripe | `POST {API_URL}/api/v1/payments/stripe/webhook` |
+| PayPal | `POST {API_URL}/api/v1/payments/paypal/webhook` |
+| Telr | `POST {API_URL}/api/v1/payments/telr/webhook` |
+| PayTabs | `POST {API_URL}/api/v1/payments/paytabs/callback` |
+
+Local Stripe testing: `stripe listen --forward-to localhost:4000/api/v1/payments/stripe/webhook`
+
+### Admin configuration
+
+1. **Settings → Payment** (`/admin/settings`): enable providers globally and set public keys / default currency.
+2. **Campaigns → Gateways tab**: choose which enabled providers apply to each campaign.
+3. **Payments** (`/admin/payments`): view env configuration and active status per provider.
+
+### Donation flow
+
+1. Donor submits the form → donation is created with status `pending`.
+2. Provider session is created (Stripe Payment Element, PayPal buttons, or Telr/PayTabs redirect).
+3. Webhook or return URL confirms payment → donation `completed` and campaign totals update.

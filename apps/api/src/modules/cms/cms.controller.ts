@@ -109,7 +109,27 @@ export async function getSiteSettings(_req: Request, res: Response) {
       });
       await repo.save(settings);
     }
-    return res.json(settings);
+    const response = {
+      ...settings,
+      payment: settings.paymentConfig
+        ? {
+            enabledProviders: settings.paymentConfig.enabledProviders || ["stripe"],
+            stripePublicKey: settings.paymentConfig.stripePublicKey || "",
+            paypalClientId: settings.paymentConfig.paypalClientId || "",
+            paytabsClientKey: settings.paymentConfig.paytabsClientKey || "",
+            currency: settings.paymentConfig.defaultCurrency || "GBP",
+            minimumDonation: settings.paymentConfig.minimumDonation ?? 1,
+          }
+        : {
+            enabledProviders: ["stripe"],
+            stripePublicKey: "",
+            paypalClientId: "",
+            paytabsClientKey: "",
+            currency: "GBP",
+            minimumDonation: 1,
+          },
+    };
+    return res.json(response);
   } catch (error) {
     return res.status(500).json({ message: "Internal server error" });
   }
@@ -119,10 +139,26 @@ export async function updateSiteSettings(req: Request, res: Response) {
   try {
     const repo = AppDataSource.getRepository(SiteSettings);
     let settings = await repo.findOne({ where: {} });
+    const body = { ...req.body };
+    if (body.payment) {
+      const payment = body.payment;
+      body.paymentConfig = {
+        enabledProviders: payment.enabledProviders || payment.enabled || ["stripe"],
+        stripePublicKey: payment.stripePublicKey,
+        paypalClientId: payment.paypalClientId,
+        paytabsClientKey: payment.paytabsClientKey,
+        defaultCurrency: payment.currency || payment.defaultCurrency || "GBP",
+        minimumDonation: payment.minimumDonation ?? 1,
+      };
+      delete body.payment;
+    }
     if (!settings) {
-      settings = repo.create(req.body);
+      settings = repo.create(body);
     } else {
-      Object.assign(settings, req.body);
+      Object.assign(settings, body);
+      if (body.paymentConfig) {
+        settings.paymentConfig = { ...settings.paymentConfig, ...body.paymentConfig };
+      }
     }
     await repo.save(settings);
     await logAudit(req, { action: "update", entityType: "site_settings", entityId: settings.id });
