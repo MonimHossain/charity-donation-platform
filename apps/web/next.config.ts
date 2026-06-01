@@ -10,6 +10,13 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   transpilePackages: ["@repo/shared-types", "@repo/ui"],
+  async redirects() {
+    return [
+      { source: "/campaigns/gaza", destination: "/campaigns/gaza-emergency-relief", permanent: true },
+      { source: "/campaigns/water", destination: "/campaigns/clean-water-wells", permanent: true },
+      { source: "/campaigns/orphans", destination: "/campaigns/orphan-sponsorship", permanent: true },
+    ];
+  },
   images: {
     remotePatterns: [
       { protocol: "http", hostname: "localhost", port: "9002" },

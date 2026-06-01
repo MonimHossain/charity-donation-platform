@@ -218,7 +218,36 @@ export async function getPublicStats(_req: Request, res: Response) {
   try {
     const total = await charityRepo().count({ where: { isPublished: true } });
     const certified = await certRepo().count({ where: { status: "active" } });
-    return res.json({ charitiesListed: total, activeCertifications: certified });
+
+    const { Donation } = await import("../../components/donation/donation.entity.js");
+    const donationRepo = AppDataSource.getRepository(Donation);
+    const agg = await donationRepo
+      .createQueryBuilder("d")
+      .select("COUNT(*)", "donationCount")
+      .addSelect("COALESCE(SUM(d.totalAmount), 0)", "totalRaised")
+      .where("d.status = :status", { status: "completed" })
+      .getRawOne<{ donationCount: string; totalRaised: string }>();
+
+    const donationCount = Number(agg?.donationCount || 0);
+    const totalRaised = Number(agg?.totalRaised || 0);
+
+    const impactStats = [
+      { value: String(total), label: "Charities listed" },
+      { value: String(certified), label: "Active certifications" },
+      {
+        value: totalRaised >= 1_000_000 ? `£${(totalRaised / 1_000_000).toFixed(1)}M+` : `£${Math.round(totalRaised).toLocaleString()}`,
+        label: "Raised through platform",
+      },
+      { value: donationCount > 0 ? `${donationCount.toLocaleString()}+` : "0", label: "Donations completed" },
+    ];
+
+    return res.json({
+      charitiesListed: total,
+      activeCertifications: certified,
+      donationCount,
+      totalRaised,
+      impactStats,
+    });
   } catch {
     return res.status(500).json({ message: "Internal server error" });
   }

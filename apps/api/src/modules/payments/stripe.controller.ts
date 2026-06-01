@@ -5,6 +5,7 @@ import { Donation } from "../../components/donation/donation.entity.js";
 import { RecurringDonation } from "../../components/recurringDonation/recurringDonation.entity.js";
 import { PaymentLog } from "../../components/paymentLog/paymentLog.entity.js";
 import { completeDonation, failDonation } from "./paymentCompletion.js";
+import { sendRecurringFailedPaymentEmail } from "../../helper/mailer.js";
 
 const getStripe = () => new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-04-10" });
 
@@ -230,6 +231,12 @@ export async function handleWebhook(req: Request, res: Response) {
               recurring.status = "failed";
             }
             await recurringRepo().save(recurring);
+
+            try {
+              await sendRecurringFailedPaymentEmail(recurring);
+            } catch (emailErr) {
+              console.error("[webhook] Failed payment email error:", emailErr);
+            }
 
             await paymentLogRepo().save(
               paymentLogRepo().create({

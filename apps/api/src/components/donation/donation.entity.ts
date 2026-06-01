@@ -123,6 +123,9 @@ export class Donation {
   @Column({ type: "varchar", length: 255, nullable: true })
   receiptNumber?: string;
 
+  @Column({ type: "boolean", default: false })
+  receiptEmailSent!: boolean;
+
   @CreateDateColumn()
   createdAt!: Date;
 

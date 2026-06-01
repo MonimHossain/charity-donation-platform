@@ -14,7 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { fetchUserDonations } from "@/lib/api";
+import { fetchUserDonations, fetchDonationReceipt } from "@/lib/api";
 
 interface Donation {
   id: string;
@@ -39,6 +39,23 @@ export default function DonationHistoryPage() {
   const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
+  const [receiptLoadingId, setReceiptLoadingId] = useState<string | null>(null);
+
+  const downloadReceipt = async (id: string) => {
+    setReceiptLoadingId(id);
+    try {
+      const receipt = await fetchDonationReceipt(id);
+      const blob = new Blob([JSON.stringify(receipt, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `receipt-${receipt.receiptNumber || id}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setReceiptLoadingId(null);
+    }
+  };
 
   useEffect(() => {
     fetchUserDonations()
@@ -245,8 +262,15 @@ export default function DonationHistoryPage() {
                         variant="ghost"
                         size="sm"
                         className="rounded-lg gap-1.5 text-xs"
+                        disabled={don.status !== "completed" || receiptLoadingId === don.id}
+                        onClick={() => downloadReceipt(don.id)}
                       >
-                        <Download className="w-3.5 h-3.5" /> Receipt
+                        {receiptLoadingId === don.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Download className="w-3.5 h-3.5" />
+                        )}{" "}
+                        Receipt
                       </Button>
                     </td>
                   </tr>

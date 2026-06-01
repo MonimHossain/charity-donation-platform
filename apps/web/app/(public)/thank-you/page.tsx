@@ -16,7 +16,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CURRENCIES, type CurrencyCode } from "@/lib/currency";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { trackEvent } from "@/components/analytics/GTMScript";
+import { fetchDonationReceipt } from "@/lib/api";
+import { USE_MOCK_DATA } from "@/lib/config";
 
 export default function ThankYouPage() {
   const params = useSearchParams();
@@ -25,7 +28,21 @@ export default function ThankYouPage() {
   const frequency = params.get("frequency") || "single";
   const giftAid = params.get("giftAid") === "true";
   const campaign = params.get("campaign") || "";
+  const donationId = params.get("donationId") || "";
+  const receiptNumber = params.get("receiptNumber") || "";
   const [copied, setCopied] = useState(false);
+  const [receiptLoading, setReceiptLoading] = useState(false);
+
+  useEffect(() => {
+    trackEvent("donation_complete", {
+      donation_id: donationId || undefined,
+      value: Number(amount) || undefined,
+      currency,
+      frequency,
+      campaign: campaign || undefined,
+      gift_aid: giftAid,
+    });
+  }, [donationId, amount, currency, frequency, campaign, giftAid]);
 
   const currencyInfo = CURRENCIES[currency] || CURRENCIES.GBP;
   const giftAidAmount = giftAid ? (Number(amount) * 0.25).toFixed(2) : "0";
@@ -40,6 +57,23 @@ export default function ThankYouPage() {
     navigator.clipboard.writeText(shareUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDownloadReceipt = async () => {
+    if (!donationId || USE_MOCK_DATA) return;
+    setReceiptLoading(true);
+    try {
+      const receipt = await fetchDonationReceipt(donationId);
+      const blob = new Blob([JSON.stringify(receipt, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `receipt-${receipt.receiptNumber || donationId}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setReceiptLoading(false);
+    }
   };
 
   return (
@@ -79,6 +113,9 @@ export default function ThankYouPage() {
             {currencyInfo.symbol}
             {total}
           </p>
+          {receiptNumber && (
+            <p className="text-xs mt-2 opacity-80 font-mono">Receipt: {receiptNumber}</p>
+          )}
           <div className="mt-3 space-y-1 text-sm text-primary-foreground/80">
             <p>
               Donation: {currencyInfo.symbol}
@@ -141,8 +178,15 @@ export default function ThankYouPage() {
           className="flex flex-col sm:flex-row justify-center gap-3 animate-fade-up"
           style={{ animationDelay: "0.6s" }}
         >
-          <Button variant="outline" size="lg" className="rounded-full gap-2">
-            <Download className="w-4 h-4" /> Download Receipt
+          <Button
+            variant="outline"
+            size="lg"
+            className="rounded-full gap-2"
+            disabled={!donationId || USE_MOCK_DATA || receiptLoading}
+            onClick={handleDownloadReceipt}
+          >
+            <Download className="w-4 h-4" />{" "}
+            {receiptLoading ? "Loading…" : "Download Receipt"}
           </Button>
           <Button asChild variant="default" size="lg" className="rounded-full gap-2">
             <Link href="/auth/register">

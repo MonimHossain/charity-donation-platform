@@ -14,6 +14,7 @@ import {
   fetchTestimonials,
   fetchFaqs,
   fetchSiteSettings,
+  fetchPublicStats,
 } from "@/lib/api";
 import { queryKeys } from "./query-keys";
 
@@ -73,6 +74,16 @@ export function useSiteSettings() {
 export function useImpactStats() {
   return useQuery({
     queryKey: ["cms", "impact-stats"],
-    queryFn: async () => mockImpactStats,
+    queryFn: async () => {
+      if (USE_MOCK_DATA) return mockImpactStats;
+      try {
+        const stats = await fetchPublicStats();
+        const items = stats?.impactStats;
+        if (Array.isArray(items) && items.length > 0) return items;
+      } catch {
+        /* fall through */
+      }
+      return mockImpactStats;
+    },
   });
 }

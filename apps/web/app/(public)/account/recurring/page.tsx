@@ -20,6 +20,7 @@ import {
   pauseRecurringDonation,
   resumeRecurringDonation,
   cancelRecurringDonation,
+  createRecurringBillingPortal,
 } from "@/lib/api";
 
 interface RecurringDonation {
@@ -73,6 +74,18 @@ export default function RecurringDonationsPage() {
       );
     } catch {
       // handle error silently
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleUpdatePayment = async (id: string) => {
+    setActionLoading(id);
+    try {
+      const { url } = await createRecurringBillingPortal(id);
+      if (url) window.location.href = url;
+    } catch {
+      /* user may see provider error */
     } finally {
       setActionLoading(null);
     }
@@ -248,8 +261,15 @@ export default function RecurringDonationsPage() {
                       variant="outline"
                       size="sm"
                       className="rounded-xl gap-1.5"
+                      disabled={actionLoading === don.id}
+                      onClick={() => handleUpdatePayment(don.id)}
                     >
-                      <CreditCard className="w-3.5 h-3.5" /> Update Payment
+                      {actionLoading === don.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <CreditCard className="w-3.5 h-3.5" />
+                      )}
+                      Update Payment
                     </Button>
                     <Button
                       variant="ghost"

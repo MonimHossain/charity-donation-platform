@@ -318,6 +318,16 @@ function DonatePageApi() {
       const donationId = donation.id as string;
       const chargeAmount = giftAid ? totalWithGiftAid : finalAmount;
 
+      const { trackEvent } = await import("@/components/analytics/GTMScript");
+      trackEvent("donate_begin", {
+        donation_id: donationId,
+        value: chargeAmount,
+        currency,
+        frequency: paymentType,
+        campaign_id: selectedCampaignId || undefined,
+        gift_aid: giftAid,
+      });
+
       if (selectedGateway === "telr") {
         const { redirectUrl } = await initTelrPayment({
           donationId,

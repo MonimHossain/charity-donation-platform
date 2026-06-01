@@ -1,8 +1,33 @@
 import { Request, Response } from "express";
 import { AppDataSource } from "../../helper/connectDB.js";
 import { RecurringDonation } from "../../components/recurringDonation/recurringDonation.entity.js";
+import {
+  pauseStripeSubscription,
+  resumeStripeSubscription,
+  cancelStripeSubscription,
+  createStripeBillingPortalSession,
+} from "../payments/stripeRecurring.js";
 
 const repo = () => AppDataSource.getRepository(RecurringDonation);
+
+function appReturnUrl(path: string): string {
+  const base = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || "http://localhost:3001";
+  return `${base.replace(/\/$/, "")}${path}`;
+}
+
+async function syncStripePause(recurring: RecurringDonation, pause: boolean): Promise<void> {
+  if (recurring.paymentMethod !== "stripe" || !recurring.stripeSubscriptionId) return;
+  if (pause) {
+    await pauseStripeSubscription(recurring.stripeSubscriptionId);
+  } else {
+    await resumeStripeSubscription(recurring.stripeSubscriptionId);
+  }
+}
+
+async function syncStripeCancel(recurring: RecurringDonation): Promise<void> {
+  if (recurring.paymentMethod !== "stripe" || !recurring.stripeSubscriptionId) return;
+  await cancelStripeSubscription(recurring.stripeSubscriptionId);
+}
 
 export async function getRecurringDonations(req: Request, res: Response) {
   try {
@@ -103,6 +128,13 @@ export async function pauseRecurringDonation(req: Request, res: Response) {
       return res.status(400).json({ message: "Only active subscriptions can be paused" });
     }
 
+    try {
+      await syncStripePause(recurring, true);
+    } catch (err: any) {
+      console.error("Stripe pause error:", err);
+      return res.status(502).json({ message: err.message || "Failed to pause subscription with payment provider" });
+    }
+
     recurring.status = "paused";
     recurring.pausedAt = new Date();
     await repo().save(recurring);
@@ -124,6 +156,13 @@ export async function resumeRecurringDonation(req: Request, res: Response) {
     }
     if (recurring.status !== "paused") {
       return res.status(400).json({ message: "Only paused subscriptions can be resumed" });
+    }
+
+    try {
+      await syncStripePause(recurring, false);
+    } catch (err: any) {
+      console.error("Stripe resume error:", err);
+      return res.status(502).json({ message: err.message || "Failed to resume subscription with payment provider" });
     }
 
     recurring.status = "active";
@@ -149,6 +188,13 @@ export async function cancelRecurringDonation(req: Request, res: Response) {
       return res.status(400).json({ message: "Subscription is already cancelled" });
     }
 
+    try {
+      await syncStripeCancel(recurring);
+    } catch (err: any) {
+      console.error("Stripe cancel error:", err);
+      return res.status(502).json({ message: err.message || "Failed to cancel subscription with payment provider" });
+    }
+
     recurring.status = "cancelled";
     recurring.cancelledAt = new Date();
     await repo().save(recurring);
@@ -157,6 +203,30 @@ export async function cancelRecurringDonation(req: Request, res: Response) {
   } catch (error) {
     console.error("Cancel recurring donation error:", error);
     return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+export async function createRecurringBillingPortal(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const recurring = await repo().findOneBy({ id });
+    if (!recurring) {
+      return res.status(404).json({ message: "Recurring donation not found" });
+    }
+    if (!recurring.stripeCustomerId) {
+      return res.status(400).json({
+        message:
+          "This subscription cannot be updated online. Please contact support or use PayPal account settings.",
+      });
+    }
+    const url = await createStripeBillingPortalSession(
+      recurring.stripeCustomerId,
+      appReturnUrl("/account/recurring")
+    );
+    return res.json({ url });
+  } catch (error: any) {
+    console.error("Billing portal error:", error);
+    return res.status(500).json({ message: error.message || "Internal server error" });
   }
 }
 

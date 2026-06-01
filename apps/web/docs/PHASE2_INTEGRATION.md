@@ -2,6 +2,8 @@
 
 When `NEXT_PUBLIC_USE_MOCK_DATA` is not `true`, pages should use real API hooks instead of `lib/mock` and `lib/stores`.
 
+**Staging / MVP:** See [STAGING.md](./STAGING.md) and [PRODUCTION_CUTOVER.md](./PRODUCTION_CUTOVER.md). Post-launch backlog: [POST_MVP.md](../../../POST_MVP.md).
+
 ## Per-page checklist
 
 1. **Contract** — Document endpoints in `apps/api` (or add route + entity + migration).

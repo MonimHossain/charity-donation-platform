@@ -209,6 +209,13 @@ router.put("/recurring/:id/payment-method", async (req, res) => {
   const { updateRecurringPaymentMethod } = await import("../modules/recurring/recurring.controller.js");
   return updateRecurringPaymentMethod(req, res);
 });
+router.post("/recurring/:id/billing-portal", async (req, res) => {
+  const { requireUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  requireUser(req, res, async () => {
+    const { createRecurringBillingPortal } = await import("../modules/recurring/recurring.controller.js");
+    return createRecurringBillingPortal(req, res);
+  });
+});
 
 // ═══════════════════════════════════
 // PAYMENT ROUTES (lazy-loaded)

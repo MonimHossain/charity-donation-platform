@@ -260,6 +260,11 @@ export async function cancelRecurringDonation(id: string) {
   return data;
 }
 
+export async function createRecurringBillingPortal(id: string) {
+  const { data } = await api.post(`/recurring/${id}/billing-portal`);
+  return data as { url: string };
+}
+
 // ═══════════════════════════════════
 // PAYMENTS
 // ═══════════════════════════════════
