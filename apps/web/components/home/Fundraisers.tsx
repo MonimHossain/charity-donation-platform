@@ -17,8 +17,6 @@ type Fundraiser = {
   urgent?: boolean;
 };
 
-const daysFromNow = (d: number) => Date.now() + d * 24 * 60 * 60 * 1000;
-
 const fundraisers: Fundraiser[] = [
   {
     slug: "gaza",
@@ -28,7 +26,7 @@ const fundraisers: Fundraiser[] = [
     raised: 482350,
     goal: 750000,
     donors: 12480,
-    endsAt: daysFromNow(3),
+    endsAt: Date.parse("2026-06-05T23:59:59.000Z"),
     urgent: true,
   },
   {
@@ -39,7 +37,7 @@ const fundraisers: Fundraiser[] = [
     raised: 156780,
     goal: 300000,
     donors: 4210,
-    endsAt: daysFromNow(21),
+    endsAt: Date.parse("2026-06-23T23:59:59.000Z"),
   },
   {
     slug: "orphans",
@@ -49,30 +47,32 @@ const fundraisers: Fundraiser[] = [
     raised: 218400,
     goal: 400000,
     donors: 6890,
-    endsAt: daysFromNow(14),
+    endsAt: Date.parse("2026-06-16T23:59:59.000Z"),
   },
 ];
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
 const useCountdown = (target: number) => {
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState<number | null>(null);
   useEffect(() => {
+    setNow(Date.now());
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
-  const diff = Math.max(0, target - now);
+  const diff = now === null ? null : Math.max(0, target - now);
   return {
-    days: Math.floor(diff / 86_400_000),
-    hours: Math.floor((diff % 86_400_000) / 3_600_000),
-    minutes: Math.floor((diff % 3_600_000) / 60_000),
-    seconds: Math.floor((diff % 60_000) / 1000),
-    ended: diff === 0,
+    ready: now !== null,
+    days: Math.floor((diff ?? 0) / 86_400_000),
+    hours: Math.floor(((diff ?? 0) % 86_400_000) / 3_600_000),
+    minutes: Math.floor(((diff ?? 0) % 3_600_000) / 60_000),
+    seconds: Math.floor(((diff ?? 0) % 60_000) / 1000),
+    ended: diff !== null && diff === 0,
   };
 };
 
 const FundraiserCard = ({ f }: { f: Fundraiser }) => {
-  const { days, hours, minutes, seconds, ended } = useCountdown(f.endsAt);
+  const { ready, days, hours, minutes, seconds, ended } = useCountdown(f.endsAt);
   const pct = Math.min(100, Math.round((f.raised / f.goal) * 100));
   const pending = Math.max(0, f.goal - f.raised);
   const fmt = (n: number) => `£${n.toLocaleString()}`;
@@ -133,7 +133,9 @@ const FundraiserCard = ({ f }: { f: Fundraiser }) => {
                 { v: seconds, l: "Sec" },
               ].map((t) => (
                 <div key={t.l} className="rounded-lg bg-background py-2">
-                  <p className="font-mono font-bold text-xl text-primary tabular-nums">{pad(t.v)}</p>
+                  <p className="font-mono font-bold text-xl text-primary tabular-nums">
+                    {ready ? pad(t.v) : "--"}
+                  </p>
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{t.l}</p>
                 </div>
               ))}

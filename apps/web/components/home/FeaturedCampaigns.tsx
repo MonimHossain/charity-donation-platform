@@ -29,7 +29,10 @@ const impactBySlug: Record<string, string> = {
 };
 
 function mapCampaigns(items: Array<Record<string, unknown>>): Appeal[] {
-  return items.slice(0, 6).map((c) => ({
+  return items
+    .filter((c): c is Record<string, unknown> => Boolean(c?.slug))
+    .slice(0, 6)
+    .map((c) => ({
     slug: String(c.slug),
     title: String(c.title),
     tag: String(c.category ?? c.tag ?? "Appeal"),
@@ -105,8 +108,10 @@ const AppealCard = ({ a, large = false }: { a: Appeal; large?: boolean }) => (
 
 const FeaturedCampaigns = () => {
   const { data, isLoading } = useCampaignsList({ limit: "6" });
-  const items = (data?.items?.length ? data.items : demoCampaigns) as Array<Record<string, unknown>>;
-  const appeals = mapCampaigns(items);
+  const sourceItems = (data?.items?.length ? data.items : demoCampaigns) as Array<
+    Record<string, unknown>
+  >;
+  const appeals = mapCampaigns(sourceItems);
 
   if (isLoading) {
     return (
@@ -143,12 +148,9 @@ const FeaturedCampaigns = () => {
     </div>
 
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6 lg:gap-8">
-      <AppealCard a={appeals[0]} large />
-      <AppealCard a={appeals[1]} />
-      <AppealCard a={appeals[2]} />
-      <AppealCard a={appeals[3]} />
-      <AppealCard a={appeals[4]} />
-      <AppealCard a={appeals[5]} />
+      {appeals.map((a, i) => (
+        <AppealCard key={a.slug} a={a} large={i === 0} />
+      ))}
     </div>
 
     <div className="mt-10 sm:mt-14 flex flex-col sm:flex-row items-center justify-between gap-4 p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-secondary to-mint-soft border border-border/60">
