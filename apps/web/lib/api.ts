@@ -1,4 +1,5 @@
 import axios from "axios";
+import { canSendAdminTokenToApi } from "@/lib/admin-auth";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
 
@@ -8,11 +9,55 @@ export const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
+/** Normalized path after base URL, e.g. `/admin/profile` */
+function getRequestApiPath(url: string | undefined): string {
+  if (!url) return "";
+  try {
+    if (url.startsWith("http")) {
+      const path = new URL(url).pathname;
+      return path.replace(/^\/api\/v1/, "") || path;
+    }
+  } catch {
+    /* ignore */
+  }
+  return url.startsWith("/") ? url : `/${url}`;
+}
+
+function setBearerToken(config: { headers: unknown }, token: string) {
+  const headers = config.headers as Record<string, string> & {
+    set?: (key: string, value: string) => void;
+  };
+  if (typeof headers.set === "function") {
+    headers.set("Authorization", `Bearer ${token}`);
+  } else {
+    headers.Authorization = `Bearer ${token}`;
+  }
+}
+
 api.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
-    const token = localStorage.getItem("admin_token");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    const apiPath = getRequestApiPath(config.url);
+    const isAdminRoute =
+      apiPath.startsWith("/admin") &&
+      !apiPath.startsWith("/admin/login") &&
+      !apiPath.startsWith("/admin/logout");
+    const isUserRoute =
+      apiPath.startsWith("/auth/") ||
+      apiPath.startsWith("/my/") ||
+      apiPath.startsWith("/recurring/my") ||
+      apiPath.startsWith("/zakat/history") ||
+      apiPath.startsWith("/automated-donations/my");
+
+    const adminToken = localStorage.getItem("admin_token");
+    const apiAdminToken = canSendAdminTokenToApi(adminToken) ? adminToken : null;
+
+    if (isAdminRoute) {
+      if (apiAdminToken) setBearerToken(config, apiAdminToken);
+    } else if (isUserRoute) {
+      const userToken = localStorage.getItem("user_token");
+      if (userToken && userToken !== "demo-token") setBearerToken(config, userToken);
+    } else if (apiAdminToken) {
+      setBearerToken(config, apiAdminToken);
     }
   }
   return config;
@@ -21,14 +66,14 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Do not clear admin_token here — any failed admin API call (stats, etc.)
+    // would log the user out. Auth is handled in admin/layout.tsx only.
     if (
       error.response?.status === 401 &&
       typeof window !== "undefined" &&
-      !window.location.pathname.includes("/admin/login") &&
-      !window.location.pathname.includes("/auth/")
+      window.location.pathname.startsWith("/account")
     ) {
-      localStorage.removeItem("admin_token");
-      localStorage.removeItem("admin_profile");
+      localStorage.removeItem("user_token");
     }
     return Promise.reject(error);
   }
@@ -578,7 +623,7 @@ export async function fetchAdminRecurring(params?: Record<string, string>) {
 // ═══════════════════════════════════
 // ADMIN USERS
 // ═══════════════════════════════════
-export async function fetchAdminUsers(params?: Record<string, string>) {
+export async function fetchAdminUsers(params?: Record<string, string | number | boolean | undefined>) {
   const { data } = await api.get("/admin/users", { params });
   return data;
 }
@@ -899,7 +944,7 @@ export async function deleteAdminApplication(id: number) {
 // ═══════════════════════════════════
 // ADMIN - IAM (ROLES, USERS, PERMISSIONS)
 // ═══════════════════════════════════
-export async function fetchAdminRoles(params?: Record<string, string>) {
+export async function fetchAdminRoles(params?: Record<string, string | number | boolean | undefined>) {
   const { data } = await api.get("/admin/roles", { params });
   return data;
 }
@@ -1005,5 +1050,92 @@ export async function adminForgotPassword(email: string) {
 
 export async function adminResetPassword(token: string, password: string) {
   const { data } = await api.post("/admin/reset-password", { token, password });
+  return data;
+}
+
+// Admin staff (IAM) — separate from donor `/admin/users`
+export async function fetchAdminStaff(params?: Record<string, string | number | boolean | undefined>) {
+  const { data } = await api.get("/admin/staff", { params });
+  return data;
+}
+
+export async function createAdminUser(payload: Record<string, unknown>) {
+  const { data } = await api.post("/admin/staff", payload);
+  return data;
+}
+
+export async function updateAdminUser(id: string, payload: Record<string, unknown>) {
+  const { data } = await api.patch(`/admin/staff/${id}`, payload);
+  return data;
+}
+
+export async function deleteAdminUser(id: string) {
+  const { data } = await api.delete(`/admin/staff/${id}`);
+  return data;
+}
+
+export async function updateAdminUserStatus(id: string, isActive: boolean) {
+  const { data } = await api.patch(`/admin/staff/${id}/status`, { isActive });
+  return data;
+}
+
+export async function resetAdminUserPassword(id: string, password: string) {
+  const { data } = await api.post(`/admin/staff/${id}/reset-password`, { password });
+  return data;
+}
+
+export async function fetchAdminApplyReviewSubmissions(params?: Record<string, string>) {
+  const { data } = await api.get("/admin/apply-review", { params });
+  return data;
+}
+
+export async function deleteAdminApplyReview(id: number) {
+  const { data } = await api.delete(`/admin/apply-review/${id}`);
+  return data;
+}
+
+export async function updateAdminApplyReview(id: number, payload: Record<string, unknown>) {
+  const { data } = await api.patch(`/admin/apply-review/${id}`, payload);
+  return data;
+}
+
+export async function regenerateAdminCertificationBadge(id: number) {
+  const { data } = await api.patch(`/admin/certifications/${id}`, { badgeEnabled: true });
+  return data;
+}
+
+export async function manuallyExpireAdminCertification(id: number) {
+  const { data } = await api.patch(`/admin/certifications/${id}`, { status: "expired" });
+  return data;
+}
+
+// Donation pages
+export async function fetchAdminDonationPages() {
+  const { data } = await api.get("/admin/donation-pages");
+  return data;
+}
+
+export async function fetchAdminDonationPageById(id: string) {
+  const { data } = await api.get(`/admin/donation-pages/${id}`);
+  return data;
+}
+
+export async function createAdminDonationPage(payload: Record<string, unknown>) {
+  const { data } = await api.post("/admin/donation-pages", payload);
+  return data;
+}
+
+export async function updateAdminDonationPage(id: string, payload: Record<string, unknown>) {
+  const { data } = await api.put(`/admin/donation-pages/${id}`, payload);
+  return data;
+}
+
+export async function deleteAdminDonationPage(id: string) {
+  const { data } = await api.delete(`/admin/donation-pages/${id}`);
+  return data;
+}
+
+export async function fetchDonationPageBySlug(slug: string) {
+  const { data } = await api.get(`/donation-pages/${slug}`);
   return data;
 }

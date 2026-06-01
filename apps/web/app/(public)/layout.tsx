@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import SiteLayout from "@/components/layout/SiteLayout";
 import StickyDonationBar from "@/components/home/StickyDonationBar";
 import EmergencyBanner from "@/components/home/EmergencyBanner";

@@ -10,6 +10,7 @@ import { seedAdminUser } from "./modules/admin-auth/adminAuth.seed.js";
 import { seedCampaigns } from "./modules/seed/seedCampaigns.js";
 import { seedDonationPresets } from "./modules/seed/seedDonationPresets.js";
 import { seedHomepageSections } from "./modules/seed/seedHomepageSections.js";
+import { seedCharities } from "./modules/seed/seedCharities.js";
 import { securityHeaders, csrfProtection, sanitizeInput } from "./modules/security/securityHeaders.js";
 import { apiRateLimit } from "./modules/security/rateLimiter.js";
 import routes from "./routes/index.js";
@@ -110,6 +111,7 @@ const startServer = async () => {
     await seedCampaigns(AppDataSource);
     await seedDonationPresets(AppDataSource);
     await seedHomepageSections(AppDataSource);
+    await seedCharities(AppDataSource);
   } catch (error) {
     console.error("Seeding failed:", error);
   }

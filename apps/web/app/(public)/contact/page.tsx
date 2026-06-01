@@ -3,15 +3,30 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Mail, Phone, MapPin, Send, CheckCircle2 } from "lucide-react";
+import { Mail, Phone, MapPin, Send, CheckCircle2, Loader2 } from "lucide-react";
+import { submitPublicContactMessage } from "@/lib/api";
+import { USE_MOCK_DATA } from "@/lib/config";
+import { toast } from "sonner";
 
 export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", subject: "", message: "" });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    setLoading(true);
+    try {
+      if (!USE_MOCK_DATA) {
+        await submitPublicContactMessage(form);
+      }
+      setSubmitted(true);
+      toast.success("Message sent successfully");
+    } catch {
+      toast.error("Failed to send message. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -64,8 +79,9 @@ export default function ContactPage() {
                   placeholder="Tell us more..."
                 />
               </div>
-              <Button type="submit" size="lg" className="rounded-full">
-                <Send className="w-4 h-4" /> Send Message
+              <Button type="submit" size="lg" className="rounded-full" disabled={loading}>
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                {loading ? "Sending…" : "Send Message"}
               </Button>
             </form>
           )}

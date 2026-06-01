@@ -736,7 +736,12 @@ export default function CampaignsPage() {
                     setForm((p) => {
                       if (ai === 0) return p;
                       const arr = [...p.attributes];
-                      [arr[ai - 1], arr[ai]] = [arr[ai], arr[ai - 1]];
+                      const prev = arr[ai - 1];
+                      const curr = arr[ai];
+                      if (prev && curr) {
+                        arr[ai - 1] = curr;
+                        arr[ai] = prev;
+                      }
                       return { ...p, attributes: arr };
                     })
                   }
@@ -744,7 +749,12 @@ export default function CampaignsPage() {
                     setForm((p) => {
                       if (ai >= p.attributes.length - 1) return p;
                       const arr = [...p.attributes];
-                      [arr[ai], arr[ai + 1]] = [arr[ai + 1], arr[ai]];
+                      const curr = arr[ai];
+                      const next = arr[ai + 1];
+                      if (curr && next) {
+                        arr[ai] = next;
+                        arr[ai + 1] = curr;
+                      }
                       return { ...p, attributes: arr };
                     })
                   }

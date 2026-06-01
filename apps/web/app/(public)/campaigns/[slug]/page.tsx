@@ -1,5 +1,7 @@
 "use client";
 
+import { USE_MOCK_DATA } from "@/lib/config";
+import MockCampaignDetail from "@/components/site/MockCampaignDetail";
 import { useState, useEffect, useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
@@ -165,6 +167,16 @@ const TAG_COLORS: Record<string, string> = {
 
 export default function CampaignDetailPage() {
   const params = useParams<{ slug: string }>();
+  const slug = params.slug ?? "";
+  if (USE_MOCK_DATA) {
+    return <MockCampaignDetail slug={slug} />;
+  }
+  return <CampaignDetailApi slug={slug} />;
+}
+
+function CampaignDetailApi({ slug: slugProp }: { slug: string }) {
+  const params = useParams<{ slug: string }>();
+  const slug = slugProp || params.slug || "";
   const [campaign, setCampaign] = useState<CampaignData | null>(null);
   const [loading, setLoading] = useState(true);
   const [recentDonations, setRecentDonations] = useState<RecentDonation[]>([]);
@@ -180,7 +192,7 @@ export default function CampaignDetailPage() {
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    fetchCampaignBySlug(params.slug)
+    fetchCampaignBySlug(slug)
       .then((data) => {
         setCampaign(data);
         if (data?.attributes?.length > 0) {
@@ -188,12 +200,12 @@ export default function CampaignDetailPage() {
           if (attr.enableSinglePayment) {
             setPaymentType("single");
             if (attr.singlePaymentConfig?.presetAmounts?.length > 0) {
-              setSelectedAmount(attr.singlePaymentConfig.presetAmounts[0]);
+              setSelectedAmount(attr.singlePaymentConfig.presetAmounts[0] ?? 0);
             }
           } else if (attr.enableRegularPayment) {
             setPaymentType("regular");
             if (attr.regularPaymentConfig?.presetAmounts?.length > 0) {
-              setSelectedAmount(attr.regularPaymentConfig.presetAmounts[0].amount);
+              setSelectedAmount(attr.regularPaymentConfig.presetAmounts[0]?.amount ?? 0);
             }
           }
         }
@@ -204,7 +216,7 @@ export default function CampaignDetailPage() {
     fetchRecentDonations()
       .then((data) => setRecentDonations(Array.isArray(data) ? data.slice(0, 5) : []))
       .catch(() => {});
-  }, [params.slug]);
+  }, [slug]);
 
   const selectedAttr = campaign?.attributes?.[selectedAttrIdx];
 
@@ -217,12 +229,12 @@ export default function CampaignDetailPage() {
     if (attr.enableSinglePayment) {
       setPaymentType("single");
       if (attr.singlePaymentConfig?.presetAmounts?.length > 0) {
-        setSelectedAmount(attr.singlePaymentConfig.presetAmounts[0]);
+        setSelectedAmount(attr.singlePaymentConfig.presetAmounts[0] ?? 0);
       }
     } else if (attr.enableRegularPayment) {
       setPaymentType("regular");
       if (attr.regularPaymentConfig?.presetAmounts?.length > 0) {
-        setSelectedAmount(attr.regularPaymentConfig.presetAmounts[0].amount);
+        setSelectedAmount(attr.regularPaymentConfig.presetAmounts[0]?.amount ?? 0);
       }
     }
     setQuantity(attr.enableQuantity ? attr.quantityConfig.minQuantity : 1);
@@ -621,11 +633,11 @@ function DonationCard({
           </div>
         )}
 
-        {campaign.attributes.length === 1 && campaign.attributes[0].name && (
+        {campaign.attributes.length === 1 && campaign.attributes[0]?.name && (
           <div className="text-center">
-            <p className="text-sm font-semibold">{campaign.attributes[0].name}</p>
-            {campaign.attributes[0].description && (
-              <p className="text-xs text-muted-foreground mt-1">{campaign.attributes[0].description}</p>
+            <p className="text-sm font-semibold">{campaign.attributes[0]?.name}</p>
+            {campaign.attributes[0]?.description && (
+              <p className="text-xs text-muted-foreground mt-1">{campaign.attributes[0]?.description}</p>
             )}
           </div>
         )}
@@ -638,7 +650,7 @@ function DonationCard({
               onClick={() => {
                 onSetPaymentType("single");
                 if (selectedAttr.singlePaymentConfig?.presetAmounts?.length > 0) {
-                  onSetSelectedAmount(selectedAttr.singlePaymentConfig.presetAmounts[0]);
+                  onSetSelectedAmount(selectedAttr.singlePaymentConfig.presetAmounts[0] ?? 0);
                 }
                 onSetCustomAmount("");
               }}
@@ -654,7 +666,7 @@ function DonationCard({
               onClick={() => {
                 onSetPaymentType("regular");
                 if (selectedAttr.regularPaymentConfig?.presetAmounts?.length > 0) {
-                  onSetSelectedAmount(selectedAttr.regularPaymentConfig.presetAmounts[0].amount);
+                  onSetSelectedAmount(selectedAttr.regularPaymentConfig.presetAmounts[0]?.amount ?? 0);
                 }
                 onSetCustomAmount("");
               }}

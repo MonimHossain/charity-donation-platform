@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
-import { ArrowUpRight, Heart, Users, TrendingUp, Shield } from "lucide-react";
+import { ArrowUpRight, Heart, Users, TrendingUp, Shield, Loader2 } from "lucide-react";
+import { useCampaignsList } from "@/lib/data/campaigns";
 
 type Appeal = {
   slug: string;
@@ -14,14 +17,31 @@ type Appeal = {
   impact: string;
 };
 
-const appeals: Appeal[] = [
-  { slug: "gaza", title: "Gaza Famine Emergency", tag: "Emergency", excerpt: "A vast majority of Gaza's population faces acute food insecurity. Urgent support saves lives.", image: "https://images.unsplash.com/photo-1469571486292-0ba58a3f068b?auto=format&fit=crop&w=1200&q=70", urgent: true, raised: 482350, goal: 750000, donors: 12480, impact: "Feeds a family for 1 week" },
-  { slug: "orphans", title: "Orphan Sponsorship", tag: "Long-term", excerpt: "Stand beside a child. Restore dignity, education and a hopeful future from just £30/month.", image: "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&w=1200&q=70", raised: 218900, goal: 400000, donors: 5320, impact: "£30 sponsors a child / month" },
-  { slug: "water", title: "Build a Water Well", tag: "Sadaqah Jariyah", excerpt: "One donation. Clean water for life. A well that rewards you for generations to come.", image: "https://images.unsplash.com/photo-1541544537156-7627a7a4aa1c?auto=format&fit=crop&w=1200&q=70", raised: 156400, goal: 300000, donors: 3870, impact: "£250 builds a hand-pump well" },
-  { slug: "food", title: "Food Aid", tag: "Essentials", excerpt: "Emergency food parcels and hot meals for families in Gaza, Sudan, Yemen and beyond.", image: "https://images.unsplash.com/photo-1593113598332-cd288d649433?auto=format&fit=crop&w=1200&q=70", raised: 89200, goal: 200000, donors: 2410, impact: "£50 = 1 food parcel" },
-  { slug: "livelihood", title: "Livelihood Projects", tag: "Sustainable", excerpt: "Tools, training and small-business support so families can earn with dignity.", image: "https://images.unsplash.com/photo-1532629345422-7515f3d16bb6?auto=format&fit=crop&w=1200&q=70", raised: 64800, goal: 150000, donors: 1290, impact: "£100 funds a starter kit" },
-  { slug: "emergency", title: "Emergency Aid", tag: "Rapid response", excerpt: "When disaster strikes, we move fast — delivering relief where it matters most.", image: "https://images.unsplash.com/photo-1459183885421-5cc683b8dbba?auto=format&fit=crop&w=1200&q=70", raised: 121500, goal: 250000, donors: 3105, impact: "Deployed within 72 hours" },
-];
+import { demoCampaigns } from "@/lib/mock/campaigns";
+
+const impactBySlug: Record<string, string> = {
+  gaza: "Feeds a family for 1 week",
+  orphans: "£30 sponsors a child / month",
+  water: "£250 builds a hand-pump well",
+  food: "£50 = 1 food parcel",
+  livelihood: "£100 funds a starter kit",
+  emergency: "Deployed within 72 hours",
+};
+
+function mapCampaigns(items: Array<Record<string, unknown>>): Appeal[] {
+  return items.slice(0, 6).map((c) => ({
+    slug: String(c.slug),
+    title: String(c.title),
+    tag: String(c.category ?? c.tag ?? "Appeal"),
+    excerpt: String(c.shortDescription ?? c.summary ?? ""),
+    image: String(c.featuredImage ?? c.image ?? "/images/appeal-gaza.jpg"),
+    urgent: Boolean(c.isUrgent ?? c.urgent),
+    raised: Number(c.raisedAmount ?? c.raised ?? 0),
+    goal: Number(c.goalAmount ?? c.goal ?? 1),
+    donors: Number(c.donorCount ?? c.donors ?? 0),
+    impact: impactBySlug[String(c.slug)] ?? "Your gift makes a difference",
+  }));
+}
 
 const AppealCard = ({ a, large = false }: { a: Appeal; large?: boolean }) => (
   <div className={`group relative flex flex-col overflow-hidden rounded-2xl sm:rounded-3xl bg-card border border-border/60 shadow-soft hover:shadow-lift hover:-translate-y-1 transition-all duration-500 ${large ? "sm:col-span-2 lg:col-span-2" : ""}`}>
@@ -83,7 +103,20 @@ const AppealCard = ({ a, large = false }: { a: Appeal; large?: boolean }) => (
   </div>
 );
 
-const FeaturedCampaigns = () => (
+const FeaturedCampaigns = () => {
+  const { data, isLoading } = useCampaignsList({ limit: "6" });
+  const items = (data?.items?.length ? data.items : demoCampaigns) as Array<Record<string, unknown>>;
+  const appeals = mapCampaigns(items);
+
+  if (isLoading) {
+    return (
+      <section className="container-wide py-16 flex justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </section>
+    );
+  }
+
+  return (
   <section className="container-wide px-4 sm:px-6 lg:px-8 py-16 sm:py-20 lg:py-28">
     <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-10 sm:mb-14">
       <div className="max-w-2xl">
@@ -131,6 +164,7 @@ const FeaturedCampaigns = () => (
       </Link>
     </div>
   </section>
-);
+  );
+};
 
 export default FeaturedCampaigns;

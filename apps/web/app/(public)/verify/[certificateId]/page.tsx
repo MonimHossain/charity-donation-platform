@@ -1,5 +1,7 @@
 "use client";
 
+import { USE_MOCK_DATA } from "@/lib/config";
+import { getCertificate } from "@/lib/mock/certifications";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
@@ -12,6 +14,42 @@ import { Button } from "@/components/ui/button";
 export default function VerifyCertificatePage() {
   const params = useParams();
   const certificateId = params.certificateId as string;
+
+  if (USE_MOCK_DATA) {
+    const cert = getCertificate(certificateId);
+    if (!cert) {
+      return (
+        <div className="mx-auto max-w-lg px-6 py-20 text-center">
+          <ShieldX className="h-12 w-12 mx-auto text-destructive" />
+          <h1 className="mt-6 text-2xl font-bold">Certificate not found</h1>
+          <p className="mt-2 text-muted-foreground">Try YIF-2025-001 (demo)</p>
+          <Link href="/verify">
+            <Button variant="outline" className="mt-6">
+              <ArrowLeft className="h-4 w-4 mr-2" /> Back
+            </Button>
+          </Link>
+        </div>
+      );
+    }
+    return (
+      <div className="mx-auto max-w-lg px-6 py-20">
+        <div className="rounded-2xl border bg-card p-8 text-center shadow-soft">
+          <ShieldCheck className="h-12 w-12 mx-auto text-primary" />
+          <h1 className="mt-4 font-serif text-2xl text-primary">Valid certificate</h1>
+          <p className="mt-2 text-muted-foreground">{cert.charityName}</p>
+          <p className="mt-6 font-mono text-sm">{cert.certificateId}</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            Issued {cert.issueDate} · Expires {cert.expiryDate}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return <VerifyCertificatePageApi certificateId={certificateId} />;
+}
+
+function VerifyCertificatePageApi({ certificateId }: { certificateId: string }) {
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

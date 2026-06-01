@@ -1,5 +1,7 @@
 "use client";
 
+import { USE_MOCK_DATA } from "@/lib/config";
+import MockBlogPost from "./MockBlogPost";
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
@@ -37,7 +39,12 @@ function readingTime(content: string): number {
 
 export default function BlogDetailPage() {
   const params = useParams();
-  const slug = params?.slug as string;
+  const slug = (params?.slug as string) ?? "";
+  if (USE_MOCK_DATA) return <MockBlogPost slug={slug} />;
+  return <BlogDetailPageApi slug={slug} />;
+}
+
+function BlogDetailPageApi({ slug }: { slug: string }) {
   const [post, setPost] = useState<BlogPost | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);

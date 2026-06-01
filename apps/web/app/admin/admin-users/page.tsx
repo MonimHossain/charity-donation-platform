@@ -5,7 +5,7 @@ import RequirePermission from "@/components/admin/RequirePermission";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { fetchAdminUsers, fetchAdminRoles, createAdminUser, updateAdminUser, deleteAdminUser, updateAdminUserStatus, resetAdminUserPassword } from "@/lib/api";
+import { fetchAdminStaff, fetchAdminRoles, createAdminUser, updateAdminUser, deleteAdminUser, updateAdminUserStatus, resetAdminUserPassword } from "@/lib/api";
 import { Eye, EyeOff, KeyRound, Loader2, Pencil, ShieldCheck, Trash2, UserCheck, UserX } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -39,8 +39,9 @@ export default function AdminUsersPage() {
   const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await fetchAdminUsers({ search: query.search || undefined, isActive: query.status === "ALL" ? undefined : query.status === "ACTIVE", roleId: query.roleId ? Number(query.roleId) : undefined, page: query.page, limit: query.limit, sortBy: "createdAt", sortOrder: "DESC" });
-      setUsers(r.data); setMeta(r.meta);
+      const r = await fetchAdminStaff({ search: query.search || undefined, isActive: query.status === "ALL" ? undefined : query.status === "ACTIVE", page: query.page, limit: query.limit });
+      setUsers(r.data ?? []);
+      setMeta({ page: r.page ?? 1, limit: r.limit ?? 25, total: r.total ?? 0, totalPages: Math.ceil((r.total ?? 0) / (r.limit ?? 25)) || 1 });
     } catch { toast.error("Failed to load admin users."); } finally { setLoading(false); }
   }, [query]);
 

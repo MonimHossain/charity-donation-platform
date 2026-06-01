@@ -1,5 +1,7 @@
 "use client";
 
+import { USE_MOCK_DATA } from "@/lib/config";
+import MockAccountDashboard from "./MockAccountDashboard";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
@@ -65,6 +67,11 @@ const STAT_CARDS = [
 ];
 
 export default function AccountDashboard() {
+  if (USE_MOCK_DATA) return <MockAccountDashboard />;
+  return <AccountDashboardApi />;
+}
+
+function AccountDashboardApi() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 

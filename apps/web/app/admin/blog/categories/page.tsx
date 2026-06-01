@@ -112,11 +112,14 @@ export default function BlogCategoriesPage() {
     const idx = sorted.findIndex((c) => c.id === id);
     if ((direction === "up" && idx <= 0) || (direction === "down" && idx >= sorted.length - 1)) return;
     const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+    const a = sorted[idx];
+    const b = sorted[swapIdx];
+    if (!a || !b) return;
     try {
       await api.post("/admin/blog/categories/reorder", {
         items: [
-          { id: sorted[idx].id, sortOrder: sorted[swapIdx].sortOrder },
-          { id: sorted[swapIdx].id, sortOrder: sorted[idx].sortOrder },
+          { id: a.id, sortOrder: b.sortOrder },
+          { id: b.id, sortOrder: a.sortOrder },
         ],
       });
       await loadCategories();

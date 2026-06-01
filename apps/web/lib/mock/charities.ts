@@ -1,0 +1,92 @@
+import type { PublicCharityDetail, PublicCharityListItem } from "@/lib/public-types";
+import { AuditStatus } from "@/lib/shared-types";
+
+export const demoCharities: PublicCharityListItem[] = [
+  {
+    id: 1,
+    name: "Hope Relief International",
+    slug: "hope-relief-international",
+    country: "United Kingdom",
+    logoUrl: "/images/logo-transparent.png",
+    auditStatus: AuditStatus.PASSED,
+    auditDate: "2025-11-01",
+    isFeatured: true,
+    certification: {
+      certificateId: "YIF-2025-001",
+      status: "active",
+      issueDate: "2025-11-01",
+      expiryDate: "2026-11-01",
+      certificationYear: 2025,
+      badgeEnabled: true,
+      badgeActive: true,
+      isCurrent: true,
+      isExpired: false,
+      daysUntilExpiry: 150,
+    },
+  },
+  {
+    id: 2,
+    name: "Global Ummah Aid",
+    slug: "global-ummah-aid",
+    country: "United Kingdom",
+    logoUrl: null,
+    auditStatus: AuditStatus.UNDER_REVIEW,
+    auditDate: "2026-01-15",
+    isFeatured: false,
+    certification: null,
+  },
+  {
+    id: 3,
+    name: "Water for Life Foundation",
+    slug: "water-for-life-foundation",
+    country: "United Kingdom",
+    logoUrl: null,
+    auditStatus: AuditStatus.PASSED,
+    auditDate: "2025-08-20",
+    isFeatured: true,
+    certification: {
+      certificateId: "YIF-2025-042",
+      status: "active",
+      issueDate: "2025-08-20",
+      expiryDate: "2026-08-20",
+      certificationYear: 2025,
+      badgeEnabled: true,
+      badgeActive: true,
+      isCurrent: true,
+      isExpired: false,
+      daysUntilExpiry: 80,
+    },
+  },
+];
+
+export const demoCharityDetails: Record<string, PublicCharityDetail> = {
+  "hope-relief-international": {
+    id: 1,
+    name: "Hope Relief International",
+    slug: "hope-relief-international",
+    country: "United Kingdom",
+    websiteUrl: "https://example.org",
+    logoUrl: "/images/logo-transparent.png",
+    shortDescription: "UK-registered charity delivering emergency aid and sustainable development.",
+    auditStatus: AuditStatus.PASSED,
+    auditSummary: "Strong governance and transparent financial reporting.",
+    auditDate: "2025-11-01",
+    overallScore: 92,
+    riskLevel: "low",
+    scoreBreakdown: {
+      financialTransparency: 94,
+      governance: 90,
+      programImpact: 91,
+      ethicalFundraising: 92,
+      zakatCompliance: 90,
+    },
+    keyStrengths: ["Transparent reporting", "Strong governance"],
+    improvementAreas: [],
+    auditExperts: [],
+    certification: demoCharities[0].certification!,
+    certificationHistory: demoCharities[0].certification ? [demoCharities[0].certification] : [],
+    reports: [],
+  },
+};
+
+export const getCharityBySlug = (slug: string) => demoCharityDetails[slug];

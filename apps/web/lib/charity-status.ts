@@ -64,3 +64,6 @@ export const CERTIFICATION_STATUS_OPTIONS = Object.values(CertificationStatus).m
   value,
   label: CERTIFICATION_STATUS_LABELS[value],
 }));
+
+/** Alias used by admin certifications UI */
+export const CERTIFICATION_RECORD_STATUS_OPTIONS = CERTIFICATION_STATUS_OPTIONS;

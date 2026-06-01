@@ -1,3 +1,4 @@
+import { AppProviders } from "@/components/providers/AppProviders";
 import { Toaster } from "@/components/ui/sonner";
 import type { Metadata } from "next";
 import { Inter, Fraunces } from "next/font/google";
@@ -35,7 +36,7 @@ export default function RootLayout({
         className={`${inter.variable} ${fraunces.variable} antialiased`}
         suppressHydrationWarning
       >
-        {children}
+        <AppProviders>{children}</AppProviders>
         <Toaster />
       </body>
     </html>

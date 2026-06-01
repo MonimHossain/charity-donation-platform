@@ -1,5 +1,7 @@
 "use client";
 
+import { USE_MOCK_DATA } from "@/lib/config";
+import MockBlogList from "./MockBlogList";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Search, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
@@ -28,6 +30,11 @@ function formatDate(date: string) {
 }
 
 export default function BlogListingPage() {
+  if (USE_MOCK_DATA) return <MockBlogList />;
+  return <BlogListingPageApi />;
+}
+
+function BlogListingPageApi() {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);

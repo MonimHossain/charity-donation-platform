@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Mail, Lock, LogIn, Heart } from "lucide-react";
@@ -9,12 +9,32 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { adminLogin } from "@/lib/api";
+import { USE_MOCK_DATA } from "@/lib/config";
+import {
+  DEMO_ADMIN_TOKEN,
+  DEFAULT_DEMO_ADMIN_PROFILE,
+  isValidAdminToken,
+  purgeStaleAdminTokens,
+} from "@/lib/admin-auth";
 
 export default function AdminLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    purgeStaleAdminTokens();
+    const token = localStorage.getItem("admin_token");
+    if (isValidAdminToken(token) && !USE_MOCK_DATA) {
+      router.replace("/admin");
+      return;
+    }
+    if (!isValidAdminToken(token)) {
+      localStorage.removeItem("admin_token");
+      localStorage.removeItem("admin_profile");
+    }
+  }, [router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -27,14 +47,40 @@ export default function AdminLoginPage() {
     setLoading(true);
 
     try {
+      if (USE_MOCK_DATA) {
+        localStorage.setItem("admin_token", DEMO_ADMIN_TOKEN);
+        localStorage.setItem(
+          "admin_profile",
+          JSON.stringify({
+            ...DEFAULT_DEMO_ADMIN_PROFILE,
+            email: email || DEFAULT_DEMO_ADMIN_PROFILE.email,
+          })
+        );
+        toast.success("Demo admin session");
+        router.push("/admin");
+        return;
+      }
       const data = await adminLogin(email, password);
-      localStorage.setItem("admin_token", data.token);
-      localStorage.setItem("admin_profile", JSON.stringify(data.user));
+      const token = typeof data?.token === "string" ? data.token.trim() : "";
+      if (!token) {
+        toast.error("Login succeeded but no token was returned. Check the API.");
+        return;
+      }
+      localStorage.setItem("admin_token", token);
+      localStorage.setItem(
+        "admin_profile",
+        JSON.stringify(data.user ?? { email, fullName: "Admin" })
+      );
+      sessionStorage.setItem("admin_just_logged_in", "1");
       toast.success("Welcome back! Redirecting to dashboard...");
-      router.push("/admin");
+      router.replace("/admin");
     } catch (err: any) {
+      const status = err?.response?.status;
       const message =
-        err?.response?.data?.message || "Invalid email or password";
+        err?.response?.data?.message ||
+        (status === 503
+          ? "API database is offline. Start PostgreSQL, restart the API, or use mock mode."
+          : "Invalid email or password");
       toast.error(message);
     } finally {
       setLoading(false);

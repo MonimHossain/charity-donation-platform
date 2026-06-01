@@ -2,9 +2,10 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { fetchAdminProfile } from "@/lib/api";
+import { isMockAdminSession, DEFAULT_DEMO_ADMIN_PROFILE } from "@/lib/admin-auth";
 
 export interface AdminSession {
-  id: number;
+  id: string | number;
   email: string;
   fullName: string;
   permissions: string[];
@@ -29,6 +30,29 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const token = localStorage.getItem("admin_token");
     if (!token) return;
+
+    if (isMockAdminSession(token)) {
+      const cached = localStorage.getItem("admin_profile");
+      try {
+        const profile = cached ? JSON.parse(cached) : DEFAULT_DEMO_ADMIN_PROFILE;
+        setSession({
+          id: profile.id ?? "demo",
+          email: profile.email,
+          fullName: profile.fullName || profile.name || "Admin Demo",
+          permissions: profile.permissions ?? [],
+          roles: profile.roles ?? DEFAULT_DEMO_ADMIN_PROFILE.roles,
+        });
+      } catch {
+        setSession({
+          id: "demo",
+          email: DEFAULT_DEMO_ADMIN_PROFILE.email,
+          fullName: DEFAULT_DEMO_ADMIN_PROFILE.fullName,
+          permissions: [],
+          roles: DEFAULT_DEMO_ADMIN_PROFILE.roles,
+        });
+      }
+      return;
+    }
 
     fetchAdminProfile()
       .then((profile: any) => {

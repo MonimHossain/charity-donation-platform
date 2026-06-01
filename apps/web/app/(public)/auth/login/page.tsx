@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { userLogin } from "@/lib/api";
+import { USE_MOCK_DATA } from "@/lib/config";
+import { setDemoSession } from "@/lib/mock-auth";
+import { DEMO_DONOR } from "@/lib/mock/users";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -23,6 +26,16 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
+      if (USE_MOCK_DATA) {
+        setDemoSession(
+          { id: DEMO_DONOR.id, email: email || DEMO_DONOR.email, name: DEMO_DONOR.name },
+          ["donor"]
+        );
+        localStorage.setItem("user_token", "demo-token");
+        localStorage.setItem("user_profile", JSON.stringify(DEMO_DONOR));
+        router.push("/account");
+        return;
+      }
       const res = await userLogin(email, password);
       if (res.token) {
         localStorage.setItem("user_token", res.token);

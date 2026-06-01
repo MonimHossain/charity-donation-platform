@@ -52,6 +52,12 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { fetchAdminProfile, adminLogout } from "@/lib/api";
 import { AdminSessionProvider } from "@/components/admin/AdminSessionProvider";
+import {
+  DEFAULT_DEMO_ADMIN_PROFILE,
+  isMockAdminSession,
+  isValidAdminToken,
+  purgeStaleAdminTokens,
+} from "@/lib/admin-auth";
 
 interface NavItem {
   label: string;
@@ -65,6 +71,7 @@ const navItems: NavItem[] = [
   { label: "Overview", href: "/admin/dashboard-overview", icon: PieChart },
   { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
   { label: "Campaigns", href: "/admin/campaigns", icon: Megaphone },
+  { label: "Donation pages", href: "/admin/donation-pages", icon: Heart },
   { label: "Donations", href: "/admin/donations", icon: HandCoins },
   { label: "Payments", href: "/admin/payments", icon: CreditCard },
   { label: "Recurring", href: "/admin/recurring", icon: Repeat },
@@ -131,6 +138,7 @@ const navItems: NavItem[] = [
     ],
   },
   { label: "Activity Log", href: "/admin/activity", icon: Activity },
+  { label: "Demo logs", href: "/admin/logs", icon: History },
   { label: "Settings", href: "/admin/settings", icon: Settings },
 ];
 
@@ -236,8 +244,11 @@ export default function AdminLayout({
       return;
     }
 
+    purgeStaleAdminTokens();
     const token = localStorage.getItem("admin_token");
-    if (!token) {
+    if (!isValidAdminToken(token)) {
+      localStorage.removeItem("admin_token");
+      localStorage.removeItem("admin_profile");
       router.replace("/admin/login");
       return;
     }
@@ -249,14 +260,57 @@ export default function AdminLayout({
       } catch {}
     }
 
+    if (isMockAdminSession(token)) {
+      if (!cached) {
+        setAdmin(DEFAULT_DEMO_ADMIN_PROFILE);
+        localStorage.setItem("admin_profile", JSON.stringify(DEFAULT_DEMO_ADMIN_PROFILE));
+      }
+      setAuthChecked(true);
+      return;
+    }
+
+    const justLoggedIn = sessionStorage.getItem("admin_just_logged_in") === "1";
+
     fetchAdminProfile()
       .then((profile) => {
+        sessionStorage.removeItem("admin_just_logged_in");
         setAdmin(profile);
         localStorage.setItem("admin_profile", JSON.stringify(profile));
         setAuthChecked(true);
       })
-      .catch(() => {
-        setAuthChecked(true);
+      .catch((err: { response?: { status?: number; data?: { message?: string } } }) => {
+        const status = err?.response?.status;
+
+        if (justLoggedIn && (status === 401 || status === 403)) {
+          sessionStorage.removeItem("admin_just_logged_in");
+          localStorage.removeItem("admin_token");
+          localStorage.removeItem("admin_profile");
+          toast.error(
+            err?.response?.data?.message ||
+              "Sign-in failed: the API rejected your session. Try again or restart the API."
+          );
+          router.replace("/admin/login");
+          return;
+        }
+
+        if (status === 401 || status === 403) {
+          localStorage.removeItem("admin_token");
+          localStorage.removeItem("admin_profile");
+          toast.error("Session expired. Please sign in again.");
+          router.replace("/admin/login");
+          return;
+        }
+
+        sessionStorage.removeItem("admin_just_logged_in");
+        if (cached) {
+          setAuthChecked(true);
+          return;
+        }
+        toast.error(
+          err?.response?.data?.message ||
+            "Cannot reach admin API. Is the database running?"
+        );
+        router.replace("/admin/login");
       });
   }, [pathname, router]);
 

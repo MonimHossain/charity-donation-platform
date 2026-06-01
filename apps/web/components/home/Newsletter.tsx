@@ -5,16 +5,29 @@ import { Mail, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { subscribeNewsletter } from "@/lib/api";
+import { USE_MOCK_DATA } from "@/lib/config";
 
 const Newsletter = () => {
   const [email, setEmail] = useState("");
   const [done, setDone] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
-    setDone(true);
-    toast.success("You're subscribed. Jazak Allah Khair!");
+    setLoading(true);
+    try {
+      if (!USE_MOCK_DATA) {
+        await subscribeNewsletter(email);
+      }
+      setDone(true);
+      toast.success("You're subscribed. Jazak Allah Khair!");
+    } catch {
+      toast.error("Subscription failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -46,8 +59,8 @@ const Newsletter = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 className="h-12 rounded-full bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/50 focus-visible:ring-accent"
               />
-              <Button type="submit" className="rounded-full whitespace-nowrap bg-accent text-accent-foreground hover:bg-accent/90" size="lg">
-                {done ? <><CheckCircle2 className="w-4 h-4" /> Subscribed</> : "Subscribe"}
+              <Button type="submit" disabled={loading || done} className="rounded-full whitespace-nowrap bg-accent text-accent-foreground hover:bg-accent/90" size="lg">
+                {done ? <><CheckCircle2 className="w-4 h-4" /> Subscribed</> : loading ? "Subscribing…" : "Subscribe"}
               </Button>
             </div>
             <p className="mt-3 text-[11px] text-primary-foreground/60">

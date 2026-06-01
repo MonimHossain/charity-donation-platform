@@ -1,5 +1,7 @@
 "use client";
 
+import { USE_MOCK_DATA } from "@/lib/config";
+import MockCharitiesList from "./MockCharitiesList";
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { fetchPublicCharities } from "@/lib/api";
@@ -11,6 +13,11 @@ import { Search } from "lucide-react";
 import { formatDate } from "@/lib/format";
 
 export default function CharitiesPage() {
+  if (USE_MOCK_DATA) return <MockCharitiesList />;
+  return <CharitiesPageApi />;
+}
+
+function CharitiesPageApi() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [charities, setCharities] = useState<CharityCardData[]>([]);

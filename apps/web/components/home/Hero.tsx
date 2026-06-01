@@ -6,14 +6,22 @@ import QuickDonate from "./QuickDonate";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 
-const slides = [
-  { img: "/images/hero-1.webp", alt: "Family receiving humanitarian aid", quote: "Whoever saves a life, it is as if he has saved all of humanity.", cite: "— Qur'an 5:32" },
-  { img: "/images/hero-2.webp", alt: "Gaza emergency relief", quote: "Every life saved is as if you saved all of humanity.", cite: "— Gaza Appeal" },
-  { img: "/images/hero-3.webp", alt: "Clean water well project", quote: "The best charity is giving water to drink.", cite: "— Hadith, Ahmad" },
-  { img: "/images/hero-4.webp", alt: "Orphan sponsorship", quote: "I and the one who cares for an orphan will be like this in Paradise.", cite: "— Prophet Muhammad ﷺ" },
-];
+import { heroSlides as fallbackSlides } from "@/lib/mock/home";
+import { useHeroSlides } from "@/lib/data/cms";
+
+function normalizeSlides(raw: unknown[]): typeof fallbackSlides {
+  if (!raw?.length) return fallbackSlides;
+  return raw.map((s: Record<string, string>, i) => ({
+    img: s.backgroundImage || fallbackSlides[i % fallbackSlides.length]?.img || "/images/hero-1.webp",
+    alt: s.title || "Hero slide",
+    quote: s.title || s.subtitle || "",
+    cite: s.subtitle ? `— ${s.subtitle}` : "",
+  }));
+}
 
 const Hero = () => {
+  const { data: rawSlides } = useHeroSlides();
+  const slides = normalizeSlides((rawSlides as unknown[]) ?? fallbackSlides);
   const [index, setIndex] = useState(0);
   const sectionRef = useRef<HTMLElement | null>(null);
   const [imgHeight, setImgHeight] = useState<number | null>(null);

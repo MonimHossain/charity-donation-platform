@@ -1,5 +1,7 @@
 "use client";
 
+import { USE_MOCK_DATA } from "@/lib/config";
+import MockAdminDashboard from "@/components/admin/MockAdminDashboard";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -30,6 +32,11 @@ const statusBadge: Record<string, string> = {
 };
 
 export default function AdminDashboardPage() {
+  if (USE_MOCK_DATA) return <MockAdminDashboard />;
+  return <AdminDashboardPageApi />;
+}
+
+function AdminDashboardPageApi() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<any>(null);
   const [recentDonations, setRecentDonations] = useState<any[]>([]);

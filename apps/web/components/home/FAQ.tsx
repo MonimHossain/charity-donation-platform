@@ -3,12 +3,8 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 
-const faqs = [
-  { q: "What is the best Muslim charity in the UK?", a: "Your Impact Foundation is one of the most trusted Muslim charities to donate to in the UK. We follow a 100% donation policy on Zakat and ensure transparency in all projects." },
-  { q: "How can I donate Zakat online?", a: "You can give Zakat online securely through our donation platform. Choose your amount and project, and donate with peace of mind." },
-  { q: "What is the meaning of Sadaqah in Islam?", a: "Sadaqah is voluntary charity given for the sake of Allah. Sadaqah Jariyah is ongoing charity — like building wells or schools — that benefits people for generations." },
-  { q: "Where does Your Impact provide aid?", a: "We provide humanitarian aid for Muslims and non-Muslims in need across Palestine, Yemen, Syria, Africa, Asia and refugee camps worldwide." },
-];
+import { faqItems as fallbackFaqs } from "@/lib/mock/home";
+import { useFaqs } from "@/lib/data/cms";
 
 const AccordionItem = ({ q, a }: { q: string; a: string }) => {
   const [open, setOpen] = useState(false);
@@ -30,7 +26,14 @@ const AccordionItem = ({ q, a }: { q: string; a: string }) => {
   );
 };
 
-const FAQ = () => (
+const FAQ = () => {
+  const { data: apiFaqs } = useFaqs();
+  const faqs = (apiFaqs?.length ? apiFaqs : fallbackFaqs).map((f: { question?: string; q?: string; answer?: string; a?: string }) => ({
+    q: f.question ?? f.q ?? "",
+    a: f.answer ?? f.a ?? "",
+  }));
+
+  return (
   <section className="container-wide py-24">
     <div className="grid lg:grid-cols-12 gap-12">
       <div className="lg:col-span-4">
@@ -45,6 +48,7 @@ const FAQ = () => (
       </div>
     </div>
   </section>
-);
+  );
+};
 
 export default FAQ;

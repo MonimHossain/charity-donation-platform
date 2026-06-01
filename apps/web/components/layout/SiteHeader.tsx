@@ -10,16 +10,18 @@ import CurrencySwitcher from "./CurrencySwitcher";
 import LanguageSwitcher from "./LanguageSwitcher";
 
 const nav = [
-  { href: "/campaigns?category=food", label: "Food Aid" },
-  { href: "/campaigns?category=water", label: "Water Projects" },
-  { href: "/campaigns?category=livelihood", label: "Livelihood Projects" },
-  { href: "/campaigns?category=orphan", label: "Orphan Sponsorship" },
-  { href: "/zakat-calculator", label: "Zakat" },
+  { href: "/campaigns/food", label: "Food Aid" },
+  { href: "/campaigns/water", label: "Water Projects" },
+  { href: "/campaigns/livelihood", label: "Livelihood Projects" },
+  { href: "/campaigns/orphans", label: "Orphan Sponsorship" },
+  { href: "/zakat", label: "Zakat" },
 ];
 
 const aboutItems = [
   { href: "/about", label: "About" },
+  { href: "/where-we-work", label: "Where we work" },
   { href: "/blog", label: "Stories" },
+  { href: "/namaz-times", label: "Namaz times" },
   { href: "/contact", label: "Contact" },
 ];
 

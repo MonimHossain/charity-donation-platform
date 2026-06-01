@@ -81,6 +81,48 @@ router.get("/blog/:slug", getBlogPostBySlug);
 // Newsletter
 router.post("/newsletter/subscribe", subscribe);
 
+// Public charities / ICCA
+router.get("/public/charities", async (req, res) => {
+  const { getPublicCharities } = await import("../modules/charities/charities.controller.js");
+  return getPublicCharities(req, res);
+});
+router.get("/public/charities/:slug", async (req, res) => {
+  const { getPublicCharityBySlug } = await import("../modules/charities/charities.controller.js");
+  return getPublicCharityBySlug(req, res);
+});
+router.get("/public/featured-charities", async (req, res) => {
+  const { getFeaturedCharities } = await import("../modules/charities/charities.controller.js");
+  return getFeaturedCharities(req, res);
+});
+router.get("/public/stats", async (req, res) => {
+  const { getPublicStats } = await import("../modules/charities/charities.controller.js");
+  return getPublicStats(req, res);
+});
+router.get("/public/verify", async (req, res) => {
+  const { verifyCertification } = await import("../modules/charities/charities.controller.js");
+  return verifyCertification(req, res);
+});
+router.get("/public/verify/:certificateId", async (req, res) => {
+  const { verifyCertificationById } = await import("../modules/charities/charities.controller.js");
+  return verifyCertificationById(req, res);
+});
+router.post("/public/contact-messages", async (req, res) => {
+  const { submitContactMessage } = await import("../modules/charities/charities.controller.js");
+  return submitContactMessage(req, res);
+});
+router.post("/public/concerns", async (req, res) => {
+  const { submitConcern } = await import("../modules/charities/charities.controller.js");
+  return submitConcern(req, res);
+});
+router.post("/public/apply-review", async (req, res) => {
+  const { submitApplyReview } = await import("../modules/charities/charities.controller.js");
+  return submitApplyReview(req, res);
+});
+router.get("/public/experts", async (req, res) => {
+  const { getPublicExperts } = await import("../modules/charities/charities.controller.js");
+  return getPublicExperts(req, res);
+});
+
 // ═══════════════════════════════════
 // USER AUTH ROUTES (lazy-loaded)
 // ═══════════════════════════════════
@@ -541,6 +583,124 @@ router.get("/admin/audit-logs", requireAdmin, async (req, res) => {
 // ADMIN NEWSLETTER
 // ═══════════════════════════════════
 router.get("/admin/newsletter/subscribers", requireAdmin, getSubscribers);
+
+// Admin charities / certifications / concerns / apply-review
+router.get("/admin/charities", requireAdmin, async (req, res) => {
+  const { getAdminCharities } = await import("../modules/charities/charities.controller.js");
+  return getAdminCharities(req, res);
+});
+router.get("/admin/charities/:id", requireAdmin, async (req, res) => {
+  const { getAdminCharityById } = await import("../modules/charities/charities.controller.js");
+  return getAdminCharityById(req, res);
+});
+router.post("/admin/charities", requireAdmin, async (req, res) => {
+  const { createAdminCharity } = await import("../modules/charities/charities.controller.js");
+  return createAdminCharity(req, res);
+});
+router.patch("/admin/charities/:id", requireAdmin, async (req, res) => {
+  const { updateAdminCharity } = await import("../modules/charities/charities.controller.js");
+  return updateAdminCharity(req, res);
+});
+router.delete("/admin/charities/:id", requireAdmin, async (req, res) => {
+  const { deleteAdminCharity } = await import("../modules/charities/charities.controller.js");
+  return deleteAdminCharity(req, res);
+});
+router.get("/admin/certifications", requireAdmin, async (req, res) => {
+  const { getAdminCertifications } = await import("../modules/charities/charities.controller.js");
+  return getAdminCertifications(req, res);
+});
+router.get("/admin/certifications/:id", requireAdmin, async (req, res) => {
+  const { getAdminCertificationById } = await import("../modules/charities/charities.controller.js");
+  return getAdminCertificationById(req, res);
+});
+router.post("/admin/certifications", requireAdmin, async (req, res) => {
+  const { createAdminCertification } = await import("../modules/charities/charities.controller.js");
+  return createAdminCertification(req, res);
+});
+router.patch("/admin/certifications/:id", requireAdmin, async (req, res) => {
+  const { updateAdminCertification } = await import("../modules/charities/charities.controller.js");
+  return updateAdminCertification(req, res);
+});
+router.delete("/admin/certifications/:id", requireAdmin, async (req, res) => {
+  const { deleteAdminCertification } = await import("../modules/charities/charities.controller.js");
+  return deleteAdminCertification(req, res);
+});
+router.get("/admin/concerns", requireAdmin, async (req, res) => {
+  const { getAdminConcerns } = await import("../modules/charities/charities.controller.js");
+  return getAdminConcerns(req, res);
+});
+router.get("/admin/apply-review", requireAdmin, async (req, res) => {
+  const { getAdminApplyReview } = await import("../modules/charities/charities.controller.js");
+  return getAdminApplyReview(req, res);
+});
+router.patch("/admin/apply-review/:id", requireAdmin, async (req, res) => {
+  const { updateAdminApplyReview } = await import("../modules/charities/charities.controller.js");
+  return updateAdminApplyReview(req, res);
+});
+router.delete("/admin/apply-review/:id", requireAdmin, async (req, res) => {
+  const { deleteAdminApplyReview } = await import("../modules/charities/charities.controller.js");
+  return deleteAdminApplyReview(req, res);
+});
+
+// Admin donation pages
+router.get("/admin/donation-pages", requireAdmin, async (req, res) => {
+  const { getAdminDonationPages } = await import("../modules/donation-pages/donationPages.controller.js");
+  return getAdminDonationPages(req, res);
+});
+router.get("/admin/donation-pages/:id", requireAdmin, async (req, res) => {
+  const { getAdminDonationPageById } = await import("../modules/donation-pages/donationPages.controller.js");
+  return getAdminDonationPageById(req, res);
+});
+router.post("/admin/donation-pages", requireAdmin, async (req, res) => {
+  const { createAdminDonationPage } = await import("../modules/donation-pages/donationPages.controller.js");
+  return createAdminDonationPage(req, res);
+});
+router.put("/admin/donation-pages/:id", requireAdmin, async (req, res) => {
+  const { updateAdminDonationPage } = await import("../modules/donation-pages/donationPages.controller.js");
+  return updateAdminDonationPage(req, res);
+});
+router.delete("/admin/donation-pages/:id", requireAdmin, async (req, res) => {
+  const { deleteAdminDonationPage } = await import("../modules/donation-pages/donationPages.controller.js");
+  return deleteAdminDonationPage(req, res);
+});
+router.get("/donation-pages/:slug", async (req, res) => {
+  const { getDonationPageBySlug } = await import("../modules/donation-pages/donationPages.controller.js");
+  return getDonationPageBySlug(req, res);
+});
+
+// Admin staff (IAM)
+router.get("/admin/staff", requireAdmin, async (req, res) => {
+  const { listAdminStaff } = await import("../modules/admin-auth/adminStaff.controller.js");
+  return listAdminStaff(req, res);
+});
+router.post("/admin/staff", requireAdmin, async (req, res) => {
+  const { createAdminStaff } = await import("../modules/admin-auth/adminStaff.controller.js");
+  return createAdminStaff(req, res);
+});
+router.patch("/admin/staff/:id", requireAdmin, async (req, res) => {
+  const { updateAdminStaff } = await import("../modules/admin-auth/adminStaff.controller.js");
+  return updateAdminStaff(req, res);
+});
+router.delete("/admin/staff/:id", requireAdmin, async (req, res) => {
+  const { deleteAdminStaff } = await import("../modules/admin-auth/adminStaff.controller.js");
+  return deleteAdminStaff(req, res);
+});
+router.patch("/admin/staff/:id/status", requireAdmin, async (req, res) => {
+  const { updateAdminStaffStatus } = await import("../modules/admin-auth/adminStaff.controller.js");
+  return updateAdminStaffStatus(req, res);
+});
+router.post("/admin/staff/:id/reset-password", requireAdmin, async (req, res) => {
+  const { resetAdminStaffPassword } = await import("../modules/admin-auth/adminStaff.controller.js");
+  return resetAdminStaffPassword(req, res);
+});
+router.get("/admin/roles", requireAdmin, async (req, res) => {
+  const { listAdminRoles } = await import("../modules/admin-auth/adminStaff.controller.js");
+  return listAdminRoles(req, res);
+});
+router.get("/admin/permissions", requireAdmin, async (req, res) => {
+  const { listAdminPermissions } = await import("../modules/admin-auth/adminStaff.controller.js");
+  return listAdminPermissions(req, res);
+});
 
 // ═══════════════════════════════════
 // ZAKAT CALCULATOR (public)

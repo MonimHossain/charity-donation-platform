@@ -42,10 +42,11 @@ export async function getCampaigns(req: Request, res: Response) {
 
 export async function getPublishedCampaigns(req: Request, res: Response) {
   try {
-    const { category, mode, search, page = "1", limit = "12" } = req.query;
+    const { category, mode, search, featured, page = "1", limit = "12" } = req.query;
     const where: any = { status: "published" };
     if (category) where.category = category;
     if (mode) where.campaignMode = mode;
+    if (featured === "true") where.isFeatured = true;
     if (search) where.title = ILike(`%${search}%`);
 
     const [items, total] = await repo().findAndCount({

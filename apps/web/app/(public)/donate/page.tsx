@@ -1,5 +1,8 @@
 "use client";
 
+import { Suspense } from "react";
+import { USE_MOCK_DATA } from "@/lib/config";
+import MockDonatePage from "./MockDonatePage";
 import { useState, useMemo, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -107,6 +110,14 @@ const DEDICATION_TYPES = [
 ];
 
 export default function DonatePage() {
+  return (
+    <Suspense fallback={<div className="container-wide py-20 text-center text-muted-foreground">Loading…</div>}>
+      {USE_MOCK_DATA ? <MockDonatePage /> : <DonatePageApi />}
+    </Suspense>
+  );
+}
+
+function DonatePageApi() {
   const params = useSearchParams();
   const router = useRouter();
 

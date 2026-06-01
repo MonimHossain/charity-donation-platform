@@ -5,12 +5,23 @@ import { AppDataSource } from "../../helper/connectDB.js";
 import { Admin } from "../../components/admin/admin.entity.js";
 import { logAudit } from "../../helper/auditLog.js";
 
+function requireDatabase(res: Response): boolean {
+  if (!AppDataSource.isInitialized) {
+    res.status(503).json({
+      message: "Database is not connected. Start PostgreSQL and restart the API.",
+    });
+    return false;
+  }
+  return true;
+}
+
 const JWT_SECRET = process.env.ADMIN_JWT_SECRET ?? "change-me";
 const JWT_EXPIRES = process.env.ADMIN_JWT_EXPIRES_IN ?? "7d";
 const COOKIE_MAX_AGE = Number(process.env.ADMIN_COOKIE_MAX_AGE_MS ?? 604800000);
 
 export async function loginAdmin(req: Request, res: Response) {
   try {
+    if (!requireDatabase(res)) return;
     const { email, password } = req.body;
     if (!email || !password) {
       return res.status(400).json({ message: "Email and password required" });
@@ -60,6 +71,7 @@ export async function loginAdmin(req: Request, res: Response) {
 
 export async function getAdminProfile(req: Request, res: Response) {
   try {
+    if (!requireDatabase(res)) return;
     const adminId = (req as any).admin?.id;
     if (!adminId) return res.status(401).json({ message: "Unauthorized" });
 

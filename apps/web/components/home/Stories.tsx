@@ -1,11 +1,20 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
-const posts = [
-  { slug: "beyond-food-aid", title: "Beyond Food Aid: How Sustainable Livelihoods Break the Cycle of Poverty", date: "Dec 25, 2025", category: "Livelihood", excerpt: "Food aid saves lives. But to truly end poverty, we must invest in opportunity.", image: "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&w=1200&q=70" },
-  { slug: "monthly-donations", title: "How Monthly Donations Create Long-Term Impact", date: "Dec 25, 2025", category: "Giving", excerpt: "Steady support helps charities plan better and stand by families over time.", image: "https://images.unsplash.com/photo-1593113598332-cd288d649433?auto=format&fit=crop&w=1200&q=70" },
-  { slug: "zakat-uk-families", title: "Zakat in the UK — Supporting Vulnerable Muslim Families", date: "Dec 3, 2025", category: "Zakat", excerpt: "Zakat is one of Islam's most powerful pillars, designed to uplift those facing hardship.", image: "https://images.unsplash.com/photo-1469571486292-0ba58a3f068b?auto=format&fit=crop&w=1200&q=70" },
-];
+import { demoBlogPosts } from "@/lib/mock/blog";
+import { fmtDate } from "@/lib/mock/format";
+
+const posts = demoBlogPosts
+  .filter((p) => p.status === "published")
+  .slice(0, 3)
+  .map((p) => ({
+    slug: p.slug,
+    title: p.title,
+    date: fmtDate(p.publishedAt),
+    category: "Stories",
+    excerpt: p.excerpt,
+    image: p.cover,
+  }));
 
 const Stories = () => (
   <section className="container-wide py-24">
@@ -21,7 +30,7 @@ const Stories = () => (
 
     <div className="grid md:grid-cols-3 gap-6">
       {posts.map((p) => (
-        <Link href="/blog" key={p.slug} className="group rounded-3xl bg-card border border-border p-2 hover:shadow-lift transition-all">
+        <Link href={`/blog/${p.slug}`} key={p.slug} className="group rounded-3xl bg-card border border-border p-2 hover:shadow-lift transition-all">
           <div className="aspect-[4/3] rounded-2xl overflow-hidden bg-secondary">
             <img src={p.image} alt={p.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
           </div>

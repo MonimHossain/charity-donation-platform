@@ -1,5 +1,7 @@
 "use client";
 
+import { USE_MOCK_DATA } from "@/lib/config";
+import MockCampaignsList from "./MockCampaignsList";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Heart, Users, Search, Filter, Tag } from "lucide-react";
@@ -55,6 +57,11 @@ function formatCurrency(amount: number, currency: string = "GBP") {
 }
 
 export default function CampaignsPage() {
+  if (USE_MOCK_DATA) return <MockCampaignsList />;
+  return <CampaignsPageApi />;
+}
+
+function CampaignsPageApi() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState("All");

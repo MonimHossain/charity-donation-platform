@@ -4,40 +4,18 @@ import { Star, Quote, UserRound, ChevronLeft, ChevronRight } from "lucide-react"
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
-const testimonials = [
-  {
-    name: "Aisha R.",
-    role: "Monthly donor · London",
-    quote: "I trust Your Impact Foundation with my Zakat every year. The transparency and updates make it feel personal.",
-    rating: 5,
-  },
-  {
-    name: "Mohammed K.",
-    role: "Donor · Manchester",
-    quote: "Sponsoring an orphan through them changed how I think about charity. I receive real updates, real photos, real impact.",
-    rating: 5,
-  },
-  {
-    name: "Fatima S.",
-    role: "Gift Aid donor · Birmingham",
-    quote: "Fast checkout, Apple Pay, Gift Aid added in one tap. This is how Muslim charity giving should feel in 2026.",
-    rating: 5,
-  },
-  {
-    name: "Yusuf A.",
-    role: "Donor · Leeds",
-    quote: "The impact reports are detailed and honest. I finally feel my donations are reaching the right hands.",
-    rating: 5,
-  },
-  {
-    name: "Hana B.",
-    role: "Monthly donor · Bristol",
-    quote: "Setting up a recurring donation took 30 seconds. Beautiful experience end to end.",
-    rating: 5,
-  },
-];
+import { testimonials as fallbackTestimonials } from "@/lib/mock/home";
+import { useTestimonials } from "@/lib/data/cms";
 
 const Testimonials = () => {
+  const { data: apiItems } = useTestimonials();
+  const source = apiItems?.length ? apiItems : fallbackTestimonials;
+  const testimonials = source.map((t: { name: string; location?: string; text?: string; quote?: string; role?: string }) => ({
+    name: t.name,
+    role: t.role ?? `${t.location ?? "Donor"} · Donor`,
+    quote: t.text ?? t.quote ?? "",
+    rating: 5,
+  }));
   const [index, setIndex] = useState(0);
   const [perView, setPerView] = useState(3);
 

@@ -29,6 +29,22 @@ export default function LiveDonationFeed() {
   const [visible, setVisible] = useState(0);
 
   useEffect(() => {
+    const useMock = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
+    if (useMock) {
+      import("@/lib/mock/donations").then(({ getRecentDonations }) => {
+        setDonations(
+          getRecentDonations(8).map((d) => ({
+            id: d.id,
+            donorName: d.donorName,
+            amount: d.amount,
+            currency: d.currency,
+            campaignTitle: d.campaignTitle,
+            createdAt: d.date,
+          }))
+        );
+      });
+      return;
+    }
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/donations/recent`)
       .then((r) => r.json())
       .then((data) => {
