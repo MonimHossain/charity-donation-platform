@@ -54,7 +54,11 @@ const GATEWAY_LABELS: Record<GatewayId, string> = {
 };
 
 interface CampaignPreset { amount: number; label: string; description?: string; }
-interface CampaignAttribute { name: string; description?: string; options: Array<{ label: string; priceAdjustment?: number }>; }
+interface CampaignAttribute {
+  name: string;
+  description?: string;
+  options?: Array<{ label: string; priceAdjustment?: number }>;
+}
 interface CampaignUpsell { label: string; type: "fixed" | "percentage" | "round-up"; value: number; description?: string; }
 
 interface Campaign {
@@ -229,6 +233,7 @@ function DonatePageApi() {
     if (!activeCampaign?.attributes) return 0;
     let adj = 0;
     for (const attr of activeCampaign.attributes) {
+      if (!attr.options?.length) continue;
       const sel = attributeSelections[attr.name];
       if (sel) {
         const opt = attr.options.find((o) => o.label === sel);
@@ -636,7 +641,7 @@ function DonatePageApi() {
                   <Label className="text-sm font-medium">{attr.name}</Label>
                   {attr.description && <p className="text-xs text-muted-foreground">{attr.description}</p>}
                   <div className="flex flex-wrap gap-2">
-                    {attr.options.map((opt) => (
+                    {(attr.options ?? []).map((opt) => (
                       <button key={opt.label} type="button" onClick={() => setAttributeSelections((prev) => ({ ...prev, [attr.name]: opt.label }))} className={cn("px-4 py-2 rounded-xl text-sm border transition-all font-medium", attributeSelections[attr.name] === opt.label ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border hover:border-primary/40")}>
                         {opt.label}
                         {opt.priceAdjustment ? ` (+${currencyInfo.symbol}${opt.priceAdjustment})` : ""}
