@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useRef } from "react";
 import { USE_MOCK_DATA } from "@/lib/config";
 import MockDonatePage from "./MockDonatePage";
 import { useState, useMemo, useEffect } from "react";
@@ -41,6 +41,10 @@ import {
 } from "@/lib/api";
 import { StripeCheckoutForm } from "@/components/payments/StripeCheckoutForm";
 import { PayPalCheckoutButton } from "@/components/payments/PayPalCheckoutButton";
+import {
+  addDonationCartItem,
+  getDonationCartSnapshot,
+} from "@/lib/stores/donationCartStore";
 
 type DonationFrequency = "single" | "monthly" | "quarterly" | "annually";
 type ZakatType = "zakat" | "sadaqah" | "lillah" | "general";
@@ -124,6 +128,8 @@ export default function DonatePage() {
 function DonatePageApi() {
   const params = useSearchParams();
   const router = useRouter();
+  const [bootstrapping, setBootstrapping] = useState(true);
+  const routedToCheckout = useRef(false);
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [selectedCampaign, setSelectedCampaign] = useState(params.get("campaign") || "");
@@ -169,6 +175,46 @@ function DonatePageApi() {
   const [attributeSelections, setAttributeSelections] = useState<Record<string, string>>({});
   const [selectedUpsells, setSelectedUpsells] = useState<Set<number>>(new Set());
   const [activeCampaign, setActiveCampaign] = useState<Campaign | null>(null);
+
+  // Donation-page orders use /donation/checkout — never re-ask for amount/campaign on /donate.
+  useEffect(() => {
+    if (routedToCheckout.current) return;
+
+    const existing = getDonationCartSnapshot();
+    if (existing.length > 0) {
+      routedToCheckout.current = true;
+      router.replace("/donation/checkout");
+      return;
+    }
+
+    if (params.get("full") === "1") {
+      setBootstrapping(false);
+      return;
+    }
+
+    const amountParam = params.get("amount");
+    const parsed = amountParam ? Number(amountParam) : NaN;
+    if (Number.isFinite(parsed) && parsed > 0) {
+      routedToCheckout.current = true;
+      const cause = params.get("cause") || params.get("type") || "donation";
+      const campaignId = params.get("campaign") || params.get("campaignId") || undefined;
+      addDonationCartItem({
+        kind: "standard",
+        donationPageId: "legacy-url",
+        donationPageSlug: cause,
+        title: cause.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+        amount: parsed,
+        currency: (params.get("currency") || "GBP").toUpperCase(),
+        description: `Donation — £${parsed.toFixed(2)}`,
+        campaignId: campaignId || undefined,
+        donationType: cause,
+      });
+      router.replace("/donation/checkout");
+      return;
+    }
+
+    setBootstrapping(false);
+  }, [params, router]);
 
   useEffect(() => {
     fetchCampaigns({ status: "active" })
@@ -388,6 +434,14 @@ function DonatePageApi() {
     if (donationId) summaryParams.set("donationId", donationId);
     router.push(`/thank-you?${summaryParams.toString()}`);
   };
+
+  if (bootstrapping) {
+    return (
+      <div className="container-wide py-24 flex justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <>

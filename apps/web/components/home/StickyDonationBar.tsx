@@ -6,7 +6,8 @@ import { Heart, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const PRESETS = [10, 25, 50, 100];
-const HIDE_ON = ["/donate"];
+const HIDE_ON = ["/donate", "/donation/checkout"];
+const HIDE_PREFIXES = ["/donation/"];
 
 const IMPACT: Record<number, string> = {
   10: "Feeds a family for a day",
@@ -43,6 +44,7 @@ const StickyDonationBar = () => {
   }, []);
 
   if (HIDE_ON.includes(pathname)) return null;
+  if (HIDE_PREFIXES.some((p) => pathname.startsWith(p))) return null;
   if (!visible) return null;
 
   const go = () => {

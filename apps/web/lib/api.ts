@@ -1144,3 +1144,8 @@ export async function fetchDonationPageBySlug(slug: string) {
   const { data } = await api.get(`/donation-pages/${slug}`);
   return data;
 }
+
+export async function fetchPublishedDonationPages(params?: Record<string, string | number>) {
+  const { data } = await api.get("/donation-pages", { params });
+  return data;
+}

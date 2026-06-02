@@ -1,7 +1,7 @@
 import Hero from "@/components/home/Hero";
 import TrustBadges from "@/components/home/TrustBadges";
 import FeaturedCampaigns from "@/components/home/FeaturedCampaigns";
-import Fundraisers from "@/components/home/Fundraisers";
+import FeaturedDonationPages from "@/components/home/FeaturedDonationPages";
 import ImpactStats from "@/components/home/ImpactStats";
 import Testimonials from "@/components/home/Testimonials";
 import StorySection from "@/components/home/StorySection";
@@ -18,7 +18,7 @@ export default function HomePage() {
       <Hero />
       <TrustBadges />
       <FeaturedCampaigns />
-      <Fundraisers />
+      <FeaturedDonationPages />
       <ImpactStats />
       <Testimonials />
       <StorySection />

@@ -23,6 +23,9 @@ export class DonationPage {
   @Column({ type: "text", nullable: true })
   shortDescription?: string | null;
 
+  @Column({ type: "varchar", length: 500, nullable: true })
+  image?: string | null;
+
   @Column({ type: "varchar", length: 50, default: "draft" })
   status!: string;
 

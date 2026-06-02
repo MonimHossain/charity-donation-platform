@@ -670,6 +670,10 @@ router.delete("/admin/donation-pages/:id", requireAdmin, async (req, res) => {
   const { deleteAdminDonationPage } = await import("../modules/donation-pages/donationPages.controller.js");
   return deleteAdminDonationPage(req, res);
 });
+router.get("/donation-pages", async (req, res) => {
+  const { listPublishedDonationPages } = await import("../modules/donation-pages/donationPages.controller.js");
+  return listPublishedDonationPages(req, res);
+});
 router.get("/donation-pages/:slug", async (req, res) => {
   const { getDonationPageBySlug } = await import("../modules/donation-pages/donationPages.controller.js");
   return getDonationPageBySlug(req, res);

@@ -47,19 +47,48 @@ export async function getDonationPageBySlug(req: Request, res: Response) {
   }
 }
 
+export async function listPublishedDonationPages(req: Request, res: Response) {
+  try {
+    const limit = Math.min(50, Math.max(1, Number(req.query.limit ?? 50)));
+    const pages = await repo().find({
+      where: { status: "published" },
+      order: { updatedAt: "DESC" },
+      take: limit,
+    });
+
+    // No “featured” concept: return all published pages.
+    return res.json({ items: pages });
+  } catch {
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
 export async function createAdminDonationPage(req: Request, res: Response) {
   try {
     const { title, slug, category, shortDescription, status, campaignId, config } = req.body;
-    const baseSlug =
-      slug ||
-      String(title || "page")
+    const normalizeSlug = (s: string) =>
+      String(s || "")
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-|-$/g, "");
 
+    const base =
+      normalizeSlug(slug) ||
+      normalizeSlug(title) ||
+      `donation-${Date.now().toString(36)}`;
+
+    // Ensure uniqueness to avoid random 500s when frontend creates with empty payload.
+    let uniqueSlug = base;
+    for (let i = 0; i < 10; i++) {
+      // eslint-disable-next-line no-await-in-loop
+      const exists = await repo().exist({ where: { slug: uniqueSlug } });
+      if (!exists) break;
+      uniqueSlug = `${base}-${Math.random().toString(36).slice(2, 6)}`;
+    }
+
     const page = repo().create({
       title: title || "New donation page",
-      slug: baseSlug,
+      slug: uniqueSlug,
       category: category || "general",
       shortDescription: shortDescription || "",
       status: status || "draft",
@@ -69,7 +98,8 @@ export async function createAdminDonationPage(req: Request, res: Response) {
     await repo().save(page);
     await logAudit(req, { action: "create", entityType: "donation_page", entityId: page.id });
     return res.status(201).json(page);
-  } catch {
+  } catch (error) {
+    console.error("createAdminDonationPage error:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 }

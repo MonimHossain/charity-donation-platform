@@ -7,9 +7,11 @@ import PageShell, { PageHero } from "@/components/site/PageShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
-import { createAutomatedSchedule, fetchDonationPageBySlug } from "@/lib/api";
+import { fetchDonationPageBySlug } from "@/lib/api";
+import { addDonationCartItem } from "@/lib/stores/donationCartStore";
 import { cn } from "@/lib/utils";
 import type { DonationExperience, DonationPageDto } from "@icac/shared-types";
+import { toast } from "sonner";
 
 function isDonationPageDto(x: unknown): x is DonationPageDto {
   return Boolean(
@@ -25,23 +27,34 @@ export default function DonationPageBySlug() {
   const params = useParams<{ slug: string }>();
   const slug = params.slug ?? "";
   const router = useRouter();
-
   const [page, setPage] = useState<DonationPageDto | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (slug === "checkout") {
+      router.replace("/donation/checkout");
+      return;
+    }
     if (!slug) return;
     setLoading(true);
     fetchDonationPageBySlug(slug)
       .then((data) => setPage(isDonationPageDto(data) ? data : (data as DonationPageDto)))
       .catch(() => setPage(null))
       .finally(() => setLoading(false));
-  }, [slug]);
+  }, [slug, router]);
 
   const experience = useMemo(() => {
     const exp = page?.config?.experience as DonationExperience | undefined;
     return exp;
   }, [page]);
+
+  if (slug === "checkout") {
+    return (
+      <div className="container-wide py-24 flex justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -93,17 +106,71 @@ function StandardExperience({
   page: DonationPageDto;
   experience: Extract<DonationExperience, { type: "standard" }>;
 }) {
-  const qs = new URLSearchParams();
-  if (experience.defaultCampaignId) qs.set("campaign", experience.defaultCampaignId);
-  const href = qs.toString() ? `/donate?${qs.toString()}` : "/donate";
+  const router = useRouter();
+  const presetAmounts = [10, 30, 50, 100, 250, 500];
+  const [amount, setAmount] = useState(50);
+  const [customAmount, setCustomAmount] = useState("");
+  const currency = page.config?.currency ?? "GBP";
+  const total = customAmount ? Number(customAmount) : amount;
+
   return (
     <PageShell title={page.title} description={page.shortDescription ?? ""}>
-      <section className="container-wide py-20">
+      <section className="container-wide py-16 sm:py-20">
         <PageHero eyebrow={page.category} title={page.title} description={page.shortDescription ?? ""} />
-        <div className="mt-8">
-          <Button asChild size="lg" className="rounded-full bg-accent hover:bg-accent/90">
-            <Link href={href}>Donate</Link>
-          </Button>
+        <div className="mt-10 max-w-xl mx-auto">
+          <div className="rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-soft space-y-5">
+            <div className="grid grid-cols-3 gap-2">
+              {presetAmounts.map((a) => (
+                <button
+                  key={a}
+                  type="button"
+                  onClick={() => {
+                    setAmount(a);
+                    setCustomAmount("");
+                  }}
+                  className={cn(
+                    "rounded-xl py-3 text-sm font-bold border transition-colors",
+                    !customAmount && amount === a
+                      ? "bg-accent text-accent-foreground border-accent"
+                      : "bg-background border-border hover:border-primary/40"
+                  )}
+                >
+                  £ {a}
+                </button>
+              ))}
+            </div>
+            <Input
+              type="number"
+              inputMode="numeric"
+              placeholder="Other amount"
+              value={customAmount}
+              onChange={(e) => setCustomAmount(e.target.value)}
+              className="rounded-xl h-11"
+            />
+            <Button
+              size="lg"
+              className="w-full rounded-full bg-accent hover:bg-accent/90 h-14 text-base"
+              disabled={!Number.isFinite(total) || total <= 0}
+              onClick={() => {
+                addDonationCartItem({
+                  kind: "standard",
+                  donationPageId: page.id,
+                  donationPageSlug: page.slug,
+                  title: page.title,
+                  category: page.category,
+                  amount: total,
+                  currency,
+                  description: `${page.title} — £${total.toFixed(2)}`,
+                  campaignId: experience.defaultCampaignId ?? page.campaignId ?? undefined,
+                  donationType: page.category,
+                });
+                toast.success("Added to cart");
+                router.push("/donation/checkout");
+              }}
+            >
+              Add to cart
+            </Button>
+          </div>
         </div>
       </section>
     </PageShell>
@@ -140,13 +207,21 @@ function FidyaKaffarahExperience({
   const initialKey = options[0]?.key ?? "fidya";
   const [selectedKey, setSelectedKey] = useState<string>(initialKey);
   const [qty, setQty] = useState<number>(experience.quantity?.default ?? experience.quantity?.min ?? 1);
+  const [customAmount, setCustomAmount] = useState<string>("");
 
   const selected = options.find((o) => o.key === selectedKey) ?? options[0];
   const min = experience.quantity?.min ?? 1;
   const max = experience.quantity?.max ?? 9999;
   const unitPrice = Number(selected?.unitPrice ?? 0);
   const boundedQty = Math.max(min, Math.min(max, Number.isFinite(qty) ? qty : min));
-  const total = boundedQty * unitPrice;
+  const computedTotal = boundedQty * unitPrice;
+  const allowCustom = Boolean((experience as any).allowCustomAmount);
+  const customMin = Number((experience as any).customAmount?.min ?? 1);
+  const customMax = Number((experience as any).customAmount?.max ?? 100000);
+  const customTotal = customAmount ? Number(customAmount) : NaN;
+  const total = allowCustom && Number.isFinite(customTotal)
+    ? Math.max(customMin, Math.min(customMax, customTotal))
+    : computedTotal;
 
   return (
     <PageShell title={page.title} description={page.shortDescription ?? ""}>
@@ -191,14 +266,50 @@ function FidyaKaffarahExperience({
               />
             </div>
 
+            {allowCustom && (
+              <div className="space-y-2">
+                <p className="text-xs uppercase tracking-widest text-accent-deep font-bold">
+                  {(experience as any).customAmount?.label ?? "Custom amount"}
+                </p>
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  min={customMin}
+                  max={customMax}
+                  value={customAmount}
+                  onChange={(e) => setCustomAmount(e.target.value)}
+                  placeholder={String((experience as any).customAmount?.placeholder ?? "Enter amount")}
+                  className="rounded-xl h-11"
+                />
+                <p className="text-xs text-muted-foreground">
+                  If filled, this overrides the calculated total.
+                </p>
+              </div>
+            )}
+
             <Button
               size="lg"
               className="w-full rounded-full bg-accent hover:bg-accent/90 h-14 text-base"
+              disabled={!Number.isFinite(total) || total <= 0}
               onClick={() => {
-                const qs = new URLSearchParams();
-                qs.set("amount", String(total));
-                if (options.length) qs.set("cause", selectedKey);
-                router.push(`/donate?${qs.toString()}`);
+                const label = selected?.label ?? selectedKey;
+                addDonationCartItem({
+                  kind: "fidya_kaffarah",
+                  donationPageId: page.id,
+                  donationPageSlug: page.slug,
+                  title: page.title,
+                  category: page.category,
+                  amount: total,
+                  currency: page.config?.currency ?? "GBP",
+                  quantity: boundedQty,
+                  unitPrice: allowCustom && Number.isFinite(customTotal) ? total / boundedQty : unitPrice,
+                  description: `${label} × ${boundedQty} — £${total.toFixed(2)}`,
+                  campaignId: page.campaignId ?? undefined,
+                  donationType: selectedKey,
+                  fidya: { optionKey: selectedKey, optionLabel: label },
+                });
+                toast.success("Added to cart");
+                router.push("/donation/checkout");
               }}
             >
               Add to cart
@@ -239,21 +350,18 @@ function RamadanSplitExperience({
   const [amount, setAmount] = useState<number>(50);
   const [customAmount, setCustomAmount] = useState<string>("");
 
-  const [donorName, setDonorName] = useState("");
-  const [donorEmail, setDonorEmail] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
-
   const baseTotal = customAmount ? Number(customAmount) : amount;
   const baseWeights = (experience.weights?.length ? experience.weights : Array.from({ length: nights }, () => 1)).slice(0, nights);
 
   const initialPresetId = experience.presets?.[0]?.id ?? "";
   const [presetId, setPresetId] = useState<string>(initialPresetId);
+  const [customize, setCustomize] = useState(false);
+  const [customWeights, setCustomWeights] = useState<number[]>(baseWeights);
 
   const activeWeights = useMemo(() => {
     const preset = experience.presets?.find((p) => p.id === presetId);
     const w = preset?.weights?.length ? preset.weights : baseWeights;
-    return w.slice(0, nights);
+    return (customize ? customWeights : w).slice(0, nights);
   }, [experience.presets, presetId, baseWeights, nights]);
 
   const dailyBreakdown = useMemo(() => normalizeBreakdown(Number(baseTotal) || 0, activeWeights), [baseTotal, activeWeights]);
@@ -360,6 +468,52 @@ function RamadanSplitExperience({
               </div>
             ) : null}
 
+            <div className="rounded-2xl border border-border p-4 space-y-3">
+              <label className="flex items-center gap-2 text-sm font-semibold">
+                <input
+                  type="checkbox"
+                  checked={customize}
+                  onChange={(e) => {
+                    const next = e.target.checked;
+                    setCustomize(next);
+                    if (next) {
+                      // start from current preset/base weights
+                      const preset = experience.presets?.find((p) => p.id === presetId);
+                      const w = preset?.weights?.length ? preset.weights : baseWeights;
+                      setCustomWeights(w.slice(0, nights));
+                    }
+                  }}
+                />
+                Customize split per night
+              </label>
+              {customize && (
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    Adjust weights (higher weight = more given that night). Totals will re-balance automatically.
+                  </p>
+                  <div className="grid grid-cols-6 gap-2">
+                    {Array.from({ length: nights }).map((_, i) => (
+                      <Input
+                        key={i}
+                        type="number"
+                        inputMode="numeric"
+                        value={customWeights[i] ?? 0}
+                        onChange={(e) =>
+                          setCustomWeights((prev) => {
+                            const arr = [...prev];
+                            while (arr.length < nights) arr.push(0);
+                            arr[i] = Number(e.target.value);
+                            return arr;
+                          })
+                        }
+                        className="h-10 text-sm"
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="rounded-2xl bg-secondary/50 border border-border p-4 text-sm">
               <p className="font-semibold text-primary">Preview</p>
               <p className="text-muted-foreground mt-1">
@@ -367,45 +521,35 @@ function RamadanSplitExperience({
               </p>
             </div>
 
-            <div className="space-y-3">
-              <p className="text-xs uppercase tracking-widest text-accent-deep font-bold">Your details</p>
-              <Input value={donorName} onChange={(e) => setDonorName(e.target.value)} placeholder="Full name" className="rounded-xl h-11" />
-              <Input value={donorEmail} onChange={(e) => setDonorEmail(e.target.value)} placeholder="Email" type="email" className="rounded-xl h-11" />
-              {error ? <p className="text-sm text-destructive">{error}</p> : null}
-            </div>
-
             <Button
               size="lg"
               className="w-full rounded-full bg-accent hover:bg-accent/90 h-14 text-base"
-              disabled={submitting || !donorName || !donorEmail || !Number.isFinite(Number(baseTotal)) || Number(baseTotal) <= 0}
-              onClick={async () => {
-                setSubmitting(true);
-                setError("");
-                try {
-                  await createAutomatedSchedule({
-                    donorName,
-                    donorEmail,
-                    campaignId: experience.campaignId,
-                    totalAmount: Number(baseTotal),
+              disabled={!Number.isFinite(Number(baseTotal)) || Number(baseTotal) <= 0}
+              onClick={() => {
+                addDonationCartItem({
+                  kind: "ramadan_split",
+                  donationPageId: page.id,
+                  donationPageSlug: page.slug,
+                  title: page.title,
+                  category: page.category,
+                  amount: Number(baseTotal),
+                  currency: experience.currency ?? page.config?.currency ?? "GBP",
+                  description: `Ramadan split — ${nights} nights from ${startDate} — £${Number(baseTotal).toFixed(2)}`,
+                  campaignId: experience.campaignId ?? page.campaignId ?? undefined,
+                  donationType: "ramadan",
+                  ramadan: {
                     startDate,
+                    nights,
                     dailyBreakdown,
-                    currency: experience.currency ?? "GBP",
+                    campaignId: experience.campaignId,
                     notes: `Ramadan split (${nights} nights)`,
-                  });
-
-                  // Collect payment upfront via existing donate flow (v1).
-                  const qs = new URLSearchParams();
-                  qs.set("amount", String(Number(baseTotal)));
-                  qs.set("cause", "ramadan");
-                  if (experience.campaignId) qs.set("campaign", experience.campaignId);
-                  router.push(`/donate?${qs.toString()}`);
-                } catch (e: unknown) {
-                  setError(e instanceof Error ? e.message : "Could not create schedule");
-                  setSubmitting(false);
-                }
+                  },
+                });
+                toast.success("Added to cart");
+                router.push("/donation/checkout");
               }}
             >
-              {submitting ? "Processing…" : "Donate"}
+              Add to cart
             </Button>
           </div>
         </div>

@@ -14,6 +14,8 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { DonationExperience, DonationPageDto } from "@icac/shared-types";
 
+type ExperienceType = DonationExperience["type"];
+
 export default function AdminDonationPageEditPage() {
   const params = useParams<{ id: string }>();
   const storePage = useDonationPage(params.id);
@@ -21,7 +23,58 @@ export default function AdminDonationPageEditPage() {
   const { update } = useDonationPageMutations();
   const page = USE_MOCK_DATA ? storePage : (apiPage as DonationPageDto | undefined);
   const [saving, setSaving] = useState(false);
-  const [configText, setConfigText] = useState("");
+  const [status, setStatus] = useState<DonationPageDto["status"]>("draft");
+  const [category, setCategory] = useState("standard");
+  const [experienceType, setExperienceType] = useState<ExperienceType>("standard");
+  const [fidyaOptions, setFidyaOptions] = useState<Array<{ key: string; label: string; unitPrice: number }>>([
+    { key: "fidya", label: "Fidya", unitPrice: 5 },
+    { key: "kaffarah", label: "Kaffarah", unitPrice: 300 },
+  ]);
+  const [fidyaQty, setFidyaQty] = useState({ min: 1, max: 999, default: 1, label: "Quantity:" });
+  const [fidyaAllowCustomAmount, setFidyaAllowCustomAmount] = useState(false);
+  const [fidyaCustomAmount, setFidyaCustomAmount] = useState({ min: 1, max: 100000, placeholder: "Enter amount", label: "Custom amount" });
+  const [ramadanNights, setRamadanNights] = useState(30);
+  const [ramadanWeights, setRamadanWeights] = useState<number[]>(Array.from({ length: 30 }, () => 1));
+  const [ramadanStartChoices, setRamadanStartChoices] = useState<Array<{ id: string; label: string; date: string }>>(
+    [{ id: "start-1", label: "Option 1", date: new Date().toISOString().slice(0, 10) }]
+  );
+  const [image, setImage] = useState("");
+
+  const publicUrl = useMemo(() => `/donation/${page?.slug ?? ""}`, [page?.slug]);
+
+  useEffect(() => {
+    if (USE_MOCK_DATA) return;
+    if (!page) return;
+    const cfg = (page as DonationPageDto).config ?? {};
+    const exp = (cfg as any).experience as DonationExperience | undefined;
+    if (!exp?.type) return;
+
+    setExperienceType(exp.type);
+    if (exp.type === "fidya_kaffarah") {
+      setFidyaOptions((exp.options ?? []).map((o) => ({ key: String(o.key), label: o.label, unitPrice: Number(o.unitPrice) })));
+      setFidyaQty({
+        min: exp.quantity?.min ?? 1,
+        max: exp.quantity?.max ?? 999,
+        default: exp.quantity?.default ?? 1,
+        label: exp.quantity?.label ?? "Quantity:",
+      });
+      setFidyaAllowCustomAmount(Boolean((exp as any).allowCustomAmount));
+      setFidyaCustomAmount({
+        min: Number((exp as any).customAmount?.min ?? 1),
+        max: Number((exp as any).customAmount?.max ?? 100000),
+        placeholder: String((exp as any).customAmount?.placeholder ?? "Enter amount"),
+        label: String((exp as any).customAmount?.label ?? "Custom amount"),
+      });
+    } else if (exp.type === "ramadan_split") {
+      setRamadanNights(Number(exp.nights || 30));
+      setRamadanWeights(Array.isArray(exp.weights) ? exp.weights.map((n) => Number(n)) : Array.from({ length: 30 }, () => 1));
+      setRamadanStartChoices(Array.isArray(exp.startChoices) ? exp.startChoices : ramadanStartChoices);
+    }
+
+    setImage(String((page as any).image ?? ""));
+    setCategory(String((page as any).category ?? "standard"));
+    setStatus(((page as any).status ?? "draft") as DonationPageDto["status"]);
+  }, [page]);
 
   if (isLoading && !USE_MOCK_DATA) {
     return (
@@ -34,14 +87,6 @@ export default function AdminDonationPageEditPage() {
   if (!page) {
     return <p className="text-muted-foreground">Page not found.</p>;
   }
-
-  const publicUrl = useMemo(() => `/donation/${page.slug}`, [page.slug]);
-
-  useEffect(() => {
-    if (USE_MOCK_DATA) return;
-    const cfg = (page as DonationPageDto).config ?? {};
-    setConfigText(JSON.stringify(cfg, null, 2));
-  }, [page]);
 
   const saveField = async (field: "title" | "shortDescription" | "slug", value: string) => {
     if (USE_MOCK_DATA) {
@@ -59,30 +104,68 @@ export default function AdminDonationPageEditPage() {
     }
   };
 
-  async function saveConfig() {
+  const saveStatus = async (nextStatus: DonationPageDto["status"]) => {
+    if (USE_MOCK_DATA) {
+      upsertDonationPage({ ...page, status: nextStatus as any, updatedAt: new Date().toISOString() });
+      toast.success("Saved");
+      return;
+    }
+    setSaving(true);
+    try {
+      await update.mutateAsync({ id: params.id, payload: { status: nextStatus } });
+      toast.success("Saved");
+    } catch {
+      toast.error("Save failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  function buildExperience(): DonationExperience {
+    if (experienceType === "fidya_kaffarah") {
+      return {
+        type: "fidya_kaffarah",
+        options: fidyaOptions.map((o) => ({ key: o.key, label: o.label, unitPrice: Number(o.unitPrice) })),
+        quantity: { ...fidyaQty },
+        allowCustomAmount: fidyaAllowCustomAmount,
+        customAmount: { ...fidyaCustomAmount },
+        ctaBehavior: "checkout_now",
+      };
+    }
+    if (experienceType === "ramadan_split") {
+      return {
+        type: "ramadan_split",
+        nights: ramadanNights,
+        weights: ramadanWeights.slice(0, ramadanNights),
+        startChoices: ramadanStartChoices,
+      };
+    }
+    return { type: "standard" };
+  }
+
+  async function saveExperience() {
     if (USE_MOCK_DATA) {
       toast.success("Saved (demo)");
       return;
     }
     setSaving(true);
     try {
-      const parsed = JSON.parse(configText || "{}") as Record<string, unknown>;
-      await update.mutateAsync({ id: params.id, payload: { config: parsed } });
+      await update.mutateAsync({
+        id: params.id,
+        payload: {
+          config: {
+            ...((page as DonationPageDto).config ?? {}),
+            experience: buildExperience(),
+            visibility: { homepageFeatured: false, headerFeatured: false, priority: 0 },
+          },
+        },
+      });
       toast.success("Saved");
     } catch {
-      toast.error("Config must be valid JSON");
+      toast.error("Save failed");
     } finally {
       setSaving(false);
     }
-  }
-
-  function applyTemplate(exp: DonationExperience) {
-    const next = {
-      ...(USE_MOCK_DATA ? {} : ((page as DonationPageDto).config ?? {})),
-      experience: exp,
-      visibility: { homepageFeatured: false, headerFeatured: false, priority: 0 },
-    };
-    setConfigText(JSON.stringify(next, null, 2));
   }
 
   return (
@@ -125,102 +208,199 @@ export default function AdminDonationPageEditPage() {
           />
         </div>
 
+        <div>
+          <Label>Status</Label>
+          <select
+            className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+            value={status}
+            onChange={(e) => setStatus(e.target.value as DonationPageDto["status"])}
+            onBlur={(e) => saveStatus((e.target as HTMLSelectElement).value as DonationPageDto["status"])}
+          >
+            <option value="draft">Draft</option>
+            <option value="published">Published</option>
+            <option value="archived">Archived</option>
+          </select>
+          <p className="text-xs text-muted-foreground mt-1">
+            Only <span className="font-semibold">Published</span> pages show on the landing page.
+          </p>
+        </div>
+
+        {!USE_MOCK_DATA && (
+          <div>
+            <Label>Category</Label>
+            <select
+              className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              onBlur={(e) => update.mutateAsync({ id: params.id, payload: { category: (e.target as HTMLSelectElement).value } })}
+            >
+              <option value="standard">Standard donation</option>
+              <option value="fidya">Fidya</option>
+              <option value="kaffarah">Kaffarah</option>
+              <option value="ramadan">Ramadan</option>
+              <option value="general">General</option>
+            </select>
+          </div>
+        )}
+
+        {!USE_MOCK_DATA && (
+          <div>
+            <Label>Image URL (optional)</Label>
+            <Input
+              className="mt-1"
+              value={image}
+              onChange={(e) => setImage(e.target.value)}
+              onBlur={(e) => update.mutateAsync({ id: params.id, payload: { image: e.target.value } })}
+              placeholder="https://..."
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              If empty, the homepage will show a default image.
+            </p>
+          </div>
+        )}
+
         {!USE_MOCK_DATA && (
           <>
             <div>
-              <Label className="text-sm font-semibold">Experience templates</Label>
-              <div className="mt-2 flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="rounded-full"
-                  onClick={() =>
-                    applyTemplate({ type: "standard" })
-                  }
-                >
-                  Standard
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="rounded-full"
-                  onClick={() =>
-                    applyTemplate({
-                      type: "fidya_kaffarah",
-                      options: [
-                        { key: "fidya", label: "Fidya", unitPrice: 5 },
-                        { key: "kaffarah", label: "Kaffarah", unitPrice: 300 },
-                      ],
-                      quantity: { min: 1, max: 999, default: 1, label: "Quantity:" },
-                      ctaBehavior: "checkout_now",
-                    })
-                  }
-                >
-                  Fidya/Kaffarah
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="rounded-full"
-                  onClick={() =>
-                    applyTemplate({
-                      type: "ramadan_split",
-                      nights: 30,
-                      weights: Array.from({ length: 30 }, () => 1),
-                      startChoices: [
-                        { id: "start-1", label: "Option 1", date: new Date().toISOString().slice(0, 10) },
-                      ],
-                      presets: [
-                        { id: "all30", label: "Maximize blessings all 30 nights", weights: Array.from({ length: 30 }, () => 1) },
-                      ],
-                    })
-                  }
-                >
-                  Ramadan split
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="rounded-full"
-                  onClick={() => applyTemplate({ type: "zakat_calc" })}
-                >
-                  Zakat calculator
-                </Button>
-              </div>
+              <Label className="text-sm font-semibold">Experience</Label>
+              <select
+                className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                value={experienceType}
+                onChange={(e) => setExperienceType(e.target.value as any)}
+              >
+                <option value="standard">Standard</option>
+                <option value="fidya_kaffarah">Fidya / Kaffarah</option>
+                <option value="ramadan_split">Ramadan split</option>
+              </select>
             </div>
 
             <div>
-              <Label>Config (JSON)</Label>
-              <Textarea
-                className="mt-1 font-mono text-xs min-h-[260px]"
-                value={configText}
-                onChange={(e) => setConfigText(e.target.value)}
-              />
-              <div className="mt-3 flex gap-2">
-                <Button
-                  type="button"
-                  className="rounded-full bg-accent hover:bg-accent/90"
-                  disabled={saving}
-                  onClick={saveConfig}
-                >
-                  {saving ? "Saving…" : "Save config"}
-                </Button>
-                <Button type="button" variant="outline" className="rounded-full" asChild>
-                  <Link href={publicUrl} target="_blank" rel="noreferrer">
-                    Preview
-                  </Link>
-                </Button>
-              </div>
+              {experienceType === "fidya_kaffarah" && (
+                <div className="space-y-3">
+                  <Label className="text-sm font-semibold">Options</Label>
+                  {fidyaOptions.map((o, idx) => (
+                    <div key={idx} className="grid grid-cols-3 gap-2">
+                      <Input value={o.label} onChange={(e) => setFidyaOptions((p) => p.map((x, i) => (i === idx ? { ...x, label: e.target.value } : x)))} placeholder="Label" />
+                      <Input value={o.key} onChange={(e) => setFidyaOptions((p) => p.map((x, i) => (i === idx ? { ...x, key: e.target.value } : x)))} placeholder="Key" />
+                      <Input type="number" value={o.unitPrice} onChange={(e) => setFidyaOptions((p) => p.map((x, i) => (i === idx ? { ...x, unitPrice: Number(e.target.value) } : x)))} placeholder="Unit price" />
+                    </div>
+                  ))}
+                  <Button type="button" variant="outline" className="rounded-full" onClick={() => setFidyaOptions((p) => [...p, { key: `opt-${p.length + 1}`, label: "New option", unitPrice: 0 }])}>
+                    Add option
+                  </Button>
+
+                  <div className="grid grid-cols-4 gap-2">
+                    <Input type="number" value={fidyaQty.min} onChange={(e) => setFidyaQty((p) => ({ ...p, min: Number(e.target.value) }))} placeholder="Min" />
+                    <Input type="number" value={fidyaQty.max} onChange={(e) => setFidyaQty((p) => ({ ...p, max: Number(e.target.value) }))} placeholder="Max" />
+                    <Input type="number" value={fidyaQty.default} onChange={(e) => setFidyaQty((p) => ({ ...p, default: Number(e.target.value) }))} placeholder="Default" />
+                    <Input value={fidyaQty.label} onChange={(e) => setFidyaQty((p) => ({ ...p, label: e.target.value }))} placeholder="Quantity label" />
+                  </div>
+
+                  <div className="rounded-xl border border-border p-4 space-y-2">
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={fidyaAllowCustomAmount}
+                        onChange={(e) => setFidyaAllowCustomAmount(e.target.checked)}
+                      />
+                      Allow custom amount (donor can override total)
+                    </label>
+                    {fidyaAllowCustomAmount && (
+                      <div className="grid grid-cols-4 gap-2">
+                        <Input type="number" value={fidyaCustomAmount.min} onChange={(e) => setFidyaCustomAmount((p) => ({ ...p, min: Number(e.target.value) }))} placeholder="Min amount" />
+                        <Input type="number" value={fidyaCustomAmount.max} onChange={(e) => setFidyaCustomAmount((p) => ({ ...p, max: Number(e.target.value) }))} placeholder="Max amount" />
+                        <Input value={fidyaCustomAmount.label} onChange={(e) => setFidyaCustomAmount((p) => ({ ...p, label: e.target.value }))} placeholder="Label" />
+                        <Input value={fidyaCustomAmount.placeholder} onChange={(e) => setFidyaCustomAmount((p) => ({ ...p, placeholder: e.target.value }))} placeholder="Placeholder" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {experienceType === "ramadan_split" && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label>Nights</Label>
+                      <Input type="number" value={ramadanNights} onChange={(e) => setRamadanNights(Number(e.target.value))} />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold">Start date choices</Label>
+                    {ramadanStartChoices.map((c, idx) => (
+                      <div key={c.id} className="grid grid-cols-3 gap-2">
+                        <Input value={c.label} onChange={(e) => setRamadanStartChoices((p) => p.map((x, i) => (i === idx ? { ...x, label: e.target.value } : x)))} placeholder="Label" />
+                        <Input value={c.date} onChange={(e) => setRamadanStartChoices((p) => p.map((x, i) => (i === idx ? { ...x, date: e.target.value } : x)))} placeholder="YYYY-MM-DD" />
+                        <Button type="button" variant="ghost" className="text-destructive" onClick={() => setRamadanStartChoices((p) => p.filter((_, i) => i !== idx))}>
+                          Remove
+                        </Button>
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="rounded-full"
+                      onClick={() =>
+                        setRamadanStartChoices((p) => [...p, { id: `start-${p.length + 1}`, label: "New option", date: new Date().toISOString().slice(0, 10) }])
+                      }
+                    >
+                      Add start choice
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold">Weights (per night)</Label>
+                    <div className="grid grid-cols-6 gap-2">
+                      {Array.from({ length: ramadanNights }).map((_, i) => (
+                        <Input
+                          key={i}
+                          type="number"
+                          value={ramadanWeights[i] ?? 0}
+                          onChange={(e) =>
+                            setRamadanWeights((p) => {
+                              const next = [...p];
+                              while (next.length < ramadanNights) next.push(0);
+                              next[i] = Number(e.target.value);
+                              return next;
+                            })
+                          }
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {experienceType === "standard" && (
+                <p className="text-sm text-muted-foreground">
+                  Standard uses the universal donate flow.
+                </p>
+              )}
             </div>
           </>
         )}
-        <Button
-          className="rounded-full bg-accent hover:bg-accent/90"
-          disabled={saving}
-          onClick={() => toast.success(USE_MOCK_DATA ? "Saved (demo)" : "All changes saved on blur")}
-        >
-          {saving ? "Saving…" : "Save"}
-        </Button>
+
+        <div className="pt-2 flex flex-wrap gap-2">
+          <Button
+            type="button"
+            className="rounded-full bg-accent hover:bg-accent/90"
+            disabled={saving}
+            onClick={saveExperience}
+          >
+            {saving ? "Saving…" : "Save"}
+          </Button>
+          {!USE_MOCK_DATA && (
+            <Button type="button" variant="outline" className="rounded-full" asChild>
+              <Link href={`/admin/donation-pages/${params.id}/preview`} target="_blank" rel="noreferrer">
+                Preview
+              </Link>
+            </Button>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Title, slug, status, and category save when you leave each field. Use Save to store experience settings.
+        </p>
       </div>
     </div>
   );

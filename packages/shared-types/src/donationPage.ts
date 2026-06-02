@@ -1,6 +1,6 @@
 import type { Currency } from "./enums";
 
-export type DonationPageStatus = "draft" | "published";
+export type DonationPageStatus = "draft" | "published" | "archived";
 
 export type DonationExperienceType =
   | "standard"
@@ -22,15 +22,18 @@ export type DonationExperienceFidyaKaffarah = {
   options: Array<{
     key: "fidya" | "kaffarah" | string;
     label: string;
-    unitPrice: number;
+    unitPrice?: number;
     currency?: Currency;
     description?: string;
   }>;
   quantity?: { min: number; max: number; default?: number; label?: string };
   /**
-   * v1: keep it simple (no multi-item cart); proceed to checkout immediately.
-   * Future: support cart behavior.
+   * Optional: allow donors to override the computed total with a custom amount.
+   * Useful for cases where Fidya/Kaffarah is either quantity×unitPrice OR a custom total.
    */
+  allowCustomAmount?: boolean;
+  customAmount?: { min?: number; max?: number; placeholder?: string; label?: string };
+  /** @deprecated Cart flow uses /donation/checkout */
   ctaBehavior?: "checkout_now";
 };
 
@@ -82,6 +85,7 @@ export type DonationPageDto = {
   slug: string;
   category: string;
   shortDescription?: string | null;
+  image?: string | null;
   status: DonationPageStatus;
   campaignId?: string | null;
   config: {
