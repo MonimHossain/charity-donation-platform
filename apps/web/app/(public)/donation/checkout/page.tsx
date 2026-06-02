@@ -120,16 +120,32 @@ function DonationCheckoutContent() {
     try {
       for (const line of items) {
         if (line.kind === "ramadan_split" && line.ramadan) {
+          const r = line.ramadan;
+          const startDate =
+            r.ramadanStartDate ?? r.startDate ?? r.selectedDates?.[0] ?? new Date().toISOString().slice(0, 10);
+          const installments =
+            r.recurringPlan?.installments ??
+            (r.selectedDates ?? []).map((date, i) => ({
+              id: `inst-${date}`,
+              scheduledDate: date,
+              amount: r.dailyBreakdown[i] ?? 0,
+              weight: r.weights[i] ?? 1,
+              currency: line.currency,
+              status: "pending",
+            }));
+
           await createAutomatedSchedule({
             donorName,
             donorEmail,
             donorPhone: donorPhone || undefined,
-            campaignId: line.ramadan.campaignId || line.campaignId,
+            campaignId: r.campaignId || line.campaignId,
             totalAmount: line.amount,
-            startDate: line.ramadan.startDate,
-            dailyBreakdown: line.ramadan.dailyBreakdown,
+            startDate,
+            dailyBreakdown: r.dailyBreakdown,
+            installments,
+            recurringPlanId: r.recurringPlan?.id,
             currency: line.currency,
-            notes: line.ramadan.notes || `Ramadan split (${line.ramadan.nights} nights)`,
+            notes: r.notes || `Ramadan split (${r.nights} nights)`,
           });
         }
       }

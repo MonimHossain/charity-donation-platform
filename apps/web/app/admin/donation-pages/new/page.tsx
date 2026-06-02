@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { FilePicker } from "@/components/ui/file-picker";
 import { createAdminDonationPage } from "@/lib/api";
 import type { DonationExperience } from "@icac/shared-types";
 
@@ -36,6 +37,7 @@ export default function AdminDonationPageCreatePage() {
   const [image, setImage] = useState("");
   const [status, setStatus] = useState<"draft" | "published" | "archived">("draft");
   const [experienceType, setExperienceType] = useState<DonationExperience["type"]>("standard");
+  const [ramadanStartDate, setRamadanStartDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [saving, setSaving] = useState(false);
 
   const computedSlug = useMemo(() => slug || slugify(title), [slug, title]);
@@ -55,14 +57,12 @@ export default function AdminDonationPageCreatePage() {
     if (experienceType === "ramadan_split") {
       return {
         type: "ramadan_split",
-        nights: 30,
-        weights: Array.from({ length: 30 }, () => 1),
-        startChoices: [{ id: "start-1", label: "Option 1", date: new Date().toISOString().slice(0, 10) }],
-        presets: [{ id: "all30", label: "Maximize blessings all 30 nights", weights: Array.from({ length: 30 }, () => 1) }],
+        ramadanStartDate,
+        maxNights: 30,
       };
     }
     return { type: "standard" };
-  }, [experienceType]);
+  }, [experienceType, ramadanStartDate]);
 
   async function handleSave() {
     if (!title.trim()) {
@@ -158,13 +158,10 @@ export default function AdminDonationPageCreatePage() {
         </div>
 
         <div>
-          <Label>Image URL (optional)</Label>
-          <Input
-            className="mt-1"
-            value={image}
-            onChange={(e) => setImage(e.target.value)}
-            placeholder="https://..."
-          />
+          <Label>Image (optional)</Label>
+          <div className="mt-1">
+            <FilePicker value={image} onChange={setImage} accept="image" />
+          </div>
           <p className="text-xs text-muted-foreground mt-1">
             If empty, the homepage will show a default image.
           </p>
@@ -184,9 +181,24 @@ export default function AdminDonationPageCreatePage() {
             ))}
           </select>
           <p className="text-xs text-muted-foreground mt-1">
-            You can configure details (options/weights) after creation.
+            Fidya/Kaffarah options can be configured after creation.
           </p>
         </div>
+
+        {experienceType === "ramadan_split" && (
+          <div>
+            <Label>Ramadan start date</Label>
+            <Input
+              type="date"
+              className="mt-1"
+              value={ramadanStartDate}
+              onChange={(e) => setRamadanStartDate(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Donors choose nights and weights on the public page (up to 30 days from this date).
+            </p>
+          </div>
+        )}
 
         <Button
           className="rounded-full bg-accent hover:bg-accent/90"

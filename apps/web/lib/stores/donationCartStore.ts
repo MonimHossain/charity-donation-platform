@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import type { RecurringDonationPlan } from "@icac/shared-types";
 
 const STORAGE_KEY = "icac_donation_cart_v1";
 
@@ -25,11 +26,17 @@ export type DonationCartItem = {
     optionLabel: string;
   };
   ramadan?: {
-    startDate: string;
-    nights: number;
+    ramadanStartDate: string;
+    selectedDates: string[];
+    weights: number[];
     dailyBreakdown: number[];
+    nights: number;
     campaignId?: string;
     notes?: string;
+    /** Ready for payment-provider recurring charges */
+    recurringPlan?: RecurringDonationPlan;
+    /** @deprecated */
+    startDate?: string;
   };
 };
 

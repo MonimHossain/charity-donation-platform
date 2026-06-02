@@ -37,31 +37,22 @@ export type DonationExperienceFidyaKaffarah = {
   ctaBehavior?: "checkout_now";
 };
 
+/** @deprecated Legacy admin start options — use ramadanStartDate */
 export type RamadanStartChoice = { id: string; label: string; date: string };
 
 export type DonationExperienceRamadanSplit = {
   type: "ramadan_split";
-  nights: number; // usually 30
-  /**
-   * Admin-defined weights/percentages per night.
-   * Length should equal `nights`. Values can be any non-negative numbers; UI normalizes.
-   */
-  weights: number[];
-  startChoices: RamadanStartChoice[];
-  /**
-   * Optional helper presets (for UI buttons like “Popular last 10”).
-   * Each preset is also admin-defined, since you selected admin-editable logic.
-   */
-  presets?: Array<{
-    id: string;
-    label: string;
-    weights: number[];
-  }>;
+  /** Admin-only: first day of Ramadan (donors pick nights within this window). */
+  ramadanStartDate?: string;
+  /** Max calendar days shown (≤ 30). Defaults to 30. */
+  maxNights?: number;
   currency?: Currency;
-  /**
-   * Optional: link donations to a campaign.
-   */
   campaignId?: string;
+  /** @deprecated Use ramadanStartDate */
+  nights?: number;
+  weights?: number[];
+  startChoices?: RamadanStartChoice[];
+  presets?: Array<{ id: string; label: string; weights: number[] }>;
 };
 
 export type DonationExperienceZakatCalc = {

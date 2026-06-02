@@ -15,6 +15,8 @@ export async function createAutomatedSchedule(req: Request, res: Response) {
       startDate,
       totalDays,
       dailyBreakdown,
+      installments,
+      recurringPlanId,
       currency = "GBP",
       paymentMethod = "stripe",
       giftAid = false,
@@ -26,14 +28,24 @@ export async function createAutomatedSchedule(req: Request, res: Response) {
     }
 
     const total = Number(totalAmount);
-    const breakdownArr: number[] | null = Array.isArray(dailyBreakdown)
-      ? dailyBreakdown.map((n) => Math.round(Number(n) * 100) / 100)
+    const installmentRows = Array.isArray(installments)
+      ? installments.map((row: { scheduledDate?: string; amount?: number; weight?: number; currency?: string; status?: string; id?: string }, i: number) => ({
+          id: row.id || `inst-${i + 1}`,
+          scheduledDate: String(row.scheduledDate || ""),
+          amount: Math.round(Number(row.amount) * 100) / 100,
+          weight: Math.max(0, Number(row.weight ?? 1)),
+          currency: String(row.currency || currency || "GBP").toUpperCase(),
+          status: row.status || "pending",
+        }))
       : null;
 
-    const days =
-      breakdownArr?.length
-        ? breakdownArr.length
-        : Number(totalDays);
+    const breakdownArr: number[] | null = installmentRows?.length
+      ? installmentRows.map((r) => r.amount)
+      : Array.isArray(dailyBreakdown)
+        ? dailyBreakdown.map((n) => Math.max(0, Math.round(Number(n) * 100) / 100))
+        : null;
+
+    const days = breakdownArr?.length ? breakdownArr.length : Number(totalDays);
 
     if (!Number.isFinite(total) || total <= 0 || !Number.isFinite(days) || days <= 0) {
       return res.status(400).json({ message: "Invalid amount or days" });
@@ -41,7 +53,7 @@ export async function createAutomatedSchedule(req: Request, res: Response) {
 
     if (breakdownArr) {
       if (breakdownArr.some((n) => !Number.isFinite(n) || n < 0)) {
-        return res.status(400).json({ message: "Invalid daily breakdown" });
+        return res.status(400).json({ message: "Invalid daily breakdown (weights cannot be negative)" });
       }
       // Allow small rounding differences (e.g. pennies).
       const sum = breakdownArr.reduce((s, n) => s + n, 0);
@@ -52,9 +64,15 @@ export async function createAutomatedSchedule(req: Request, res: Response) {
 
     const dailyAmount = Math.round((total / days) * 100) / 100;
 
-    const start = new Date(startDate);
-    const end = new Date(start);
-    end.setDate(end.getDate() + Number(days) - 1);
+    const start = installmentRows?.[0]?.scheduledDate
+      ? new Date(installmentRows[0].scheduledDate)
+      : new Date(startDate);
+    const end = installmentRows?.length
+      ? new Date(installmentRows[installmentRows.length - 1].scheduledDate)
+      : new Date(start);
+    if (!installmentRows?.length) {
+      end.setDate(end.getDate() + Number(days) - 1);
+    }
 
     const schedule = repo().create({
       donorName,
@@ -63,13 +81,16 @@ export async function createAutomatedSchedule(req: Request, res: Response) {
       totalAmount: total,
       dailyAmount,
       dailyBreakdown: breakdownArr || undefined,
+      installments: installmentRows || undefined,
       startDate: start,
       endDate: end,
       totalDays: Number(days),
       currency,
       paymentMethod,
       giftAid,
-      notes,
+      notes: recurringPlanId
+        ? `${notes || ""} recurringPlanId=${recurringPlanId}`.trim()
+        : notes,
       userId: (req as any).user?.id,
       status: "scheduled",
     });

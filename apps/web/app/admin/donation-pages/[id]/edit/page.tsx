@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { FilePicker } from "@/components/ui/file-picker";
+import { getRamadanAdminConfig } from "@/lib/ramadan-split";
 import { useDonationPage, upsertDonationPage } from "@/lib/stores/donationPageStore";
 import { useDonationPageAdmin, useDonationPageMutations } from "@/lib/data/donation-pages";
 import { USE_MOCK_DATA } from "@/lib/config";
@@ -33,11 +35,7 @@ export default function AdminDonationPageEditPage() {
   const [fidyaQty, setFidyaQty] = useState({ min: 1, max: 999, default: 1, label: "Quantity:" });
   const [fidyaAllowCustomAmount, setFidyaAllowCustomAmount] = useState(false);
   const [fidyaCustomAmount, setFidyaCustomAmount] = useState({ min: 1, max: 100000, placeholder: "Enter amount", label: "Custom amount" });
-  const [ramadanNights, setRamadanNights] = useState(30);
-  const [ramadanWeights, setRamadanWeights] = useState<number[]>(Array.from({ length: 30 }, () => 1));
-  const [ramadanStartChoices, setRamadanStartChoices] = useState<Array<{ id: string; label: string; date: string }>>(
-    [{ id: "start-1", label: "Option 1", date: new Date().toISOString().slice(0, 10) }]
-  );
+  const [ramadanStartDate, setRamadanStartDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [image, setImage] = useState("");
 
   const publicUrl = useMemo(() => `/donation/${page?.slug ?? ""}`, [page?.slug]);
@@ -66,9 +64,8 @@ export default function AdminDonationPageEditPage() {
         label: String((exp as any).customAmount?.label ?? "Custom amount"),
       });
     } else if (exp.type === "ramadan_split") {
-      setRamadanNights(Number(exp.nights || 30));
-      setRamadanWeights(Array.isArray(exp.weights) ? exp.weights.map((n) => Number(n)) : Array.from({ length: 30 }, () => 1));
-      setRamadanStartChoices(Array.isArray(exp.startChoices) ? exp.startChoices : ramadanStartChoices);
+      const { ramadanStartDate: start } = getRamadanAdminConfig(exp);
+      setRamadanStartDate(start);
     }
 
     setImage(String((page as any).image ?? ""));
@@ -135,9 +132,9 @@ export default function AdminDonationPageEditPage() {
     if (experienceType === "ramadan_split") {
       return {
         type: "ramadan_split",
-        nights: ramadanNights,
-        weights: ramadanWeights.slice(0, ramadanNights),
-        startChoices: ramadanStartChoices,
+        ramadanStartDate,
+        maxNights: 30,
+        campaignId: (page as DonationPageDto).campaignId ?? undefined,
       };
     }
     return { type: "standard" };
@@ -245,14 +242,17 @@ export default function AdminDonationPageEditPage() {
 
         {!USE_MOCK_DATA && (
           <div>
-            <Label>Image URL (optional)</Label>
-            <Input
-              className="mt-1"
-              value={image}
-              onChange={(e) => setImage(e.target.value)}
-              onBlur={(e) => update.mutateAsync({ id: params.id, payload: { image: e.target.value } })}
-              placeholder="https://..."
-            />
+            <Label>Image (optional)</Label>
+            <div className="mt-1">
+              <FilePicker
+                value={image}
+                onChange={(url) => {
+                  setImage(url);
+                  update.mutateAsync({ id: params.id, payload: { image: url } });
+                }}
+                accept="image"
+              />
+            </div>
             <p className="text-xs text-muted-foreground mt-1">
               If empty, the homepage will show a default image.
             </p>
@@ -318,57 +318,17 @@ export default function AdminDonationPageEditPage() {
               )}
 
               {experienceType === "ramadan_split" && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label>Nights</Label>
-                      <Input type="number" value={ramadanNights} onChange={(e) => setRamadanNights(Number(e.target.value))} />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-sm font-semibold">Start date choices</Label>
-                    {ramadanStartChoices.map((c, idx) => (
-                      <div key={c.id} className="grid grid-cols-3 gap-2">
-                        <Input value={c.label} onChange={(e) => setRamadanStartChoices((p) => p.map((x, i) => (i === idx ? { ...x, label: e.target.value } : x)))} placeholder="Label" />
-                        <Input value={c.date} onChange={(e) => setRamadanStartChoices((p) => p.map((x, i) => (i === idx ? { ...x, date: e.target.value } : x)))} placeholder="YYYY-MM-DD" />
-                        <Button type="button" variant="ghost" className="text-destructive" onClick={() => setRamadanStartChoices((p) => p.filter((_, i) => i !== idx))}>
-                          Remove
-                        </Button>
-                      </div>
-                    ))}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="rounded-full"
-                      onClick={() =>
-                        setRamadanStartChoices((p) => [...p, { id: `start-${p.length + 1}`, label: "New option", date: new Date().toISOString().slice(0, 10) }])
-                      }
-                    >
-                      Add start choice
-                    </Button>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-sm font-semibold">Weights (per night)</Label>
-                    <div className="grid grid-cols-6 gap-2">
-                      {Array.from({ length: ramadanNights }).map((_, i) => (
-                        <Input
-                          key={i}
-                          type="number"
-                          value={ramadanWeights[i] ?? 0}
-                          onChange={(e) =>
-                            setRamadanWeights((p) => {
-                              const next = [...p];
-                              while (next.length < ramadanNights) next.push(0);
-                              next[i] = Number(e.target.value);
-                              return next;
-                            })
-                          }
-                        />
-                      ))}
-                    </div>
-                  </div>
+                <div className="space-y-3">
+                  <Label className="text-sm font-semibold">Ramadan start date</Label>
+                  <Input
+                    type="date"
+                    value={ramadanStartDate}
+                    onChange={(e) => setRamadanStartDate(e.target.value)}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Donors pick which nights to give (up to 30) and optional weights on the public page.
+                    You do not set nights or weights here.
+                  </p>
                 </div>
               )}
 

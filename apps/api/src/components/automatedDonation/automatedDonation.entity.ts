@@ -43,6 +43,20 @@ export class AutomatedDonationSchedule {
   @Column({ type: "jsonb", nullable: true })
   dailyBreakdown?: number[];
 
+  /**
+   * Per-installment schedule for recurring Ramadan (or similar) plans.
+   * Payment worker charges each row on scheduledDate when status is pending.
+   */
+  @Column({ type: "jsonb", nullable: true })
+  installments?: Array<{
+    id: string;
+    scheduledDate: string;
+    amount: number;
+    weight: number;
+    currency: string;
+    status: string;
+  }>;
+
   @Column({ type: "date" })
   startDate!: Date;
 
