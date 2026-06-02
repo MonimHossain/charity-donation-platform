@@ -14,32 +14,58 @@ export async function createAutomatedSchedule(req: Request, res: Response) {
       totalAmount,
       startDate,
       totalDays,
+      dailyBreakdown,
       currency = "GBP",
       paymentMethod = "stripe",
       giftAid = false,
       notes,
     } = req.body;
 
-    if (!donorName || !donorEmail || !totalAmount || !startDate || !totalDays) {
+    if (!donorName || !donorEmail || !totalAmount || !startDate) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    const dailyAmount =
-      Math.round((Number(totalAmount) / Number(totalDays)) * 100) / 100;
+    const total = Number(totalAmount);
+    const breakdownArr: number[] | null = Array.isArray(dailyBreakdown)
+      ? dailyBreakdown.map((n) => Math.round(Number(n) * 100) / 100)
+      : null;
+
+    const days =
+      breakdownArr?.length
+        ? breakdownArr.length
+        : Number(totalDays);
+
+    if (!Number.isFinite(total) || total <= 0 || !Number.isFinite(days) || days <= 0) {
+      return res.status(400).json({ message: "Invalid amount or days" });
+    }
+
+    if (breakdownArr) {
+      if (breakdownArr.some((n) => !Number.isFinite(n) || n < 0)) {
+        return res.status(400).json({ message: "Invalid daily breakdown" });
+      }
+      // Allow small rounding differences (e.g. pennies).
+      const sum = breakdownArr.reduce((s, n) => s + n, 0);
+      if (Math.abs(sum - total) > 0.05) {
+        return res.status(400).json({ message: "Daily breakdown must sum to total amount" });
+      }
+    }
+
+    const dailyAmount = Math.round((total / days) * 100) / 100;
 
     const start = new Date(startDate);
     const end = new Date(start);
-    end.setDate(end.getDate() + Number(totalDays) - 1);
+    end.setDate(end.getDate() + Number(days) - 1);
 
     const schedule = repo().create({
       donorName,
       donorEmail,
       campaignId: campaignId || undefined,
-      totalAmount: Number(totalAmount),
+      totalAmount: total,
       dailyAmount,
+      dailyBreakdown: breakdownArr || undefined,
       startDate: start,
       endDate: end,
-      totalDays: Number(totalDays),
+      totalDays: Number(days),
       currency,
       paymentMethod,
       giftAid,

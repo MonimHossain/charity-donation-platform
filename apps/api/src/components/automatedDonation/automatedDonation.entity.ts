@@ -36,6 +36,13 @@ export class AutomatedDonationSchedule {
   @Column({ type: "decimal", precision: 12, scale: 2 })
   dailyAmount!: number;
 
+  /**
+   * Optional per-day breakdown (e.g. Ramadan nights weighting).
+   * When present, `totalDays` should match this length.
+   */
+  @Column({ type: "jsonb", nullable: true })
+  dailyBreakdown?: number[];
+
   @Column({ type: "date" })
   startDate!: Date;
 

@@ -569,7 +569,9 @@ function DonationCard({
   const fs = campaign.fundraiserSettings;
   const cs = campaign.checkoutSettings;
 
-  const donateUrl = `/donate?amount=${finalAmount + upsellTotal}&cause=${campaign.slug}&campaignId=${campaign.id}&type=${paymentType}${paymentType === "regular" ? `&interval=${selectedInterval}` : ""}`;
+  const donateUrl = (campaign as any).donationPageSlug
+    ? `/donation/${(campaign as any).donationPageSlug}`
+    : `/donate?amount=${finalAmount + upsellTotal}&cause=${campaign.slug}&campaignId=${campaign.id}&type=${paymentType}${paymentType === "regular" ? `&interval=${selectedInterval}` : ""}`;
 
   return (
     <div className="space-y-4">

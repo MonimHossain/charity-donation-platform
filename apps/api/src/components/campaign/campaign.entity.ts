@@ -212,6 +212,13 @@ export class Campaign {
   @Column({ type: "varchar", length: 3, default: "GBP" })
   currency!: string;
 
+  /**
+   * Optional link to a Donation Page slug (public route: /donation/:slug).
+   * This lets a campaign use a specialized donation experience (e.g. Ramadan split).
+   */
+  @Column({ type: "varchar", length: 255, nullable: true })
+  donationPageSlug?: string | null;
+
   @Column({ type: "int", default: 0 })
   sortOrder!: number;
 

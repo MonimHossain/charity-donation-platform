@@ -152,6 +152,7 @@ interface CampaignForm {
   isUrgent: boolean;
   campaignMode: CampaignMode;
   currency: string;
+  donationPageSlug?: string;
   attributes: CampaignAttribute[];
   upsells: CampaignUpsell[];
   fundraiserSettings: FundraiserSettings;
@@ -242,6 +243,7 @@ const defaultForm: CampaignForm = {
   isUrgent: false,
   campaignMode: "standard",
   currency: "GBP",
+  donationPageSlug: "",
   attributes: [],
   upsells: [],
   fundraiserSettings: {
@@ -335,6 +337,7 @@ export default function CampaignsPage() {
       isUrgent: c.isUrgent || false,
       campaignMode: c.campaignMode || "standard",
       currency: c.currency || "GBP",
+      donationPageSlug: (c as any).donationPageSlug || "",
       attributes: c.attributes || [],
       upsells: c.upsells || [],
       fundraiserSettings: { ...defaultForm.fundraiserSettings, ...(c.fundraiserSettings || {}) },
@@ -639,6 +642,17 @@ export default function CampaignsPage() {
                   <option value="EUR">EUR (€)</option>
                 </select>
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Linked donation page slug (optional)</Label>
+              <Input
+                value={form.donationPageSlug || ""}
+                onChange={(e) => setForm((p) => ({ ...p, donationPageSlug: e.target.value }))}
+                placeholder="e.g. ramadan-2026"
+              />
+              <p className="text-xs text-muted-foreground">
+                If set, the campaign’s donate CTA can point to <code>/donation/&lt;slug&gt;</code>.
+              </p>
             </div>
             <div className="space-y-2">
               <Label>Tags (comma-separated)</Label>

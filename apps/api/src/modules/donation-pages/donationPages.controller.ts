@@ -6,14 +6,14 @@ import { logAudit } from "../../helper/auditLog.js";
 const repo = () => AppDataSource.getRepository(DonationPage);
 
 const defaultConfig = () => ({
-  campaignMode: "standard",
-  singlePayment: { enabled: true, prices: [], allowCustom: true },
-  recurringPayment: { enabled: false, intervals: ["monthly"], prices: [] },
-  quantity: { enabled: false, label: "Quantity", min: 1, max: 100 },
-  dynamicFields: [],
-  attributes: [],
-  upsells: [],
-  paymentGateways: ["stripe", "paypal"],
+  experience: {
+    type: "standard",
+  },
+  visibility: {
+    homepageFeatured: false,
+    headerFeatured: false,
+    priority: 0,
+  },
 });
 
 export async function getAdminDonationPages(_req: Request, res: Response) {
