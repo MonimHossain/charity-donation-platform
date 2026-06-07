@@ -21,6 +21,7 @@ import {
   ChevronRight,
   Check,
   MoreHorizontal,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +29,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { FilePicker } from "@/components/ui/file-picker";
 import RichTextEditor from "@/components/admin/RichTextEditor";
@@ -299,7 +301,6 @@ const CAMPAIGN_MODES: { value: CampaignMode; label: string; desc: string }[] = [
 ];
 
 const GATEWAYS = ["stripe", "paypal", "telr", "paytabs"];
-const INTERVALS = ["daily", "weekly", "monthly", "yearly"];
 const FIELD_TYPES = ["text", "textarea", "dropdown", "radio", "checkbox", "number", "date"];
 const CATEGORIES = ["general", "education", "health", "water", "food", "shelter", "orphan", "zakat", "sadaqah", "emergency"];
 
@@ -413,6 +414,17 @@ function buildWizardSteps(form: CampaignForm): WizardStep[] {
   return steps;
 }
 
+function normalizeAttributePayment(attr: CampaignAttribute): CampaignAttribute {
+  if (attr.enableQuantity && !attr.enableRegularPayment) {
+    return { ...attr, enableQuantity: false };
+  }
+  return attr;
+}
+
+function normalizeCampaignAttributes(attributes: CampaignAttribute[]) {
+  return attributes.map(normalizeAttributePayment);
+}
+
 // ── Main Page ──
 
 export default function CampaignsPage() {
@@ -508,13 +520,35 @@ export default function CampaignsPage() {
       toast.error("Please enter a campaign title before continuing.");
       return false;
     }
+    if (stepId === "attributes" && !isExperienceCampaignMode(form.campaignMode) && form.attributes.length === 0) {
+      toast.warning(
+        "Add at least one donation attribute. Without it, this campaign will not show any payment options to donors."
+      );
+      return false;
+    }
+    return true;
+  }
+
+  function validateBeforeSave(): boolean {
+    if (!form.title.trim()) return false;
+    if (!isExperienceCampaignMode(form.campaignMode) && form.attributes.length === 0) {
+      toast.warning(
+        "Add at least one donation attribute. Without it, this campaign will not show any payment options to donors."
+      );
+      return false;
+    }
     return true;
   }
 
   async function handleSave() {
-    if (!form.title.trim()) {
-      toast.error("Title is required");
-      setCurrentStepIndex(0);
+    if (!validateBeforeSave()) {
+      if (!form.title.trim()) {
+        toast.error("Title is required");
+        setCurrentStepIndex(0);
+      } else if (!isExperienceCampaignMode(form.campaignMode)) {
+        const attributesStepIndex = wizardSteps.findIndex((s) => s.id === "attributes");
+        if (attributesStepIndex >= 0) setCurrentStepIndex(attributesStepIndex);
+      }
       return;
     }
     setSaving(true);
@@ -525,7 +559,11 @@ export default function CampaignsPage() {
           .toLowerCase()
           .replace(/[^a-z0-9]+/g, "-")
           .replace(/(^-|-$)/g, "");
-      const payload = { ...form, slug };
+      const payload = {
+        ...form,
+        slug,
+        attributes: normalizeCampaignAttributes(form.attributes),
+      };
 
       if (editingId) {
         await adminUpdateCampaign(editingId, payload);
@@ -1167,10 +1205,20 @@ export default function CampaignsPage() {
                   Each attribute defines a donation option with its own payment types, preset amounts, and custom fields.
                 </p>
               </div>
-              <Button onClick={() => setForm((p) => ({ ...p, attributes: [...p.attributes, newAttribute()] }))}>
+              <Button onClick={() => setForm((p) => ({ ...p, attributes: [newAttribute(), ...p.attributes] }))}>
                 <Plus className="h-4 w-4" /> Add Attribute
               </Button>
             </div>
+
+            {!isExperienceCampaignMode(form.campaignMode) && form.attributes.length === 0 && (
+              <Alert className="border-amber-200 bg-amber-50 text-amber-950">
+                <AlertTriangle className="text-amber-600" />
+                <AlertDescription>
+                  This campaign has no donation attributes yet. Without at least one attribute, donors will not see any
+                  payment options on the campaign page.
+                </AlertDescription>
+              </Alert>
+            )}
 
             {form.attributes.length === 0 && (
               <div className="text-center py-10 text-muted-foreground text-sm">
@@ -1227,8 +1275,8 @@ export default function CampaignsPage() {
                     setForm((p) => ({
                       ...p,
                       attributes: [
-                        ...p.attributes,
                         { ...attr, id: uid(), name: `${attr.name} (copy)` },
+                        ...p.attributes,
                       ],
                     }))
                   }
@@ -1610,6 +1658,14 @@ function AttributeEditor({
     onChange({ ...attribute, [key]: value });
   }
 
+  function setRegularPaymentEnabled(enabled: boolean) {
+    onChange({
+      ...attribute,
+      enableRegularPayment: enabled,
+      enableQuantity: enabled ? attribute.enableQuantity : false,
+    });
+  }
+
   return (
     <div className="rounded-xl border bg-background">
       <div className="flex items-center gap-2 p-4">
@@ -1622,7 +1678,7 @@ function AttributeEditor({
             {[
               attribute.enableSinglePayment && "Single",
               attribute.enableRegularPayment && "Regular",
-              attribute.enableQuantity && "Qty",
+              attribute.enableRegularPayment && attribute.enableQuantity && "Qty",
             ]
               .filter(Boolean)
               .join(" · ") || "No payment types"}
@@ -1669,19 +1725,36 @@ function AttributeEditor({
           </div>
 
           {/* Payment type toggles */}
-          <div className="flex flex-wrap gap-6 p-3 rounded-lg bg-muted/30">
-            <label className="flex items-center gap-2 text-sm">
-              <Switch checked={attribute.enableSinglePayment} onCheckedChange={(v) => update("enableSinglePayment", v)} />
-              Single Payment
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <Switch checked={attribute.enableRegularPayment} onCheckedChange={(v) => update("enableRegularPayment", v)} />
-              Regular Payment
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <Switch checked={attribute.enableQuantity} onCheckedChange={(v) => update("enableQuantity", v)} />
-              Quantity
-            </label>
+          <div className="space-y-3 p-3 rounded-lg bg-muted/30">
+            <div className="flex flex-wrap gap-6">
+              <label className="flex items-center gap-2 text-sm">
+                <Switch
+                  checked={attribute.enableSinglePayment}
+                  onCheckedChange={(v) => update("enableSinglePayment", v)}
+                />
+                Single Payment
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <Switch checked={attribute.enableRegularPayment} onCheckedChange={setRegularPaymentEnabled} />
+                Regular Payment
+              </label>
+            </div>
+            {attribute.enableRegularPayment && (
+              <>
+                <p className="text-xs text-muted-foreground">
+                  Donors choose the recurring frequency and amount on the campaign page — no admin setup needed.
+                </p>
+                <label className="flex items-center gap-2 text-sm cursor-pointer pt-2 border-t border-border/60">
+                  <input
+                    type="checkbox"
+                    checked={attribute.enableQuantity}
+                    onChange={(e) => update("enableQuantity", e.target.checked)}
+                    className="h-3.5 w-3.5 rounded accent-primary"
+                  />
+                  Enable quantity selector
+                </label>
+              </>
+            )}
           </div>
 
           {/* Single payment config */}
@@ -1773,189 +1846,8 @@ function AttributeEditor({
             </div>
           )}
 
-          {/* Regular payment config */}
-          {attribute.enableRegularPayment && (
-            <div className="p-4 rounded-xl border space-y-3">
-              <h4 className="text-sm font-semibold">Regular Payment Configuration</h4>
-              <div className="space-y-2">
-                <Label className="text-xs">Allowed Intervals</Label>
-                <div className="flex flex-wrap gap-2">
-                  {INTERVALS.map((interval) => (
-                    <label key={interval} className="flex items-center gap-1.5 text-xs capitalize">
-                      <input
-                        type="checkbox"
-                        checked={attribute.regularPaymentConfig.allowedIntervals.includes(interval)}
-                        onChange={() => {
-                          const arr = attribute.regularPaymentConfig.allowedIntervals.includes(interval)
-                            ? attribute.regularPaymentConfig.allowedIntervals.filter((i) => i !== interval)
-                            : [...attribute.regularPaymentConfig.allowedIntervals, interval];
-                          update("regularPaymentConfig", { ...attribute.regularPaymentConfig, allowedIntervals: arr });
-                        }}
-                        className="h-3.5 w-3.5 rounded accent-primary"
-                      />
-                      {interval}
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs">Duration Type</Label>
-                <select
-                  value={attribute.regularPaymentConfig.durationType}
-                  onChange={(e) =>
-                    update("regularPaymentConfig", {
-                      ...attribute.regularPaymentConfig,
-                      durationType: e.target.value as any,
-                    })
-                  }
-                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                >
-                  <option value="never_ends">Never Ends</option>
-                  <option value="fixed_duration">Fixed Duration</option>
-                </select>
-              </div>
-              {attribute.regularPaymentConfig.durationType === "fixed_duration" && (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Fixed Duration Value</Label>
-                    <Input
-                      type="number"
-                      value={attribute.regularPaymentConfig.fixedDurationValue || 0}
-                      onChange={(e) =>
-                        update("regularPaymentConfig", {
-                          ...attribute.regularPaymentConfig,
-                          fixedDurationValue: Number(e.target.value),
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Duration Type</Label>
-                    <select
-                      value={attribute.regularPaymentConfig.fixedDurationType || "months"}
-                      onChange={(e) =>
-                        update("regularPaymentConfig", {
-                          ...attribute.regularPaymentConfig,
-                          fixedDurationType: e.target.value as any,
-                        })
-                      }
-                      className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                    >
-                      <option value="months">Months</option>
-                      <option value="payments">Number of Payments</option>
-                      <option value="date">Until Date</option>
-                    </select>
-                  </div>
-                </div>
-              )}
-
-              <Separator />
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs">Preset Amounts</Label>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs"
-                    onClick={() =>
-                      update("regularPaymentConfig", {
-                        ...attribute.regularPaymentConfig,
-                        presetAmounts: [
-                          ...attribute.regularPaymentConfig.presetAmounts,
-                          { amount: 0, cause: "" },
-                        ],
-                      })
-                    }
-                  >
-                    <Plus className="h-3 w-3" /> Add
-                  </Button>
-                </div>
-                {attribute.regularPaymentConfig.presetAmounts.map((preset, pi) => (
-                  <div key={pi} className="flex items-end gap-2 p-2 rounded-lg bg-muted/30">
-                    <div className="w-24 space-y-1">
-                      <Label className="text-[10px]">Amount</Label>
-                      <Input
-                        type="number"
-                        value={preset.amount}
-                        onChange={(e) => {
-                          const arr = [...attribute.regularPaymentConfig.presetAmounts];
-                          arr[pi] = { ...arr[pi], amount: Number(e.target.value) };
-                          update("regularPaymentConfig", { ...attribute.regularPaymentConfig, presetAmounts: arr });
-                        }}
-                        className="h-8 text-xs"
-                      />
-                    </div>
-                    <div className="flex-1 space-y-1">
-                      <Label className="text-[10px]">Cause / Label</Label>
-                      <Input
-                        value={preset.cause}
-                        onChange={(e) => {
-                          const arr = [...attribute.regularPaymentConfig.presetAmounts];
-                          arr[pi] = { ...arr[pi], cause: e.target.value };
-                          update("regularPaymentConfig", { ...attribute.regularPaymentConfig, presetAmounts: arr });
-                        }}
-                        className="h-8 text-xs"
-                        placeholder="e.g. Orphan Sponsorship"
-                      />
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive shrink-0"
-                      onClick={() => {
-                        const arr = attribute.regularPaymentConfig.presetAmounts.filter((_, i) => i !== pi);
-                        update("regularPaymentConfig", { ...attribute.regularPaymentConfig, presetAmounts: arr });
-                      }}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-
-              <SwitchRow
-                label="Allow Custom Amount"
-                checked={attribute.regularPaymentConfig.allowCustomAmount}
-                onChange={(v) =>
-                  update("regularPaymentConfig", { ...attribute.regularPaymentConfig, allowCustomAmount: v })
-                }
-              />
-              {attribute.regularPaymentConfig.allowCustomAmount && (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Custom Min Amount</Label>
-                    <Input
-                      type="number"
-                      value={attribute.regularPaymentConfig.customMinAmount}
-                      onChange={(e) =>
-                        update("regularPaymentConfig", {
-                          ...attribute.regularPaymentConfig,
-                          customMinAmount: Number(e.target.value),
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Custom Max Amount</Label>
-                    <Input
-                      type="number"
-                      value={attribute.regularPaymentConfig.customMaxAmount}
-                      onChange={(e) =>
-                        update("regularPaymentConfig", {
-                          ...attribute.regularPaymentConfig,
-                          customMaxAmount: Number(e.target.value),
-                        })
-                      }
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Quantity config */}
-          {attribute.enableQuantity && (
+          {/* Quantity config — regular payment only */}
+          {attribute.enableRegularPayment && attribute.enableQuantity && (
             <div className="p-4 rounded-xl border space-y-3">
               <h4 className="text-sm font-semibold">Quantity Configuration</h4>
               <div className="grid gap-3 sm:grid-cols-3">
@@ -1963,7 +1855,9 @@ function AttributeEditor({
                   <Label className="text-xs">Quantity Label</Label>
                   <Input
                     value={attribute.quantityConfig.quantityLabel}
-                    onChange={(e) => update("quantityConfig", { ...attribute.quantityConfig, quantityLabel: e.target.value })}
+                    onChange={(e) =>
+                      update("quantityConfig", { ...attribute.quantityConfig, quantityLabel: e.target.value })
+                    }
                     placeholder="e.g. Number of meals"
                   />
                 </div>
@@ -1972,7 +1866,9 @@ function AttributeEditor({
                   <Input
                     type="number"
                     value={attribute.quantityConfig.minQuantity}
-                    onChange={(e) => update("quantityConfig", { ...attribute.quantityConfig, minQuantity: Number(e.target.value) })}
+                    onChange={(e) =>
+                      update("quantityConfig", { ...attribute.quantityConfig, minQuantity: Number(e.target.value) })
+                    }
                   />
                 </div>
                 <div className="space-y-1">
@@ -1980,7 +1876,9 @@ function AttributeEditor({
                   <Input
                     type="number"
                     value={attribute.quantityConfig.maxQuantity}
-                    onChange={(e) => update("quantityConfig", { ...attribute.quantityConfig, maxQuantity: Number(e.target.value) })}
+                    onChange={(e) =>
+                      update("quantityConfig", { ...attribute.quantityConfig, maxQuantity: Number(e.target.value) })
+                    }
                   />
                 </div>
               </div>

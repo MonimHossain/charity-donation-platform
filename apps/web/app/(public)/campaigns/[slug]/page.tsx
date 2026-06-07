@@ -209,9 +209,8 @@ function CampaignDetailApi({ slug: slugProp }: { slug: string }) {
             }
           } else if (attr.enableRegularPayment) {
             setPaymentType("regular");
-            if (attr.regularPaymentConfig?.presetAmounts?.length > 0) {
-              setSelectedAmount(attr.regularPaymentConfig.presetAmounts[0]?.amount ?? 0);
-            }
+            setSelectedAmount(0);
+            setCustomAmount("");
           }
         }
       })
@@ -238,18 +237,23 @@ function CampaignDetailApi({ slug: slugProp }: { slug: string }) {
       }
     } else if (attr.enableRegularPayment) {
       setPaymentType("regular");
-      if (attr.regularPaymentConfig?.presetAmounts?.length > 0) {
-        setSelectedAmount(attr.regularPaymentConfig.presetAmounts[0]?.amount ?? 0);
-      }
+      setSelectedAmount(0);
+      setCustomAmount("");
     }
-    setQuantity(attr.enableQuantity ? attr.quantityConfig.minQuantity : 1);
+    setQuantity(
+      attr.enableRegularPayment && attr.enableQuantity ? attr.quantityConfig.minQuantity : 1
+    );
     setCustomFieldValues({});
   }
 
   const finalAmount = useMemo(() => {
     const base = customAmount ? Number(customAmount) : selectedAmount;
-    return base * quantity;
-  }, [selectedAmount, customAmount, quantity]);
+    const useQuantity =
+      selectedAttr?.enableRegularPayment &&
+      selectedAttr?.enableQuantity &&
+      paymentType === "regular";
+    return base * (useQuantity ? quantity : 1);
+  }, [selectedAmount, customAmount, quantity, selectedAttr, paymentType]);
 
   const upsellTotal = useMemo(() => {
     if (!campaign) return 0;
@@ -603,6 +607,11 @@ function CampaignDetailApi({ slug: slugProp }: { slug: string }) {
   );
 }
 
+// Donors choose recurring details on the campaign page — not configured in admin.
+const DONOR_REGULAR_INTERVALS = ["daily", "weekly", "monthly", "yearly"] as const;
+const DONOR_REGULAR_MIN_AMOUNT = 5;
+const DONOR_REGULAR_MAX_AMOUNT = 5000;
+
 // ── Donation Card Component ──
 
 function DonationCard({
@@ -754,9 +763,7 @@ function DonationCard({
               type="button"
               onClick={() => {
                 onSetPaymentType("regular");
-                if (selectedAttr.regularPaymentConfig?.presetAmounts?.length > 0) {
-                  onSetSelectedAmount(selectedAttr.regularPaymentConfig.presetAmounts[0]?.amount ?? 0);
-                }
+                onSetSelectedAmount(0);
                 onSetCustomAmount("");
               }}
               className={cn(
@@ -764,12 +771,12 @@ function DonationCard({
                 paymentType === "regular" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"
               )}
             >
-              Monthly
+              Recurring
             </button>
           </div>
         )}
 
-        {/* Amount selection */}
+        {/* Single payment */}
         {selectedAttr && paymentType === "single" && selectedAttr.enableSinglePayment && (
           <div>
             {(selectedAttr.singlePaymentConfig.priceType === "preset" ||
@@ -820,80 +827,52 @@ function DonationCard({
 
         {selectedAttr && paymentType === "regular" && selectedAttr.enableRegularPayment && (
           <div className="space-y-3">
-            {selectedAttr.regularPaymentConfig.allowedIntervals.length > 1 && (
-              <div>
-                <Label className="text-xs mb-1.5 block">Frequency</Label>
-                <div className="flex gap-2">
-                  {selectedAttr.regularPaymentConfig.allowedIntervals.map((interval) => (
-                    <button
-                      key={interval}
-                      type="button"
-                      onClick={() => onSetSelectedInterval(interval)}
-                      className={cn(
-                        "rounded-lg border px-3 py-1.5 text-xs font-medium capitalize transition-all",
-                        selectedInterval === interval
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border hover:border-primary/50"
-                      )}
-                    >
-                      {interval}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {selectedAttr.regularPaymentConfig.presetAmounts.length > 0 && (
-              <div className="space-y-2">
-                {selectedAttr.regularPaymentConfig.presetAmounts.map((preset) => (
+            <div>
+              <Label className="text-xs mb-1.5 block">How often?</Label>
+              <div className="flex flex-wrap gap-2">
+                {DONOR_REGULAR_INTERVALS.map((interval) => (
                   <button
-                    key={preset.amount}
+                    key={interval}
                     type="button"
-                    onClick={() => {
-                      onSetSelectedAmount(preset.amount);
-                      onSetCustomAmount("");
-                    }}
+                    onClick={() => onSetSelectedInterval(interval)}
                     className={cn(
-                      "flex w-full items-center justify-between rounded-lg border-2 p-3 text-left transition-all",
-                      selectedAmount === preset.amount && !customAmount
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-primary/40"
+                      "rounded-lg border px-3 py-1.5 text-xs font-medium capitalize transition-all",
+                      selectedInterval === interval
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border hover:border-primary/50"
                     )}
                   >
-                    <div>
-                      <p className="text-sm font-semibold">{sym}{preset.amount}/{selectedInterval}</p>
-                      {preset.cause && <p className="text-xs text-muted-foreground">{preset.cause}</p>}
-                    </div>
-                    {selectedAmount === preset.amount && !customAmount && (
-                      <Check className="h-4 w-4 text-primary" />
-                    )}
+                    {interval}
                   </button>
                 ))}
               </div>
-            )}
+            </div>
 
-            {selectedAttr.regularPaymentConfig.allowCustomAmount && (
+            <div>
+              <Label className="text-xs mb-1.5 block">Amount per payment</Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">{sym}</span>
                 <Input
                   type="number"
-                  placeholder="Custom amount"
+                  placeholder="Enter amount"
                   value={customAmount}
                   onChange={(e) => {
                     onSetCustomAmount(e.target.value);
                     onSetSelectedAmount(0);
                   }}
                   className="pl-7"
-                  min={selectedAttr.regularPaymentConfig.customMinAmount}
-                  max={selectedAttr.regularPaymentConfig.customMaxAmount}
+                  min={DONOR_REGULAR_MIN_AMOUNT}
+                  max={DONOR_REGULAR_MAX_AMOUNT}
                 />
               </div>
-            )}
+            </div>
           </div>
         )}
 
-        {/* Quantity */}
-        {selectedAttr?.enableQuantity && (
+        {/* Quantity — regular payment only */}
+        {selectedAttr?.enableRegularPayment &&
+          paymentType === "regular" &&
+          selectedAttr.enableQuantity && (
           <div>
             <Label className="text-xs mb-1.5 block">
               {selectedAttr.quantityConfig.quantityLabel || "Quantity"}
