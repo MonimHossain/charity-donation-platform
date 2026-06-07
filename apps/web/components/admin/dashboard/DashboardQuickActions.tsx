@@ -1,12 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Plus, ShieldCheck, FileText, UserPlus } from "lucide-react";
+import { UserPlus } from "lucide-react";
 
 const actions = [
-  { label: "Add Charity", href: "/admin/charities/new", icon: Plus },
-  { label: "New Certification", href: "/admin/certifications/new", icon: ShieldCheck },
-  { label: "Upload Report", href: "/admin/reports/new", icon: FileText },
   { label: "Add Admin User", href: "/admin/admin-users", icon: UserPlus },
 ];
 

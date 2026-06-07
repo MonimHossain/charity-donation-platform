@@ -36,9 +36,6 @@ import {
   Activity,
   Clock,
   Calculator,
-  Landmark,
-  ShieldCheck,
-  UserCheck,
   ClipboardList,
   AlertTriangle,
   MessageSquare,
@@ -77,17 +74,6 @@ const navItems: NavItem[] = [
   { label: "Recurring", href: "/admin/recurring", icon: Repeat },
   { label: "Automated", href: "/admin/automated", icon: Clock },
   { label: "Users", href: "/admin/users", icon: Users },
-  {
-    label: "Charities",
-    href: "/admin/charities",
-    icon: Landmark,
-    children: [
-      { label: "Directory", href: "/admin/charities", icon: Landmark },
-      { label: "Certifications", href: "/admin/certifications", icon: ShieldCheck },
-      { label: "Experts", href: "/admin/experts", icon: UserCheck },
-      { label: "Reports", href: "/admin/reports", icon: FileText },
-    ],
-  },
   {
     label: "Submissions",
     href: "/admin/applications",
