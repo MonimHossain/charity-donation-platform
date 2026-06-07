@@ -42,7 +42,6 @@ import {
   Inbox,
   History,
   Lock,
-  PieChart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -65,7 +64,6 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
-  { label: "Overview", href: "/admin/dashboard-overview", icon: PieChart },
   { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
   { label: "Campaigns", href: "/admin/campaigns", icon: Megaphone },
   { label: "Donation pages", href: "/admin/donation-pages", icon: Heart },
