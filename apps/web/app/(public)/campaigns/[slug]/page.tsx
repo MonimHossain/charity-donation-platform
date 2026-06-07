@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils";
 import { fetchCampaignBySlug, fetchRecentDonations } from "@/lib/api";
 import { toast } from "sonner";
 import { CampaignDonationExperience } from "@/components/campaigns/CampaignDonationExperience";
+import MarkdownRenderer from "@/components/blog/MarkdownRenderer";
 import { CAMPAIGN_MODE_LABELS, isExperienceCampaignMode } from "@/lib/campaign-experience";
 import { getCampaignHeroImage, resolveMediaUrl } from "@/lib/campaign-media";
 
@@ -377,13 +378,10 @@ function CampaignDetailApi({ slug: slugProp }: { slug: string }) {
                         <CampaignDonationExperience campaign={campaign} embedded />
                       </div>
                     </div>
-                    <div className="prose prose-lg max-w-none">
+                    <div>
                       <h2 className="font-serif text-2xl font-bold">About This Campaign</h2>
                       {campaign.fullDescription ? (
-                        <div
-                          className="mt-4 text-muted-foreground leading-relaxed"
-                          dangerouslySetInnerHTML={{ __html: campaign.fullDescription }}
-                        />
+                        <MarkdownRenderer content={campaign.fullDescription} className="mt-4" />
                       ) : (
                         <p className="mt-4 text-muted-foreground leading-relaxed whitespace-pre-line">
                           {campaign.shortDescription}
@@ -406,13 +404,10 @@ function CampaignDetailApi({ slug: slugProp }: { slug: string }) {
 
               {isRamadanSplit && (
                 <div className="max-w-3xl">
-                  <div className="prose prose-lg max-w-none">
+                  <div>
                     <h2 className="font-serif text-2xl font-bold">About This Campaign</h2>
                     {campaign.fullDescription ? (
-                      <div
-                        className="mt-4 text-muted-foreground leading-relaxed"
-                        dangerouslySetInnerHTML={{ __html: campaign.fullDescription }}
-                      />
+                      <MarkdownRenderer content={campaign.fullDescription} className="mt-4" />
                     ) : (
                       <p className="mt-4 text-muted-foreground leading-relaxed whitespace-pre-line">
                         {campaign.shortDescription}
@@ -486,13 +481,10 @@ function CampaignDetailApi({ slug: slugProp }: { slug: string }) {
               </div>
 
               {/* Campaign description */}
-              <div className="prose prose-lg max-w-none">
+              <div>
                 <h2 className="font-serif text-2xl font-bold">About This Campaign</h2>
                 {campaign.fullDescription ? (
-                  <div
-                    className="mt-4 text-muted-foreground leading-relaxed"
-                    dangerouslySetInnerHTML={{ __html: campaign.fullDescription }}
-                  />
+                  <MarkdownRenderer content={campaign.fullDescription} className="mt-4" />
                 ) : (
                   <p className="mt-4 text-muted-foreground leading-relaxed whitespace-pre-line">
                     {campaign.shortDescription}
