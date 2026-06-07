@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import {
   Plus,
@@ -17,6 +17,9 @@ import {
   ArrowDown,
   GripVertical,
   Copy,
+  ChevronLeft,
+  ChevronRight,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +27,6 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { FilePicker } from "@/components/ui/file-picker";
 import { cn } from "@/lib/utils";
 import {
@@ -304,6 +306,92 @@ const statusStyles: Record<string, string> = {
   archived: "bg-amber-100 text-amber-700",
 };
 
+type WizardStepId =
+  | "info"
+  | "type"
+  | "attributes"
+  | "fundraiser"
+  | "checkout"
+  | "upsells"
+  | "visibility"
+  | "gateways"
+  | "seo";
+
+interface WizardStep {
+  id: WizardStepId;
+  title: string;
+  description: string;
+}
+
+function buildWizardSteps(form: CampaignForm): WizardStep[] {
+  const experience = isExperienceCampaignMode(form.campaignMode);
+  const steps: WizardStep[] = [
+    {
+      id: "info",
+      title: "Campaign basics",
+      description: "Name your campaign, add descriptions, and upload images.",
+    },
+    {
+      id: "type",
+      title: "Campaign type",
+      description: experience
+        ? "Choose an experience type and configure Fidya/Kaffarah or Ramadan settings."
+        : "Pick how donors will interact with this campaign.",
+    },
+  ];
+
+  if (!experience) {
+    steps.push({
+      id: "attributes",
+      title: "Donation options",
+      description: "Set preset amounts, payment types, and custom fields.",
+    });
+  }
+
+  if (form.campaignMode === "fundraiser") {
+    steps.push({
+      id: "fundraiser",
+      title: "Fundraiser goal",
+      description: "Set your target, deadline, and progress bar options.",
+    });
+  }
+
+  if (!experience) {
+    steps.push({
+      id: "checkout",
+      title: "Checkout options",
+      description: "Gift Aid, dedications, comments, and upsell toggles.",
+    });
+    if (form.checkoutSettings.enableUpsell) {
+      steps.push({
+        id: "upsells",
+        title: "Upsell add-ons",
+        description: "Optional extra amounts donors can add at checkout.",
+      });
+    }
+  }
+
+  steps.push(
+    {
+      id: "visibility",
+      title: "Visibility",
+      description: "Control where this campaign appears on your site.",
+    },
+    {
+      id: "gateways",
+      title: "Payment gateways",
+      description: "Choose which payment providers accept donations.",
+    },
+    {
+      id: "seo",
+      title: "SEO & publish",
+      description: "Search and social previews — then create or update your campaign.",
+    }
+  );
+
+  return steps;
+}
+
 // ── Main Page ──
 
 export default function CampaignsPage() {
@@ -315,7 +403,7 @@ export default function CampaignsPage() {
   const [form, setForm] = useState<CampaignForm>({ ...defaultForm });
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("info");
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
 
   const loadCampaigns = useCallback(async () => {
     try {
@@ -332,10 +420,34 @@ export default function CampaignsPage() {
     loadCampaigns();
   }, [loadCampaigns]);
 
+  const wizardSteps = useMemo(
+    () => buildWizardSteps(form),
+    [form.campaignMode, form.checkoutSettings.enableUpsell]
+  );
+
+  useEffect(() => {
+    if (!showEditor) return;
+    setCurrentStepIndex((i) => Math.min(i, Math.max(0, wizardSteps.length - 1)));
+  }, [wizardSteps.length, showEditor]);
+
+  function goToStep(index: number) {
+    setCurrentStepIndex(Math.max(0, Math.min(index, wizardSteps.length - 1)));
+  }
+
+  function goNextStep() {
+    const step = wizardSteps[currentStepIndex];
+    if (!step || !validateStep(step.id)) return;
+    setCurrentStepIndex((i) => Math.min(i + 1, wizardSteps.length - 1));
+  }
+
+  function goPrevStep() {
+    setCurrentStepIndex((i) => Math.max(i - 1, 0));
+  }
+
   function openCreate() {
     setForm({ ...defaultForm, attributes: [], upsells: [] });
     setEditingId(null);
-    setActiveTab("info");
+    setCurrentStepIndex(0);
     setShowEditor(true);
   }
 
@@ -364,14 +476,22 @@ export default function CampaignsPage() {
       seoSettings: { ...defaultForm.seoSettings, ...(c.seoSettings || {}) },
     });
     setEditingId(c.id);
-    setActiveTab("info");
+    setCurrentStepIndex(0);
     setShowEditor(true);
+  }
+
+  function validateStep(stepId: WizardStepId): boolean {
+    if (stepId === "info" && !form.title.trim()) {
+      toast.error("Please enter a campaign title before continuing.");
+      return false;
+    }
+    return true;
   }
 
   async function handleSave() {
     if (!form.title.trim()) {
       toast.error("Title is required");
-      setActiveTab("info");
+      setCurrentStepIndex(0);
       return;
     }
     setSaving(true);
@@ -547,11 +667,15 @@ export default function CampaignsPage() {
     ...(form.experienceConfig as RamadanSplitConfig),
   };
 
+  const currentStep = wizardSteps[currentStepIndex] ?? wizardSteps[0];
+  const currentStepId = currentStep?.id ?? "info";
+  const isLastStep = currentStepIndex >= wizardSteps.length - 1;
+
   // ── Editor View ──
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 max-w-4xl">
+      <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold font-serif tracking-tight">
             {editingId ? "Edit Campaign" : "Create Campaign"}
@@ -560,31 +684,73 @@ export default function CampaignsPage() {
             {form.title || "Untitled campaign"} &middot; {CAMPAIGN_MODE_LABELS[form.campaignMode] || form.campaignMode}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setShowEditor(false)}>Cancel</Button>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            {saving ? "Saving..." : editingId ? "Update" : "Create"}
-          </Button>
-        </div>
+        <Button variant="outline" onClick={() => setShowEditor(false)}>Cancel</Button>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="flex-wrap h-auto gap-1 p-1">
-          <TabsTrigger value="info">Campaign Info</TabsTrigger>
-          <TabsTrigger value="type">Campaign Type</TabsTrigger>
-          {!isExperienceMode && <TabsTrigger value="attributes">Attributes</TabsTrigger>}
-          {form.campaignMode === "fundraiser" && <TabsTrigger value="fundraiser">Fundraiser</TabsTrigger>}
-          {!isExperienceMode && <TabsTrigger value="checkout">Checkout</TabsTrigger>}
-          {!isExperienceMode && form.checkoutSettings.enableUpsell && <TabsTrigger value="upsells">Upsells</TabsTrigger>}
-          <TabsTrigger value="visibility">Visibility</TabsTrigger>
-          <TabsTrigger value="gateways">Gateways</TabsTrigger>
-          <TabsTrigger value="seo">SEO</TabsTrigger>
-        </TabsList>
+      <nav aria-label="Campaign setup progress" className="rounded-2xl border bg-card shadow-soft p-4 sm:p-5">
+        <div className="flex items-center justify-between gap-2 mb-4">
+          <p className="text-sm font-medium text-foreground">
+            Step {currentStepIndex + 1} of {wizardSteps.length}
+          </p>
+          <p className="text-xs text-muted-foreground hidden sm:block">
+            {Math.round(((currentStepIndex + 1) / wizardSteps.length) * 100)}% complete
+          </p>
+        </div>
+        <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden mb-5">
+          <div
+            className="h-full rounded-full bg-primary transition-all duration-300"
+            style={{ width: `${((currentStepIndex + 1) / wizardSteps.length) * 100}%` }}
+          />
+        </div>
+        <ol className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-x-1 sm:gap-y-2">
+          {wizardSteps.map((step, index) => {
+            const done = index < currentStepIndex;
+            const active = index === currentStepIndex;
+            return (
+              <li key={step.id} className="flex items-center gap-1 sm:contents">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (index <= currentStepIndex) goToStep(index);
+                  }}
+                  disabled={index > currentStepIndex}
+                  className={cn(
+                    "flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs transition sm:text-sm",
+                    active && "bg-primary/10 text-primary font-semibold",
+                    done && "text-foreground hover:bg-muted cursor-pointer",
+                    !active && !done && "text-muted-foreground cursor-not-allowed opacity-60"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[11px] font-bold",
+                      active && "border-primary bg-primary text-primary-foreground",
+                      done && "border-primary bg-primary/15 text-primary",
+                      !active && !done && "border-border bg-background"
+                    )}
+                  >
+                    {done ? <Check className="h-3.5 w-3.5" /> : index + 1}
+                  </span>
+                  <span className="truncate max-w-[140px] sm:max-w-none">{step.title}</span>
+                </button>
+                {index < wizardSteps.length - 1 && (
+                  <ChevronRight className="hidden sm:block h-4 w-4 text-muted-foreground/50 shrink-0" />
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      </nav>
 
-        {/* ── Tab 1: Campaign Info ── */}
-        <TabsContent value="info">
-          <div className="rounded-2xl border bg-card shadow-soft p-6 space-y-5">
+      <div className="rounded-2xl border bg-card shadow-soft overflow-hidden">
+        <div className="border-b bg-muted/30 px-6 py-4">
+          <h2 className="text-lg font-serif font-bold">{currentStep.title}</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">{currentStep.description}</p>
+        </div>
+
+        <div className="p-6">
+        {currentStepId === "info" && (
+          <div className="space-y-5">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Title *</Label>
@@ -700,11 +866,10 @@ export default function CampaignsPage() {
               </label>
             </div>
           </div>
-        </TabsContent>
+        )}
 
-        {/* ── Tab 2: Campaign Type ── */}
-        <TabsContent value="type">
-          <div className="rounded-2xl border bg-card shadow-soft p-6 space-y-4">
+        {currentStepId === "type" && (
+          <div className="space-y-4">
             <h3 className="font-serif font-semibold text-lg">Campaign Mode</h3>
             <p className="text-sm text-muted-foreground">Select the type of campaign. This determines which configuration options are available.</p>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -908,11 +1073,10 @@ export default function CampaignsPage() {
               </div>
             )}
           </div>
-        </TabsContent>
+        )}
 
-        {/* ── Tab 3: Attributes ── */}
-        <TabsContent value="attributes">
-          <div className="rounded-2xl border bg-card shadow-soft p-6 space-y-4">
+        {currentStepId === "attributes" && (
+          <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-serif font-semibold text-lg">Campaign Attributes</h3>
@@ -989,11 +1153,10 @@ export default function CampaignsPage() {
               ))}
             </div>
           </div>
-        </TabsContent>
+        )}
 
-        {/* ── Tab 4: Fundraiser (conditional) ── */}
-        <TabsContent value="fundraiser">
-          <div className="rounded-2xl border bg-card shadow-soft p-6 space-y-5">
+        {currentStepId === "fundraiser" && (
+          <div className="space-y-5">
             <h3 className="font-serif font-semibold text-lg">Fundraiser Settings</h3>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
@@ -1073,11 +1236,10 @@ export default function CampaignsPage() {
               />
             </div>
           </div>
-        </TabsContent>
+        )}
 
-        {/* ── Tab 5: Checkout ── */}
-        <TabsContent value="checkout">
-          <div className="rounded-2xl border bg-card shadow-soft p-6 space-y-4">
+        {currentStepId === "checkout" && (
+          <div className="space-y-4">
             <h3 className="font-serif font-semibold text-lg">Checkout Settings</h3>
             <p className="text-sm text-muted-foreground">Configure what options donors see at checkout.</p>
             <div className="space-y-3">
@@ -1113,11 +1275,10 @@ export default function CampaignsPage() {
               />
             </div>
           </div>
-        </TabsContent>
+        )}
 
-        {/* ── Tab 6: Upsells (conditional) ── */}
-        <TabsContent value="upsells">
-          <div className="rounded-2xl border bg-card shadow-soft p-6 space-y-4">
+        {currentStepId === "upsells" && (
+          <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-serif font-semibold text-lg">Checkout Upsells</h3>
@@ -1194,11 +1355,10 @@ export default function CampaignsPage() {
               <p className="text-center py-6 text-muted-foreground text-sm">No upsells added yet.</p>
             )}
           </div>
-        </TabsContent>
+        )}
 
-        {/* ── Tab 7: Visibility ── */}
-        <TabsContent value="visibility">
-          <div className="rounded-2xl border bg-card shadow-soft p-6 space-y-4">
+        {currentStepId === "visibility" && (
+          <div className="space-y-4">
             <h3 className="font-serif font-semibold text-lg">Visibility Settings</h3>
             <div className="space-y-3">
               <SwitchRow
@@ -1218,11 +1378,10 @@ export default function CampaignsPage() {
               />
             </div>
           </div>
-        </TabsContent>
+        )}
 
-        {/* ── Tab 8: Payment Gateways ── */}
-        <TabsContent value="gateways">
-          <div className="rounded-2xl border bg-card shadow-soft p-6 space-y-4">
+        {currentStepId === "gateways" && (
+          <div className="space-y-4">
             <h3 className="font-serif font-semibold text-lg">Payment Gateways</h3>
             <p className="text-sm text-muted-foreground">Select which payment gateways are enabled for this campaign.</p>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -1252,11 +1411,10 @@ export default function CampaignsPage() {
               ))}
             </div>
           </div>
-        </TabsContent>
+        )}
 
-        {/* ── Tab 9: SEO ── */}
-        <TabsContent value="seo">
-          <div className="rounded-2xl border bg-card shadow-soft p-6 space-y-4">
+        {currentStepId === "seo" && (
+          <div className="space-y-4">
             <h3 className="font-serif font-semibold text-lg">SEO Settings</h3>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
@@ -1302,16 +1460,41 @@ export default function CampaignsPage() {
                 accept="image"
               />
             </div>
+            {isLastStep && (
+              <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 mt-2">
+                <p className="text-sm font-medium text-foreground">Ready to publish?</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Review your settings above, then click {editingId ? "Update Campaign" : "Create Campaign"} below to save.
+                </p>
+              </div>
+            )}
           </div>
-        </TabsContent>
-      </Tabs>
+        )}
+        </div>
+      </div>
 
-      <div className="flex justify-end gap-2 pb-8">
-        <Button variant="outline" onClick={() => setShowEditor(false)}>Cancel</Button>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          {saving ? "Saving..." : editingId ? "Update Campaign" : "Create Campaign"}
+      <div className="flex items-center justify-between gap-3 sticky bottom-0 z-10 rounded-2xl border bg-card/95 backdrop-blur px-4 py-4 shadow-soft">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={goPrevStep}
+          disabled={currentStepIndex === 0}
+        >
+          <ChevronLeft className="h-4 w-4" /> Previous
         </Button>
+        <p className="text-xs text-muted-foreground hidden sm:block">
+          {currentStep.title}
+        </p>
+        {isLastStep ? (
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {saving ? "Saving..." : editingId ? "Update Campaign" : "Create Campaign"}
+          </Button>
+        ) : (
+          <Button type="button" onClick={goNextStep}>
+            Next <ChevronRight className="h-4 w-4" />
+          </Button>
+        )}
       </div>
     </div>
   );
