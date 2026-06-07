@@ -33,62 +33,62 @@
 
 @layer base {
   :root {
-    /* Lovable: lime primary + deep purple accent */
+    /* Your Impact: purple primary + lime green accent */
     --background: 0 0% 100%;
-    --foreground: 70 30% 12%;
+    --foreground: 265 35% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 70 30% 12%;
+    --card-foreground: 265 35% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 70 30% 12%;
+    --popover-foreground: 265 35% 12%;
 
-    --primary: 70 87% 44%;
+    --primary: 268 100% 51%;
     --primary-foreground: 0 0% 100%;
-    --primary-glow: 70 87% 50%;
+    --primary-glow: 270 95% 65%;
 
-    --secondary: 70 30% 96%;
-    --secondary-foreground: 268 40% 18%;
+    --secondary: 270 60% 96%;
+    --secondary-foreground: 268 50% 22%;
 
-    --muted: 70 20% 96%;
-    --muted-foreground: 70 12% 42%;
+    --muted: 270 30% 96%;
+    --muted-foreground: 265 12% 42%;
 
-    --accent: 268 100% 51%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 70 87% 44%;
+    --accent-foreground: 268 60% 14%;
     --accent-deep: 268 100% 51%;
 
-    --plum: 268 100% 51%;
-    --plum-soft: 270 30% 94%;
+    --plum: 268 95% 60%;
+    --plum-soft: 270 95% 94%;
     --mint-soft: 70 80% 90%;
 
     --destructive: 0 75% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 70 20% 90%;
-    --input: 70 20% 90%;
-    --ring: 70 87% 44%;
+    --border: 270 25% 90%;
+    --input: 270 25% 90%;
+    --ring: 268 100% 51%;
 
-    --gradient-hero: linear-gradient(180deg, hsl(0 0% 100%), hsl(70 60% 97%));
-    --gradient-warm: linear-gradient(180deg, hsl(0 0% 100%), hsl(70 50% 96%));
-    --gradient-accent: linear-gradient(135deg, hsl(70 87% 44%), hsl(268 100% 51%));
-    --gradient-plum: linear-gradient(160deg, hsl(70 87% 44%), hsl(268 100% 51%));
-    --gradient-lavender: linear-gradient(160deg, hsl(70 30% 96%), hsl(70 25% 88%));
+    --gradient-hero: linear-gradient(180deg, hsl(0 0% 100%), hsl(270 50% 97%));
+    --gradient-warm: linear-gradient(180deg, hsl(0 0% 100%), hsl(270 60% 96%));
+    --gradient-accent: linear-gradient(135deg, hsl(268 100% 51%), hsl(270 95% 65%));
+    --gradient-plum: linear-gradient(160deg, hsl(268 100% 51%), hsl(270 95% 35%));
+    --gradient-lavender: linear-gradient(160deg, hsl(270 95% 96%), hsl(270 90% 88%));
     --gradient-mint: linear-gradient(160deg, hsl(70 80% 92%), hsl(70 75% 78%));
-    --gradient-brand: linear-gradient(135deg, hsl(70 87% 44%), hsl(268 100% 51%));
+    --gradient-brand: linear-gradient(135deg, hsl(268 100% 51%), hsl(70 87% 44%));
 
-    --shadow-soft: 0 8px 30px -12px hsl(70 40% 25% / 0.15);
-    --shadow-glow: 0 20px 60px -20px hsl(70 87% 44% / 0.4);
-    --shadow-lift: 0 30px 80px -30px hsl(70 40% 20% / 0.3);
+    --shadow-soft: 0 8px 30px -12px hsl(268 60% 30% / 0.15);
+    --shadow-glow: 0 20px 60px -20px hsl(268 100% 51% / 0.4);
+    --shadow-lift: 0 30px 80px -30px hsl(268 60% 20% / 0.3);
     --transition-smooth: cubic-bezier(0.4, 0, 0.2, 1);
 
-    --sidebar-background: 70 50% 98%;
-    --sidebar-foreground: 70 30% 15%;
-    --sidebar-primary: 70 87% 44%;
+    --sidebar-background: 270 50% 98%;
+    --sidebar-foreground: 268 35% 15%;
+    --sidebar-primary: 268 100% 51%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 70 40% 94%;
+    --sidebar-accent: 270 60% 94%;
     --sidebar-accent-foreground: 268 50% 22%;
-    --sidebar-border: 70 25% 88%;
-    --sidebar-ring: 70 87% 44%;
+    --sidebar-border: 270 25% 88%;
+    --sidebar-ring: 268 100% 51%;
   }
 
   .dark {
@@ -155,7 +155,7 @@
   padding: 0 0.1em;
 }
 
-@utility text-plum { color: #b9d20e; }
+@utility text-plum { color: rgb(185, 210, 14); }
 @utility text-blend-brand {
   background-image: var(--gradient-brand);
   -webkit-background-clip: text;
