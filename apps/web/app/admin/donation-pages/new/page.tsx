@@ -95,7 +95,7 @@ export default function AdminDonationPageCreatePage() {
   return (
     <div className="space-y-6 max-w-2xl">
       <Button variant="ghost" asChild className="-ml-2">
-        <Link href="/admin/donation-pages">
+        <Link href="/admin/campaigns">
           <ArrowLeft className="w-4 h-4" /> Back
         </Link>
       </Button>

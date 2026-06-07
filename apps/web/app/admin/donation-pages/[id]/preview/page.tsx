@@ -48,7 +48,7 @@ export default function AdminDonationPagePreview() {
             description="This page may not exist or has no configured experience."
           />
           <Button asChild className="rounded-full mt-8">
-            <Link href="/admin/donation-pages">Back</Link>
+            <Link href="/admin/campaigns">Back</Link>
           </Button>
         </section>
       </PageShell>

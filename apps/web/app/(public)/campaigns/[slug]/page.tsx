@@ -31,6 +31,8 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { fetchCampaignBySlug, fetchRecentDonations } from "@/lib/api";
 import { toast } from "sonner";
+import { CampaignDonationExperience } from "@/components/campaigns/CampaignDonationExperience";
+import { CAMPAIGN_MODE_LABELS, isExperienceCampaignMode } from "@/lib/campaign-experience";
 
 // ── Types ──
 
@@ -134,6 +136,7 @@ interface CampaignData {
   campaignMode: string;
   currency: string;
   donorCount: number;
+  experienceConfig?: Record<string, unknown>;
   attributes: CampaignAttribute[];
   upsells: CampaignUpsell[];
   fundraiserSettings: FundraiserSettings;
@@ -295,6 +298,8 @@ function CampaignDetailApi({ slug: slugProp }: { slug: string }) {
 
   const sym = CURRENCY_SYMBOLS[campaign.currency] || "\u00a3";
   const isFundraiser = campaign.campaignMode === "fundraiser";
+  const isExperienceMode = isExperienceCampaignMode(campaign.campaignMode);
+  const isRamadanSplit = campaign.campaignMode === "ramadan_split";
   const fs = campaign.fundraiserSettings;
   const percentage =
     isFundraiser && fs?.targetAmount > 0
@@ -317,7 +322,9 @@ function CampaignDetailApi({ slug: slugProp }: { slug: string }) {
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 container-wide pb-8">
           <div className="flex flex-wrap items-center gap-2 mb-3">
-            <Badge variant="secondary" className="capitalize">{campaign.campaignMode}</Badge>
+            <Badge variant="secondary">
+              {CAMPAIGN_MODE_LABELS[campaign.campaignMode] || campaign.campaignMode}
+            </Badge>
             <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm">
               {campaign.category}
             </span>
@@ -348,6 +355,89 @@ function CampaignDetailApi({ slug: slugProp }: { slug: string }) {
       {/* ── Main Content ── */}
       <section className="py-12">
         <div className="container-wide">
+          {isExperienceMode ? (
+            <div className={cn("grid gap-10", isRamadanSplit ? "lg:grid-cols-1" : "lg:grid-cols-[1fr_420px]")}>
+              <div className={cn(isRamadanSplit ? "order-1" : "")}>
+                {isRamadanSplit ? (
+                  <div className="max-w-3xl">
+                    <div className="rounded-2xl border bg-card p-6 shadow-soft">
+                      <CampaignDonationExperience campaign={campaign} embedded />
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="mb-8 lg:hidden">
+                      <div className="rounded-2xl border bg-card p-6 shadow-soft">
+                        <CampaignDonationExperience campaign={campaign} embedded />
+                      </div>
+                    </div>
+                    <div className="prose prose-lg max-w-none">
+                      <h2 className="font-serif text-2xl font-bold">About This Campaign</h2>
+                      {campaign.fullDescription ? (
+                        <div
+                          className="mt-4 text-muted-foreground leading-relaxed"
+                          dangerouslySetInnerHTML={{ __html: campaign.fullDescription }}
+                        />
+                      ) : (
+                        <p className="mt-4 text-muted-foreground leading-relaxed whitespace-pre-line">
+                          {campaign.shortDescription}
+                        </p>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {!isRamadanSplit && (
+                <div className="hidden lg:block">
+                  <div className="sticky top-24">
+                    <div className="rounded-2xl border bg-card p-6 shadow-soft">
+                      <CampaignDonationExperience campaign={campaign} embedded />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {isRamadanSplit && (
+                <div className="max-w-3xl">
+                  <div className="prose prose-lg max-w-none">
+                    <h2 className="font-serif text-2xl font-bold">About This Campaign</h2>
+                    {campaign.fullDescription ? (
+                      <div
+                        className="mt-4 text-muted-foreground leading-relaxed"
+                        dangerouslySetInnerHTML={{ __html: campaign.fullDescription }}
+                      />
+                    ) : (
+                      <p className="mt-4 text-muted-foreground leading-relaxed whitespace-pre-line">
+                        {campaign.shortDescription}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className={cn(isRamadanSplit ? "max-w-3xl" : "lg:col-span-2")}>
+                <div className="mt-10">
+                  <h3 className="font-serif text-lg font-semibold">Share This Campaign</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">Spread the word and multiply your impact.</p>
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <Button variant="outline" size="sm" onClick={() => handleShare("facebook")}>
+                      <Facebook className="h-4 w-4" /> Facebook
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => handleShare("twitter")}>
+                      <Twitter className="h-4 w-4" /> Twitter / X
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => handleShare("whatsapp")}>
+                      <MessageCircle className="h-4 w-4" /> WhatsApp
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => handleShare("copy")}>
+                      <Copy className="h-4 w-4" /> Copy Link
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
           <div className="grid gap-10 lg:grid-cols-[1fr_420px]">
             {/* Left column - Description & info */}
             <div>
@@ -508,6 +598,7 @@ function CampaignDetailApi({ slug: slugProp }: { slug: string }) {
               </div>
             </div>
           </div>
+          )}
         </div>
       </section>
     </>
@@ -569,9 +660,7 @@ function DonationCard({
   const fs = campaign.fundraiserSettings;
   const cs = campaign.checkoutSettings;
 
-  const donateUrl = (campaign as any).donationPageSlug
-    ? `/donation/${(campaign as any).donationPageSlug}`
-    : `/donate?amount=${finalAmount + upsellTotal}&cause=${campaign.slug}&campaignId=${campaign.id}&type=${paymentType}${paymentType === "regular" ? `&interval=${selectedInterval}` : ""}`;
+  const donateUrl = `/donate?amount=${finalAmount + upsellTotal}&cause=${campaign.slug}&campaignId=${campaign.id}&type=${paymentType}${paymentType === "regular" ? `&interval=${selectedInterval}` : ""}`;
 
   return (
     <div className="space-y-4">

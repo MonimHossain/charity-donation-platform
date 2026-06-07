@@ -33,6 +33,14 @@ import {
   adminUpdateCampaign,
   adminDeleteCampaign,
 } from "@/lib/api";
+import {
+  CAMPAIGN_MODE_LABELS,
+  DEFAULT_FIDYA_CONFIG,
+  DEFAULT_RAMADAN_CONFIG,
+  isExperienceCampaignMode,
+  type FidyaKaffarahConfig,
+  type RamadanSplitConfig,
+} from "@/lib/campaign-experience";
 
 // ── Types ──
 
@@ -136,7 +144,14 @@ interface SeoSettings {
   ogImage: string;
 }
 
-type CampaignMode = "standard" | "fundraiser" | "sponsorship" | "zakat" | "automated";
+type CampaignMode =
+  | "standard"
+  | "fundraiser"
+  | "sponsorship"
+  | "zakat"
+  | "automated"
+  | "fidya_kaffarah"
+  | "ramadan_split";
 
 interface CampaignForm {
   title: string;
@@ -152,7 +167,7 @@ interface CampaignForm {
   isUrgent: boolean;
   campaignMode: CampaignMode;
   currency: string;
-  donationPageSlug?: string;
+  experienceConfig: FidyaKaffarahConfig | RamadanSplitConfig | Record<string, never>;
   attributes: CampaignAttribute[];
   upsells: CampaignUpsell[];
   fundraiserSettings: FundraiserSettings;
@@ -243,7 +258,7 @@ const defaultForm: CampaignForm = {
   isUrgent: false,
   campaignMode: "standard",
   currency: "GBP",
-  donationPageSlug: "",
+  experienceConfig: {},
   attributes: [],
   upsells: [],
   fundraiserSettings: {
@@ -274,6 +289,8 @@ const CAMPAIGN_MODES: { value: CampaignMode; label: string; desc: string }[] = [
   { value: "sponsorship", label: "Sponsorship", desc: "Recurring sponsorship programmes" },
   { value: "zakat", label: "Zakat", desc: "Zakat-eligible donations" },
   { value: "automated", label: "Automated", desc: "Automated/scheduled donation splits" },
+  { value: "fidya_kaffarah", label: "Fidya / Kaffarah", desc: "Quantity-based Fidya and Kaffarah checkout" },
+  { value: "ramadan_split", label: "Ramadan Split", desc: "Split gifts across Ramadan nights with weights" },
 ];
 
 const GATEWAYS = ["stripe", "paypal", "telr", "paytabs"];
@@ -337,7 +354,7 @@ export default function CampaignsPage() {
       isUrgent: c.isUrgent || false,
       campaignMode: c.campaignMode || "standard",
       currency: c.currency || "GBP",
-      donationPageSlug: (c as any).donationPageSlug || "",
+      experienceConfig: (c as any).experienceConfig || {},
       attributes: c.attributes || [],
       upsells: c.upsells || [],
       fundraiserSettings: { ...defaultForm.fundraiserSettings, ...(c.fundraiserSettings || {}) },
@@ -419,7 +436,9 @@ export default function CampaignsPage() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold font-serif tracking-tight">Campaigns</h1>
-            <p className="text-muted-foreground mt-1">Universal donation campaign management</p>
+            <p className="text-muted-foreground mt-1">
+              Manage all fundraising campaigns — including Fidya/Kaffarah and Ramadan Split experiences.
+            </p>
           </div>
           <Button onClick={openCreate}>
             <Plus className="h-4 w-4" /> Create Campaign
@@ -449,7 +468,7 @@ export default function CampaignsPage() {
                 <thead>
                   <tr className="border-b bg-muted/40">
                     <th className="px-5 py-3 text-left font-medium text-muted-foreground">Campaign</th>
-                    <th className="px-5 py-3 text-left font-medium text-muted-foreground">Mode</th>
+                    <th className="px-5 py-3 text-left font-medium text-muted-foreground">Type</th>
                     <th className="px-5 py-3 text-left font-medium text-muted-foreground">Status</th>
                     <th className="px-5 py-3 text-left font-medium text-muted-foreground">Attributes</th>
                     <th className="px-5 py-3 text-left font-medium text-muted-foreground">Flags</th>
@@ -466,7 +485,9 @@ export default function CampaignsPage() {
                         </div>
                       </td>
                       <td className="px-5 py-3">
-                        <Badge variant="outline" className="capitalize">{c.campaignMode || "standard"}</Badge>
+                        <Badge variant="outline">
+                          {CAMPAIGN_MODE_LABELS[c.campaignMode || "standard"] || c.campaignMode}
+                        </Badge>
                       </td>
                       <td className="px-5 py-3">
                         <span className={cn("inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize", statusStyles[c.status] || "bg-slate-100 text-slate-600")}>
@@ -474,7 +495,9 @@ export default function CampaignsPage() {
                         </span>
                       </td>
                       <td className="px-5 py-3 text-muted-foreground">
-                        {c.attributes?.length || 0} attribute{(c.attributes?.length || 0) !== 1 ? "s" : ""}
+                        {isExperienceCampaignMode(c.campaignMode || "standard")
+                          ? "—"
+                          : `${c.attributes?.length || 0} attribute${(c.attributes?.length || 0) !== 1 ? "s" : ""}`}
                       </td>
                       <td className="px-5 py-3">
                         <div className="flex gap-1">
@@ -514,6 +537,16 @@ export default function CampaignsPage() {
     );
   }
 
+  const isExperienceMode = isExperienceCampaignMode(form.campaignMode);
+  const fidyaConfig = {
+    ...DEFAULT_FIDYA_CONFIG,
+    ...(form.experienceConfig as FidyaKaffarahConfig),
+  };
+  const ramadanConfig = {
+    ...DEFAULT_RAMADAN_CONFIG,
+    ...(form.experienceConfig as RamadanSplitConfig),
+  };
+
   // ── Editor View ──
 
   return (
@@ -524,7 +557,7 @@ export default function CampaignsPage() {
             {editingId ? "Edit Campaign" : "Create Campaign"}
           </h1>
           <p className="text-muted-foreground mt-1">
-            {form.title || "Untitled campaign"} &middot; {form.campaignMode}
+            {form.title || "Untitled campaign"} &middot; {CAMPAIGN_MODE_LABELS[form.campaignMode] || form.campaignMode}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -540,10 +573,10 @@ export default function CampaignsPage() {
         <TabsList className="flex-wrap h-auto gap-1 p-1">
           <TabsTrigger value="info">Campaign Info</TabsTrigger>
           <TabsTrigger value="type">Campaign Type</TabsTrigger>
-          <TabsTrigger value="attributes">Attributes</TabsTrigger>
+          {!isExperienceMode && <TabsTrigger value="attributes">Attributes</TabsTrigger>}
           {form.campaignMode === "fundraiser" && <TabsTrigger value="fundraiser">Fundraiser</TabsTrigger>}
-          <TabsTrigger value="checkout">Checkout</TabsTrigger>
-          {form.checkoutSettings.enableUpsell && <TabsTrigger value="upsells">Upsells</TabsTrigger>}
+          {!isExperienceMode && <TabsTrigger value="checkout">Checkout</TabsTrigger>}
+          {!isExperienceMode && form.checkoutSettings.enableUpsell && <TabsTrigger value="upsells">Upsells</TabsTrigger>}
           <TabsTrigger value="visibility">Visibility</TabsTrigger>
           <TabsTrigger value="gateways">Gateways</TabsTrigger>
           <TabsTrigger value="seo">SEO</TabsTrigger>
@@ -644,17 +677,6 @@ export default function CampaignsPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Linked donation page slug (optional)</Label>
-              <Input
-                value={form.donationPageSlug || ""}
-                onChange={(e) => setForm((p) => ({ ...p, donationPageSlug: e.target.value }))}
-                placeholder="e.g. ramadan-2026"
-              />
-              <p className="text-xs text-muted-foreground">
-                If set, the campaign’s donate CTA can point to <code>/donation/&lt;slug&gt;</code>.
-              </p>
-            </div>
-            <div className="space-y-2">
               <Label>Tags (comma-separated)</Label>
               <Input
                 value={form.tags.join(", ")}
@@ -690,7 +712,18 @@ export default function CampaignsPage() {
                 <button
                   key={m.value}
                   type="button"
-                  onClick={() => setForm((p) => ({ ...p, campaignMode: m.value }))}
+                  onClick={() =>
+                    setForm((p) => ({
+                      ...p,
+                      campaignMode: m.value,
+                      experienceConfig:
+                        m.value === "fidya_kaffarah"
+                          ? { ...DEFAULT_FIDYA_CONFIG, ...(p.experienceConfig as FidyaKaffarahConfig) }
+                          : m.value === "ramadan_split"
+                            ? { ...DEFAULT_RAMADAN_CONFIG, ...(p.experienceConfig as RamadanSplitConfig) }
+                            : p.experienceConfig,
+                    }))
+                  }
                   className={cn(
                     "rounded-xl border-2 p-4 text-left transition-all",
                     form.campaignMode === m.value
@@ -703,6 +736,177 @@ export default function CampaignsPage() {
                 </button>
               ))}
             </div>
+
+            {form.campaignMode === "fidya_kaffarah" && (
+              <div className="mt-6 space-y-4 rounded-xl border border-violet-200 bg-violet-50/50 p-5">
+                <h4 className="font-semibold text-sm">Fidya / Kaffarah settings</h4>
+                <p className="text-xs text-muted-foreground">
+                  Configure options and unit prices shown on the campaign page.
+                </p>
+                {fidyaConfig.options.map((opt, idx) => (
+                  <div key={idx} className="grid grid-cols-3 gap-2">
+                    <Input
+                      value={opt.label}
+                      onChange={(e) =>
+                        setForm((p) => {
+                          const options = [...fidyaConfig.options];
+                          options[idx] = { ...options[idx], label: e.target.value };
+                          return { ...p, experienceConfig: { ...fidyaConfig, options } };
+                        })
+                      }
+                      placeholder="Label"
+                    />
+                    <Input
+                      value={opt.key}
+                      onChange={(e) =>
+                        setForm((p) => {
+                          const options = [...fidyaConfig.options];
+                          options[idx] = { ...options[idx], key: e.target.value };
+                          return { ...p, experienceConfig: { ...fidyaConfig, options } };
+                        })
+                      }
+                      placeholder="Key"
+                    />
+                    <Input
+                      type="number"
+                      value={opt.unitPrice ?? 0}
+                      onChange={(e) =>
+                        setForm((p) => {
+                          const options = [...fidyaConfig.options];
+                          options[idx] = { ...options[idx], unitPrice: Number(e.target.value) };
+                          return { ...p, experienceConfig: { ...fidyaConfig, options } };
+                        })
+                      }
+                      placeholder="Unit price"
+                    />
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setForm((p) => ({
+                      ...p,
+                      experienceConfig: {
+                        ...fidyaConfig,
+                        options: [
+                          ...fidyaConfig.options,
+                          { key: `opt-${fidyaConfig.options.length + 1}`, label: "New option", unitPrice: 0 },
+                        ],
+                      },
+                    }))
+                  }
+                >
+                  Add option
+                </Button>
+                <div className="grid grid-cols-4 gap-2">
+                  <Input
+                    type="number"
+                    value={fidyaConfig.quantity?.min ?? 1}
+                    onChange={(e) =>
+                      setForm((p) => ({
+                        ...p,
+                        experienceConfig: {
+                          ...fidyaConfig,
+                          quantity: { ...fidyaConfig.quantity!, min: Number(e.target.value) },
+                        },
+                      }))
+                    }
+                    placeholder="Min qty"
+                  />
+                  <Input
+                    type="number"
+                    value={fidyaConfig.quantity?.max ?? 999}
+                    onChange={(e) =>
+                      setForm((p) => ({
+                        ...p,
+                        experienceConfig: {
+                          ...fidyaConfig,
+                          quantity: { ...fidyaConfig.quantity!, max: Number(e.target.value) },
+                        },
+                      }))
+                    }
+                    placeholder="Max qty"
+                  />
+                  <Input
+                    type="number"
+                    value={fidyaConfig.quantity?.default ?? 1}
+                    onChange={(e) =>
+                      setForm((p) => ({
+                        ...p,
+                        experienceConfig: {
+                          ...fidyaConfig,
+                          quantity: { ...fidyaConfig.quantity!, default: Number(e.target.value) },
+                        },
+                      }))
+                    }
+                    placeholder="Default"
+                  />
+                  <Input
+                    value={fidyaConfig.quantity?.label ?? "Quantity:"}
+                    onChange={(e) =>
+                      setForm((p) => ({
+                        ...p,
+                        experienceConfig: {
+                          ...fidyaConfig,
+                          quantity: { ...fidyaConfig.quantity!, label: e.target.value },
+                        },
+                      }))
+                    }
+                    placeholder="Quantity label"
+                  />
+                </div>
+                <label className="flex items-center gap-2 text-sm">
+                  <Switch
+                    checked={Boolean(fidyaConfig.allowCustomAmount)}
+                    onCheckedChange={(v) =>
+                      setForm((p) => ({ ...p, experienceConfig: { ...fidyaConfig, allowCustomAmount: v } }))
+                    }
+                  />
+                  Allow custom amount override
+                </label>
+              </div>
+            )}
+
+            {form.campaignMode === "ramadan_split" && (
+              <div className="mt-6 space-y-4 rounded-xl border border-amber-200 bg-amber-50/50 p-5">
+                <h4 className="font-semibold text-sm">Ramadan Split settings</h4>
+                <p className="text-xs text-muted-foreground">
+                  Donors pick nights and optional weights on the public campaign page.
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2 max-w-md">
+                  <div className="space-y-2">
+                    <Label>Ramadan start date</Label>
+                    <Input
+                      type="date"
+                      value={ramadanConfig.ramadanStartDate ?? ""}
+                      onChange={(e) =>
+                        setForm((p) => ({
+                          ...p,
+                          experienceConfig: { ...ramadanConfig, ramadanStartDate: e.target.value },
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Max nights</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={30}
+                      value={ramadanConfig.maxNights ?? 30}
+                      onChange={(e) =>
+                        setForm((p) => ({
+                          ...p,
+                          experienceConfig: { ...ramadanConfig, maxNights: Number(e.target.value) },
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </TabsContent>
 

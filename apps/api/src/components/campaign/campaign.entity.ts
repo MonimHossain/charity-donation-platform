@@ -108,7 +108,39 @@ export interface SeoSettings {
   ogImage: string;
 }
 
-export type CampaignMode = "standard" | "fundraiser" | "sponsorship" | "zakat" | "automated";
+export type CampaignMode =
+  | "standard"
+  | "fundraiser"
+  | "sponsorship"
+  | "zakat"
+  | "automated"
+  | "fidya_kaffarah"
+  | "ramadan_split";
+
+export interface FidyaKaffarahExperienceConfig {
+  options: Array<{
+    key: string;
+    label: string;
+    unitPrice?: number;
+    currency?: string;
+    description?: string;
+  }>;
+  quantity?: { min: number; max: number; default?: number; label?: string };
+  allowCustomAmount?: boolean;
+  customAmount?: { min?: number; max?: number; placeholder?: string; label?: string };
+}
+
+export interface RamadanSplitExperienceConfig {
+  ramadanStartDate?: string;
+  maxNights?: number;
+  currency?: string;
+  campaignId?: string;
+}
+
+export type CampaignExperienceConfig =
+  | FidyaKaffarahExperienceConfig
+  | RamadanSplitExperienceConfig
+  | Record<string, never>;
 
 @Entity("campaigns")
 export class Campaign {
@@ -212,12 +244,9 @@ export class Campaign {
   @Column({ type: "varchar", length: 3, default: "GBP" })
   currency!: string;
 
-  /**
-   * Optional link to a Donation Page slug (public route: /donation/:slug).
-   * This lets a campaign use a specialized donation experience (e.g. Ramadan split).
-   */
-  @Column({ type: "varchar", length: 255, nullable: true })
-  donationPageSlug?: string | null;
+  /** Fidya/Kaffarah or Ramadan split settings when campaignMode matches. */
+  @Column({ type: "json", default: {} })
+  experienceConfig!: CampaignExperienceConfig;
 
   @Column({ type: "int", default: 0 })
   sortOrder!: number;

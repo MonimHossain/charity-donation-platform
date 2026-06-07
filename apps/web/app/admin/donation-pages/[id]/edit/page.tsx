@@ -15,6 +15,8 @@ import { toast } from "sonner";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { DonationExperience, DonationPageDto } from "@icac/shared-types";
+import { getExperienceMeta } from "@/lib/donation-experience";
+import { cn } from "@/lib/utils";
 
 type ExperienceType = DonationExperience["type"];
 
@@ -168,11 +170,28 @@ export default function AdminDonationPageEditPage() {
   return (
     <div className="space-y-6 max-w-2xl">
       <Button variant="ghost" asChild className="-ml-2">
-        <Link href="/admin/donation-pages">
+        <Link href="/admin/campaigns">
           <ArrowLeft className="w-4 h-4" /> Back
         </Link>
       </Button>
-      <h1 className="font-serif text-2xl text-primary">Edit donation page</h1>
+      <div className="space-y-2">
+        <h1 className="font-serif text-2xl text-primary">Edit donation page</h1>
+        {!USE_MOCK_DATA && (
+          <div className="flex flex-wrap items-center gap-2">
+            {(() => {
+              const meta = getExperienceMeta(experienceType);
+              const Icon = meta.icon;
+              return (
+                <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium", meta.badgeClass)}>
+                  <Icon className="h-4 w-4" />
+                  {meta.label}
+                </span>
+              );
+            })()}
+            <span className="text-sm text-muted-foreground">{getExperienceMeta(experienceType).description}</span>
+          </div>
+        )}
+      </div>
       <div className="space-y-4 rounded-2xl border bg-card p-6">
         {!USE_MOCK_DATA && (
           <div className="rounded-xl bg-secondary/40 border border-border p-4 text-sm">

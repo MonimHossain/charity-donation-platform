@@ -66,7 +66,6 @@ const navItems: NavItem[] = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
   { label: "Campaigns", href: "/admin/campaigns", icon: Megaphone },
-  { label: "Donation pages", href: "/admin/donation-pages", icon: Heart },
   { label: "Donations", href: "/admin/donations", icon: HandCoins },
   { label: "Payments", href: "/admin/payments", icon: CreditCard },
   { label: "Recurring", href: "/admin/recurring", icon: Repeat },
