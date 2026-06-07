@@ -18,15 +18,19 @@ export default function MarkdownRenderer({ content, className }: MarkdownRendere
     ],
     allowedAttributes: {
       a: ["href", "name", "target", "rel"],
-      img: ["src", "alt", "title"],
-      video: ["src", "controls", "poster", "preload", "class"],
+      img: ["src", "alt", "title", "width", "height", "style"],
+      video: ["src", "controls", "poster", "preload", "class", "width", "height", "style"],
       source: ["src", "type"],
       h1: ["style"], h2: ["style"], h3: ["style"], h4: ["style"], h5: ["style"], h6: ["style"],
       p: ["style"], th: ["style"], td: ["style"],
       "*": ["class"],
     },
     allowedStyles: {
-      "*": { "text-align": [/^left$/, /^right$/, /^center$/, /^justify$/] },
+      "*": {
+        "text-align": [/^left$/, /^right$/, /^center$/, /^justify$/],
+        width: [/^\d+(?:\.\d+)?px$/, /^100%$/],
+        height: [/^\d+(?:\.\d+)?px$/, /^auto$/],
+      },
     },
     allowedSchemes: ["http", "https", "mailto"],
     allowedSchemesByTag: {
@@ -63,7 +67,8 @@ export default function MarkdownRenderer({ content, className }: MarkdownRendere
     "[&_ol]:mt-5 [&_ol]:list-decimal [&_ol]:space-y-3 [&_ol]:pl-6",
     "[&_li]:pl-1 [&_li]:text-[17px] [&_li]:leading-[1.82] [&_li]:text-gray-600",
     "[&_hr]:my-10 [&_hr]:border-0 [&_hr]:border-t [&_hr]:border-gray-200",
-    "[&_img]:my-8 [&_img]:w-full [&_img]:rounded-xl [&_img]:border [&_img]:border-gray-200",
+    "[&_img]:my-8 [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-xl [&_img]:border [&_img]:border-gray-200",
+    "[&_video]:my-8 [&_video]:max-w-full [&_video]:rounded-xl [&_video]:border [&_video]:border-gray-200",
     "[&_figure]:my-8",
     "[&_figcaption]:mt-3 [&_figcaption]:text-center [&_figcaption]:text-sm [&_figcaption]:text-gray-500",
     "[&_pre]:mt-6 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:bg-gray-900 [&_pre]:p-5 [&_pre]:text-sm [&_pre]:leading-relaxed [&_pre]:text-white",

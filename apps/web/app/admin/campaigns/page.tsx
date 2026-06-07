@@ -20,6 +20,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Check,
+  MoreHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +28,9 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { FilePicker } from "@/components/ui/file-picker";
+import RichTextEditor from "@/components/admin/RichTextEditor";
 import { cn } from "@/lib/utils";
 import {
   fetchAdminCampaigns,
@@ -300,11 +303,29 @@ const INTERVALS = ["daily", "weekly", "monthly", "yearly"];
 const FIELD_TYPES = ["text", "textarea", "dropdown", "radio", "checkbox", "number", "date"];
 const CATEGORIES = ["general", "education", "health", "water", "food", "shelter", "orphan", "zakat", "sadaqah", "emergency"];
 
+const CAMPAIGN_STATUSES = ["draft", "published", "archived"] as const;
+type CampaignStatus = (typeof CAMPAIGN_STATUSES)[number];
+
+const STATUS_LABELS: Record<CampaignStatus, string> = {
+  draft: "Draft",
+  published: "Published",
+  archived: "Archived",
+};
+
 const statusStyles: Record<string, string> = {
   published: "bg-green-100 text-green-700",
   draft: "bg-slate-100 text-slate-600",
   archived: "bg-amber-100 text-amber-700",
 };
+
+function normalizeCampaignStatus(status: string): CampaignStatus {
+  return CAMPAIGN_STATUSES.includes(status as CampaignStatus) ? (status as CampaignStatus) : "draft";
+}
+
+function getStatusTransitions(current: string): CampaignStatus[] {
+  const normalized = normalizeCampaignStatus(current);
+  return CAMPAIGN_STATUSES.filter((s) => s !== normalized);
+}
 
 type WizardStepId =
   | "info"
@@ -403,6 +424,8 @@ export default function CampaignsPage() {
   const [form, setForm] = useState<CampaignForm>({ ...defaultForm });
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [statusUpdating, setStatusUpdating] = useState<string | null>(null);
+  const [statusMenuOpenId, setStatusMenuOpenId] = useState<string | null>(null);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
 
   const loadCampaigns = useCallback(async () => {
@@ -535,6 +558,22 @@ export default function CampaignsPage() {
     }
   }
 
+  async function handleStatusChange(campaign: Campaign, newStatus: CampaignStatus) {
+    setStatusMenuOpenId(null);
+    setStatusUpdating(campaign.id);
+    try {
+      await adminUpdateCampaign(campaign.id, { status: newStatus });
+      setCampaigns((prev) =>
+        prev.map((c) => (c.id === campaign.id ? { ...c, status: newStatus } : c))
+      );
+      toast.success(`Campaign moved to ${STATUS_LABELS[newStatus]}`);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to update campaign status");
+    } finally {
+      setStatusUpdating(null);
+    }
+  }
+
   function generateSlug(title: string) {
     return title
       .toLowerCase()
@@ -630,6 +669,41 @@ export default function CampaignsPage() {
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(c)}>
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
+                          <Popover
+                            open={statusMenuOpenId === c.id}
+                            onOpenChange={(open) => setStatusMenuOpenId(open ? c.id : null)}
+                          >
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                title="Change status"
+                                disabled={statusUpdating === c.id}
+                              >
+                                {statusUpdating === c.id ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <MoreHorizontal className="h-3.5 w-3.5" />
+                                )}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent align="end" className="w-44 p-1">
+                              <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                                Change status
+                              </p>
+                              {getStatusTransitions(c.status).map((status) => (
+                                <button
+                                  key={status}
+                                  type="button"
+                                  className="flex w-full items-center rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
+                                  onClick={() => handleStatusChange(c, status)}
+                                >
+                                  {STATUS_LABELS[status]}
+                                </button>
+                              ))}
+                            </PopoverContent>
+                          </Popover>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -784,13 +858,14 @@ export default function CampaignsPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Full Description (HTML)</Label>
-              <textarea
-                rows={8}
+              <Label>Full Description</Label>
+              <p className="text-xs text-muted-foreground">
+                Design your campaign page with the editor below — no coding required.
+              </p>
+              <RichTextEditor
                 value={form.fullDescription}
-                onChange={(e) => setForm((p) => ({ ...p, fullDescription: e.target.value }))}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring font-mono"
-                placeholder="<p>Describe your campaign...</p>"
+                onChange={(html) => setForm((p) => ({ ...p, fullDescription: html }))}
+                placeholder="Tell donors about this campaign — add headings, images, lists, and more."
               />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">

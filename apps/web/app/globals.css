@@ -189,3 +189,29 @@
 
 @utility animate-fade-up { animation: fade-up 0.7s var(--transition-smooth) both; }
 @utility animate-float-slow { animation: float-slow 6s ease-in-out infinite; }
+
+/* Rich text editor — resizable image/video handles */
+.rich-text-editor [data-resize-container] {
+  max-width: 100%;
+  margin: 0.75rem 0;
+}
+.rich-text-editor [data-resize-wrapper] {
+  display: inline-block;
+  max-width: 100%;
+  position: relative;
+  overflow: visible;
+}
+.rich-text-editor [data-resize-container].ProseMirror-selectednode [data-resize-wrapper] {
+  outline: 2px solid #9333ea;
+  outline-offset: 3px;
+  border-radius: 0.5rem;
+}
+.rich-text-editor .ProseMirror [data-resize-wrapper] img,
+.rich-text-editor .ProseMirror [data-resize-wrapper] video {
+  display: block;
+  max-width: 100%;
+  border-radius: 0.5rem;
+}
+.rich-text-editor .rte-resize-handle {
+  opacity: 1;
+}

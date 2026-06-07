@@ -1,11 +1,16 @@
 "use client";
 
 import MarkdownRenderer from "@/components/blog/MarkdownRenderer";
-import { Extension, Node, mergeAttributes } from "@tiptap/core";
+import { MediaPickerDialog } from "@/components/ui/media-picker-dialog";
+import {
+  MEDIA_RESIZE,
+  ResizableImage,
+  ResizableVideo,
+} from "@/components/admin/rich-text-media-extensions";
+import { Extension } from "@tiptap/core";
 import Color from "@tiptap/extension-color";
 import FontFamily from "@tiptap/extension-font-family";
 import Highlight from "@tiptap/extension-highlight";
-import TipTapImage from "@tiptap/extension-image";
 import LinkExtension from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Table } from "@tiptap/extension-table";
@@ -16,6 +21,8 @@ import TextAlign from "@tiptap/extension-text-align";
 import { TextStyle } from "@tiptap/extension-text-style";
 import Underline from "@tiptap/extension-underline";
 import { EditorContent, useEditor } from "@tiptap/react";
+import { NodeSelection } from "@tiptap/pm/state";
+import type { Editor } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import {
   AlignCenter, AlignLeft, AlignRight, Bold, Code, Code2,
@@ -43,29 +50,38 @@ const FontSizeExtension = Extension.create({
   },
 });
 
-const VideoExtension = Node.create({
-  name: "video",
-  group: "block",
-  atom: true,
-  draggable: true,
-  selectable: true,
-  addAttributes() {
-    return {
-      src: { default: null },
-      controls: { default: true, parseHTML: (el) => el.hasAttribute("controls") },
-      poster: { default: null },
-      preload: { default: "metadata" },
-    };
-  },
-  parseHTML() { return [{ tag: "video[src]" }]; },
-  renderHTML({ HTMLAttributes }) {
-    return ["video", mergeAttributes(HTMLAttributes, {
-      class: "my-3 w-full rounded-lg",
-      controls: HTMLAttributes.controls === false ? undefined : "true",
-      preload: HTMLAttributes.preload || "metadata",
-    })];
-  },
-});
+const MEDIA_SIZE_PRESETS = [25, 50, 75, 100] as const;
+
+function resizeSelectedMedia(editor: Editor, widthPercent: number) {
+  const { selection } = editor.state;
+  if (!(selection instanceof NodeSelection)) return;
+
+  const node = selection.node;
+  if (node.type.name !== "image" && node.type.name !== "video") return;
+
+  const maxWidth = Math.max(editor.view.dom.clientWidth - 48, MEDIA_RESIZE.minWidth);
+  const targetWidth = Math.round(maxWidth * (widthPercent / 100));
+
+  const domAtPos = editor.view.nodeDOM(selection.from) as HTMLElement | null;
+  const mediaEl = domAtPos?.querySelector?.("img, video") as HTMLElement | null;
+
+  const currentWidth =
+    (typeof node.attrs.width === "number" ? node.attrs.width : null) ||
+    mediaEl?.offsetWidth ||
+    targetWidth;
+  const currentHeight =
+    (typeof node.attrs.height === "number" ? node.attrs.height : null) ||
+    mediaEl?.offsetHeight ||
+    Math.round(targetWidth * 0.5625);
+
+  const aspectRatio = currentWidth / currentHeight;
+  const newHeight = Math.max(Math.round(targetWidth / aspectRatio), MEDIA_RESIZE.minHeight);
+
+  editor.commands.updateAttributes(node.type.name, {
+    width: targetWidth,
+    height: newHeight,
+  });
+}
 
 const FONT_FAMILIES = [
   { label: "Default", value: "default" },
@@ -98,8 +114,11 @@ export default function RichTextEditor({ value, onChange, placeholder = "Write c
   const [fontSize, setFontSize] = useState("default");
   const [textColor, setTextColor] = useState("#1a1a1a");
   const [markColor, setMarkColor] = useState("#fef08a");
+  const [mediaPicker, setMediaPicker] = useState<"image" | "video" | null>(null);
+  const [selectedMedia, setSelectedMedia] = useState<"image" | "video" | null>(null);
 
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit.configure({
         bulletList: { keepMarks: true, keepAttributes: false },
@@ -112,8 +131,19 @@ export default function RichTextEditor({ value, onChange, placeholder = "Write c
       Underline,
       Highlight.configure({ multicolor: true }),
       LinkExtension.configure({ openOnClick: false, autolink: true, defaultProtocol: "https" }),
-      TipTapImage.configure({ inline: false, allowBase64: true }),
-      VideoExtension,
+      ResizableImage.configure({
+        inline: false,
+        allowBase64: true,
+        HTMLAttributes: { class: "my-3 rounded-lg max-w-full" },
+        resize: {
+          enabled: true,
+          directions: [...MEDIA_RESIZE.directions],
+          minWidth: MEDIA_RESIZE.minWidth,
+          minHeight: MEDIA_RESIZE.minHeight,
+          alwaysPreserveAspectRatio: MEDIA_RESIZE.alwaysPreserveAspectRatio,
+        },
+      }),
+      ResizableVideo,
       Table.configure({ resizable: true }),
       TableRow, TableHeader, TableCell,
       TextAlign.configure({ types: ["heading", "paragraph"] }),
@@ -139,6 +169,22 @@ export default function RichTextEditor({ value, onChange, placeholder = "Write c
     }
   }, [value, editor]);
 
+  useEffect(() => {
+    if (!editor) return;
+
+    const syncSelectedMedia = () => {
+      if (editor.isActive("image")) setSelectedMedia("image");
+      else if (editor.isActive("video")) setSelectedMedia("video");
+      else setSelectedMedia(null);
+    };
+
+    syncSelectedMedia();
+    editor.on("selectionUpdate", syncSelectedMedia);
+    return () => {
+      editor.off("selectionUpdate", syncSelectedMedia);
+    };
+  }, [editor]);
+
   const handleSetLink = () => {
     if (!editor) return;
     const prev = editor.getAttributes("link").href as string | undefined;
@@ -150,19 +196,30 @@ export default function RichTextEditor({ value, onChange, placeholder = "Write c
   };
 
   const handleInsertImage = () => {
-    if (!editor) return;
-    const url = window.prompt("Enter image URL", "");
-    if (url) editor.chain().focus().setImage({ src: url.trim() }).run();
+    setMediaPicker("image");
   };
 
   const handleInsertVideo = () => {
+    setMediaPicker("video");
+  };
+
+  const handleMediaSelect = (url: string) => {
     if (!editor) return;
-    const url = window.prompt("Enter video URL (mp4/webm/ogg)", "");
-    if (!url) return;
-    editor.chain().focus().insertContent([
-      { type: "video", attrs: { src: url.trim(), controls: true, preload: "metadata" } },
-      { type: "paragraph" },
-    ]).run();
+
+    if (mediaPicker === "image") {
+      editor.chain().focus().setImage({ src: url }).run();
+    } else if (mediaPicker === "video") {
+      editor
+        .chain()
+        .focus()
+        .insertContent([
+          { type: "video", attrs: { src: url, controls: true, preload: "metadata" } },
+          { type: "paragraph" },
+        ])
+        .run();
+    }
+
+    setMediaPicker(null);
   };
 
   const handleHeading = (val: string) => {
@@ -186,7 +243,7 @@ export default function RichTextEditor({ value, onChange, placeholder = "Write c
   );
 
   return (
-    <div className="space-y-2">
+    <div className="rich-text-editor space-y-2">
       <div className="flex gap-2 border-b border-gray-200 pb-2">
         <button
           type="button"
@@ -206,6 +263,24 @@ export default function RichTextEditor({ value, onChange, placeholder = "Write c
 
       {activeTab === "write" && editor ? (
         <div className="space-y-2">
+          {selectedMedia && (
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2">
+              <span className="text-xs font-medium text-purple-900">
+                {selectedMedia === "image" ? "Image" : "Video"} size
+              </span>
+              {MEDIA_SIZE_PRESETS.map((pct) => (
+                <button
+                  key={pct}
+                  type="button"
+                  onClick={() => resizeSelectedMedia(editor, pct)}
+                  className="h-7 rounded-md border border-purple-200 bg-white px-2.5 text-xs font-medium text-purple-900 hover:bg-purple-100"
+                >
+                  {pct}%
+                </button>
+              ))}
+              <span className="text-[11px] text-purple-700">or drag the purple corner dots</span>
+            </div>
+          )}
           <div className="rounded-lg border border-gray-200 bg-gray-50 p-2 space-y-2">
             {/* Row 1: Typography */}
             <div className="flex flex-wrap gap-1.5">
@@ -287,8 +362,8 @@ export default function RichTextEditor({ value, onChange, placeholder = "Write c
               <div className="w-px bg-gray-300 mx-1" />
 
               <Btn onClick={handleSetLink} title="Insert Link"><Link2 className="h-4 w-4" /></Btn>
-              <Btn onClick={handleInsertImage} title="Insert Image"><ImageIcon className="h-4 w-4" /></Btn>
-              <Btn onClick={handleInsertVideo} title="Insert Video"><span className="text-xs">Video</span></Btn>
+              <Btn onClick={handleInsertImage} title="Upload Image"><ImageIcon className="h-4 w-4" /></Btn>
+              <Btn onClick={handleInsertVideo} title="Upload Video"><span className="text-xs">Video</span></Btn>
               <Btn onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} title="Insert Table"><span className="text-xs">Table</span></Btn>
 
               <div className="w-px bg-gray-300 mx-1" />
@@ -299,6 +374,9 @@ export default function RichTextEditor({ value, onChange, placeholder = "Write c
           </div>
 
           <EditorContent editor={editor} />
+          <p className="text-xs text-muted-foreground">
+            Click an image or video to select it — use the size buttons above or drag the purple corner dots to resize.
+          </p>
           {error && <p className="text-xs text-red-600">{error}</p>}
         </div>
       ) : activeTab === "write" ? (
@@ -314,6 +392,14 @@ export default function RichTextEditor({ value, onChange, placeholder = "Write c
           )}
         </div>
       )}
+
+      <MediaPickerDialog
+        open={mediaPicker !== null}
+        onOpenChange={(open) => !open && setMediaPicker(null)}
+        accept={mediaPicker === "video" ? "video" : "image"}
+        title={mediaPicker === "video" ? "Upload or select video" : "Upload or select image"}
+        onSelect={handleMediaSelect}
+      />
     </div>
   );
 }
