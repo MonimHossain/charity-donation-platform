@@ -758,7 +758,15 @@ export default function CampaignsPage() {
             {form.title || "Untitled campaign"} &middot; {CAMPAIGN_MODE_LABELS[form.campaignMode] || form.campaignMode}
           </p>
         </div>
-        <Button variant="outline" onClick={() => setShowEditor(false)}>Cancel</Button>
+        <div className="flex items-center gap-2 shrink-0">
+          {editingId && (
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              {saving ? "Updating..." : "Update"}
+            </Button>
+          )}
+          <Button variant="outline" onClick={() => setShowEditor(false)}>Cancel</Button>
+        </div>
       </div>
 
       <nav aria-label="Campaign setup progress" className="rounded-2xl border bg-card shadow-soft p-4 sm:p-5">
