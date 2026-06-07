@@ -6,6 +6,7 @@ import {
   MEDIA_RESIZE,
   ResizableImage,
   ResizableVideo,
+  defaultInlineImageWidth,
 } from "@/components/admin/rich-text-media-extensions";
 import { Extension } from "@tiptap/core";
 import Color from "@tiptap/extension-color";
@@ -132,9 +133,9 @@ export default function RichTextEditor({ value, onChange, placeholder = "Write c
       Highlight.configure({ multicolor: true }),
       LinkExtension.configure({ openOnClick: false, autolink: true, defaultProtocol: "https" }),
       ResizableImage.configure({
-        inline: false,
+        inline: true,
         allowBase64: true,
-        HTMLAttributes: { class: "my-3 rounded-lg max-w-full" },
+        HTMLAttributes: { class: "rte-inline-image max-w-full rounded-md align-middle" },
         resize: {
           enabled: true,
           directions: [...MEDIA_RESIZE.directions],
@@ -207,7 +208,8 @@ export default function RichTextEditor({ value, onChange, placeholder = "Write c
     if (!editor) return;
 
     if (mediaPicker === "image") {
-      editor.chain().focus().setImage({ src: url }).run();
+      const width = defaultInlineImageWidth(editor.view.dom.clientWidth);
+      editor.chain().focus().setImage({ src: url, width }).run();
     } else if (mediaPicker === "video") {
       editor
         .chain()
@@ -375,7 +377,7 @@ export default function RichTextEditor({ value, onChange, placeholder = "Write c
 
           <EditorContent editor={editor} />
           <p className="text-xs text-muted-foreground">
-            Click an image or video to select it — use the size buttons above or drag the purple corner dots to resize.
+            Images sit inline with text — drag to move them along a line, or use the size buttons to make them smaller so they fit beside text.
           </p>
           {error && <p className="text-xs text-red-600">{error}</p>}
         </div>

@@ -193,6 +193,14 @@
 /* Rich text editor — resizable image/video handles */
 .rich-text-editor [data-resize-container] {
   max-width: 100%;
+  vertical-align: middle;
+}
+.rich-text-editor [data-resize-container][data-node="image"] {
+  display: inline-flex;
+  margin: 0 0.2rem;
+}
+.rich-text-editor [data-resize-container][data-node="video"] {
+  display: flex;
   margin: 0.75rem 0;
 }
 .rich-text-editor [data-resize-wrapper] {
@@ -206,12 +214,24 @@
   outline-offset: 3px;
   border-radius: 0.5rem;
 }
-.rich-text-editor .ProseMirror [data-resize-wrapper] img,
+.rich-text-editor .ProseMirror [data-resize-wrapper] img {
+  display: inline-block;
+  vertical-align: middle;
+  max-width: 100%;
+  border-radius: 0.375rem;
+}
 .rich-text-editor .ProseMirror [data-resize-wrapper] video {
   display: block;
   max-width: 100%;
   border-radius: 0.5rem;
 }
+.rich-text-editor .ProseMirror p {
+  line-height: 1.75;
+}
 .rich-text-editor .rte-resize-handle {
   opacity: 1;
+}
+.rich-text-editor .ProseMirror img.rte-inline-image {
+  display: inline-block;
+  vertical-align: middle;
 }

@@ -66,6 +66,11 @@ function buildResizableNodeViewOptions() {
   };
 }
 
+export function defaultInlineImageWidth(editorWidth: number) {
+  const contentWidth = Math.max(editorWidth - 48, MEDIA_RESIZE.minWidth);
+  return Math.min(280, Math.max(MEDIA_RESIZE.minWidth, Math.round(contentWidth * 0.35)));
+}
+
 function revealWhenReady(container: HTMLElement, onReady: () => void) {
   container.style.visibility = "hidden";
   container.style.pointerEvents = "none";
@@ -89,7 +94,9 @@ export const ResizableImage = TipTapImage.extend({
         el.setAttribute(key, String(value));
       });
       el.src = HTMLAttributes.src;
-      el.className = "my-3 rounded-lg max-w-full block";
+      el.className = "rte-inline-image max-w-full rounded-md";
+      el.style.display = "inline-block";
+      el.style.verticalAlign = "middle";
       if (HTMLAttributes.width) el.style.width = `${HTMLAttributes.width}px`;
       if (HTMLAttributes.height) el.style.height = `${HTMLAttributes.height}px`;
 
