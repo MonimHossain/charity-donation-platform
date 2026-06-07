@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowUpRight, Heart, Users, TrendingUp, Shield, Loader2 } from "lucide-react";
 import { useCampaignsList } from "@/lib/data/campaigns";
+import { getCampaignCardImage } from "@/lib/campaign-media";
 
 type Appeal = {
   slug: string;
@@ -37,7 +38,12 @@ function mapCampaigns(items: Array<Record<string, unknown>>): Appeal[] {
     title: String(c.title),
     tag: String(c.category ?? c.tag ?? "Appeal"),
     excerpt: String(c.shortDescription ?? c.summary ?? ""),
-    image: String(c.featuredImage ?? c.image ?? "/images/appeal-gaza.jpg"),
+    image: getCampaignCardImage({
+      thumbnail: c.thumbnail as string | undefined,
+      banner: c.banner as string | undefined,
+      featuredImage: c.featuredImage as string | undefined,
+      image: c.image as string | undefined,
+    }),
     urgent: Boolean(c.isUrgent ?? c.urgent),
     raised: Number(c.raisedAmount ?? c.raised ?? 0),
     goal: Number(c.goalAmount ?? c.goal ?? 1),
@@ -50,7 +56,17 @@ const AppealCard = ({ a, large = false }: { a: Appeal; large?: boolean }) => (
   <div className={`group relative flex flex-col overflow-hidden rounded-2xl sm:rounded-3xl bg-card border border-border/60 shadow-soft hover:shadow-lift hover:-translate-y-1 transition-all duration-500 ${large ? "sm:col-span-2 lg:col-span-2" : ""}`}>
     <Link href={`/campaigns/${a.slug}`} className="relative block overflow-hidden">
       <div className={`relative overflow-hidden ${large ? "aspect-[8/3]" : "aspect-[4/3]"}`}>
-        <img src={a.image} alt={a.title} loading="lazy" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+        <img
+          src={a.image}
+          alt={a.title}
+          loading="lazy"
+          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+          onError={(e) => {
+            const img = e.currentTarget;
+            if (img.src.includes("hero-1.webp")) return;
+            img.src = "/images/hero-1.webp";
+          }}
+        />
         <div className="absolute inset-0 bg-gradient-to-t from-primary/90 via-primary/30 to-transparent" />
 
         <div className="absolute top-3 left-3 right-3 flex items-start justify-between gap-2">

@@ -33,6 +33,7 @@ import { fetchCampaignBySlug, fetchRecentDonations } from "@/lib/api";
 import { toast } from "sonner";
 import { CampaignDonationExperience } from "@/components/campaigns/CampaignDonationExperience";
 import { CAMPAIGN_MODE_LABELS, isExperienceCampaignMode } from "@/lib/campaign-experience";
+import { getCampaignHeroImage, resolveMediaUrl } from "@/lib/campaign-media";
 
 // ── Types ──
 
@@ -315,9 +316,14 @@ function CampaignDetailApi({ slug: slugProp }: { slug: string }) {
       {/* ── Hero Banner ── */}
       <section className="relative h-[40vh] min-h-[320px] w-full overflow-hidden bg-muted md:h-[50vh]">
         <img
-          src={campaign.banner || campaign.thumbnail || "/images/hero-1.webp"}
+          src={getCampaignHeroImage(campaign)}
           alt={campaign.title}
           className="h-full w-full object-cover"
+          onError={(e) => {
+            const img = e.currentTarget;
+            if (img.src.includes("hero-1.webp")) return;
+            img.src = "/images/hero-1.webp";
+          }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 container-wide pb-8">
@@ -709,7 +715,7 @@ function DonationCard({
                   )}
                 >
                   {attr.image && (
-                    <img src={attr.image} alt={attr.name} className="h-10 w-10 rounded-lg object-cover" />
+                    <img src={resolveMediaUrl(attr.image) ?? attr.image} alt={attr.name} className="h-10 w-10 rounded-lg object-cover" />
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold truncate">{attr.name}</p>

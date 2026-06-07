@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { fetchCampaigns } from "@/lib/api";
+import { getCampaignCardImage } from "@/lib/campaign-media";
 
 const CATEGORIES = [
   "All",
@@ -33,7 +34,10 @@ interface Campaign {
   shortDescription: string;
   category: string;
   tags: string[];
+  thumbnail?: string;
+  banner?: string;
   featuredImage?: string;
+  image?: string;
   raisedAmount: number;
   goalAmount: number;
   currency: string;
@@ -182,10 +186,15 @@ function CampaignsPageApi() {
                   >
                     <div className="relative aspect-[3/2] overflow-hidden bg-muted">
                       <img
-                        src={campaign.featuredImage || "/images/hero-1.webp"}
+                        src={getCampaignCardImage(campaign)}
                         alt={campaign.title}
                         className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                         loading="lazy"
+                        onError={(e) => {
+                          const img = e.currentTarget;
+                          if (img.src.includes("hero-1.webp")) return;
+                          img.src = "/images/hero-1.webp";
+                        }}
                       />
                       {campaign.isUrgent && (
                         <span className="absolute left-3 top-3 rounded-full bg-destructive px-3 py-1 text-xs font-bold text-white animate-pulse">
