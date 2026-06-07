@@ -40,7 +40,7 @@ export default function AdminDonationPageEditPage() {
   const [ramadanStartDate, setRamadanStartDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [image, setImage] = useState("");
 
-  const publicUrl = useMemo(() => `/donation/${page?.slug ?? ""}`, [page?.slug]);
+  const publicUrl = useMemo(() => `/campaigns/${page?.slug ?? ""}`, [page?.slug]);
 
   useEffect(() => {
     if (USE_MOCK_DATA) return;

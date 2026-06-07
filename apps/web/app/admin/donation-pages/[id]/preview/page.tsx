@@ -57,7 +57,7 @@ export default function AdminDonationPagePreview() {
 
   // For now: reuse the public preview experience by linking to public slug when published,
   // but for drafts we still display a meaningful page-level preview shell.
-  const publicSlugUrl = `/donation/${page.slug}`;
+  const publicSlugUrl = `/campaigns/${page.slug}`;
 
   return (
     <PageShell title={`Preview — ${page.title}`} description={page.shortDescription ?? ""}>

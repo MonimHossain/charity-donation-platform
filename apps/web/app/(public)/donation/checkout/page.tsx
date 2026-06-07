@@ -229,10 +229,10 @@ function DonationCheckoutContent() {
       <section className="container-wide py-20 text-center space-y-6">
         <h1 className="font-serif text-3xl text-primary">Your cart is empty</h1>
         <p className="text-muted-foreground max-w-md mx-auto">
-          Add a donation from any donation page, then return here to complete checkout.
+          Add a donation from a campaign, then return here to complete checkout.
         </p>
         <Button asChild className="rounded-full bg-accent hover:bg-accent/90">
-          <Link href="/">Browse donation pages</Link>
+          <Link href="/campaigns">Browse campaigns</Link>
         </Button>
       </section>
     );
@@ -243,7 +243,7 @@ function DonationCheckoutContent() {
       <section className="bg-secondary/40 border-b border-border">
         <div className="container-wide py-4 flex flex-wrap items-center justify-between gap-3">
           <Link
-            href="/"
+            href="/campaigns"
             className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
           >
             <ArrowLeft className="w-4 h-4" /> Continue giving
