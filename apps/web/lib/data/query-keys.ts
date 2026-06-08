@@ -2,6 +2,7 @@ export const queryKeys = {
   campaigns: (params?: Record<string, string>) => ["campaigns", params] as const,
   homepageAppeals: ["campaigns", "homepage-appeals"] as const,
   homepageFundraisers: ["campaigns", "homepage-fundraisers"] as const,
+  headerNavCampaigns: ["campaigns", "header-nav"] as const,
   campaign: (slug: string) => ["campaign", slug] as const,
   heroSlides: ["cms", "hero-slides"] as const,
   homepageSections: ["cms", "homepage-sections"] as const,

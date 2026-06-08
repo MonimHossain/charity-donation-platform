@@ -28,6 +28,26 @@ function isAppealCandidate(c: Record<string, unknown>) {
   );
 }
 
+function visibilitySettings(c: Record<string, unknown>) {
+  return c.visibilitySettings as
+    | { showInHeader?: boolean; showOnHomepage?: boolean; pinToTop?: boolean }
+    | undefined;
+}
+
+/** Homepage sections only show campaigns with Show on Homepage enabled. */
+export function isHomepageVisible(c: Record<string, unknown>) {
+  return visibilitySettings(c)?.showOnHomepage === true;
+}
+
+/** Header nav shows campaigns with Show in Header Navigation enabled. */
+export function isHeaderNavVisible(c: Record<string, unknown>) {
+  return visibilitySettings(c)?.showInHeader === true;
+}
+
+function isPublished(c: Record<string, unknown>) {
+  return String(c.status ?? "") === "published";
+}
+
 function compareAppeals(a: Record<string, unknown>, b: Record<string, unknown>) {
   const aPinned = (a.visibilitySettings as { pinToTop?: boolean } | undefined)?.pinToTop ? 1 : 0;
   const bPinned = (b.visibilitySettings as { pinToTop?: boolean } | undefined)?.pinToTop ? 1 : 0;
@@ -44,7 +64,27 @@ function compareAppeals(a: Record<string, unknown>, b: Record<string, unknown>) 
 
 function pickHomepageAppeals(items: unknown[]) {
   return excludeFundraisers(items)
-    .filter((c) => isAppealCandidate(c as Record<string, unknown>))
+    .filter((c) => {
+      const row = c as Record<string, unknown>;
+      return isAppealCandidate(row) && isHomepageVisible(row);
+    })
+    .sort((a, b) => compareAppeals(a as Record<string, unknown>, b as Record<string, unknown>));
+}
+
+function pickHeaderNavCampaigns(items: unknown[]) {
+  return items
+    .filter((c) => {
+      const row = c as Record<string, unknown>;
+      return (
+        isPublished(row) &&
+        Boolean(row.slug) &&
+        !isCampaignExpired(
+          Boolean(row.expirationEnabled),
+          row.expiresAt as string | null | undefined
+        ) &&
+        isHeaderNavVisible(row)
+      );
+    })
     .sort((a, b) => compareAppeals(a as Record<string, unknown>, b as Record<string, unknown>));
 }
 
@@ -107,11 +147,27 @@ export function useHomepageFundraisers() {
       const items = (res.items ?? []).filter(
         (c: Record<string, unknown>) =>
           isFundraiserCampaign(c) &&
+          isHomepageVisible(c) &&
           !isCampaignExpired(
             Boolean(c.expirationEnabled),
             c.expiresAt as string | null | undefined
           )
       );
+      return { items, total: items.length };
+    },
+  });
+}
+
+/** Published campaigns flagged for the site header navigation. */
+export function useHeaderNavCampaigns() {
+  return useQuery({
+    queryKey: queryKeys.headerNavCampaigns,
+    queryFn: async () => {
+      if (USE_MOCK_DATA) {
+        return { items: [], total: 0 };
+      }
+      const allItems = await fetchAllPublishedCampaigns();
+      const items = pickHeaderNavCampaigns(allItems);
       return { items, total: items.length };
     },
   });

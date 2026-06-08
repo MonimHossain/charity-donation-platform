@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X, User as UserIcon, ChevronDown, CalendarDays, Timer, ShoppingBasket } from "lucide-react";
@@ -8,14 +8,20 @@ import { Button } from "@/components/ui/button";
 import GlobalSearch from "./GlobalSearch";
 import CurrencySwitcher from "./CurrencySwitcher";
 import LanguageSwitcher from "./LanguageSwitcher";
+import { USE_MOCK_DATA } from "@/lib/config";
+import { useHeaderNavCampaigns } from "@/lib/data/campaigns";
 
-const nav = [
-  { href: "/campaigns/food", label: "Food Aid" },
-  { href: "/campaigns/water", label: "Water Projects" },
-  { href: "/campaigns/livelihood", label: "Livelihood Projects" },
-  { href: "/campaigns/orphans", label: "Orphan Sponsorship" },
+const mockNav = [
+  { href: "/causes/food", label: "Food Aid" },
+  { href: "/causes/water", label: "Water Projects" },
+  { href: "/causes/livelihood", label: "Livelihood Projects" },
+  { href: "/causes/orphans", label: "Orphan Sponsorship" },
   { href: "/zakat", label: "Zakat" },
 ];
+
+function isNavActive(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 const aboutItems = [
   { href: "/about", label: "About" },
@@ -73,6 +79,18 @@ export default function SiteHeader() {
   const islamicDate = useIslamicDate();
   const nextPrayer = useNextPrayer();
   const aboutRef = useRef<HTMLDivElement>(null);
+  const { data: headerCampaigns } = useHeaderNavCampaigns();
+
+  const nav = useMemo(() => {
+    if (USE_MOCK_DATA) return mockNav;
+
+    const appealLinks = (headerCampaigns?.items ?? []).map((c: Record<string, unknown>) => ({
+      href: `/causes/${String(c.slug)}`,
+      label: String(c.title),
+    }));
+
+    return [...appealLinks, { href: "/zakat", label: "Zakat" }];
+  }, [headerCampaigns?.items]);
 
   useEffect(() => {
     setOpen(false);
@@ -192,7 +210,7 @@ export default function SiteHeader() {
                   key={n.href}
                   href={n.href}
                   className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors ${
-                    pathname === n.href
+                    isNavActive(pathname, n.href)
                       ? "text-primary bg-secondary"
                       : "text-foreground/75 hover:text-primary hover:bg-secondary/60"
                   }`}
@@ -288,7 +306,7 @@ export default function SiteHeader() {
               style={{ transitionDelay: open ? `${idx * 30}ms` : "0ms" }}
               className={`px-4 py-3 rounded-xl text-[15px] transition-all duration-300 ${
                 open ? "translate-x-0 opacity-100" : "translate-x-2 opacity-0"
-              } ${pathname === n.href ? "bg-secondary text-primary font-semibold" : "text-foreground/80 hover:bg-secondary/50"}`}
+              } ${isNavActive(pathname, n.href) ? "bg-secondary text-primary font-semibold" : "text-foreground/80 hover:bg-secondary/50"}`}
             >
               {n.label}
             </Link>

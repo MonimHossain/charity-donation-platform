@@ -1628,21 +1628,43 @@ export default function CampaignsPage() {
         {currentStepId === "visibility" && (
           <div className="space-y-4">
             <h3 className="font-serif font-semibold text-lg">Visibility Settings</h3>
-            <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Control where this campaign appears on the public site. The campaign must be{" "}
+              <strong>published</strong> for any of these to take effect.
+            </p>
+            <div className="space-y-4 rounded-xl border bg-muted/30 p-4">
               <SwitchRow
                 label="Show in Header Navigation"
+                description="Adds a link in the top site menu (desktop and mobile), next to Zakat."
                 checked={form.visibilitySettings.showInHeader}
-                onChange={(v) => setForm((p) => ({ ...p, visibilitySettings: { ...p.visibilitySettings, showInHeader: v } }))}
+                onChange={(v) =>
+                  setForm((p) => ({
+                    ...p,
+                    visibilitySettings: { ...p.visibilitySettings, showInHeader: v },
+                  }))
+                }
               />
               <SwitchRow
                 label="Show on Homepage"
+                description='Includes this campaign in the homepage "Our Appeals" section (or "Live Fundraisers" for fundraiser campaigns).'
                 checked={form.visibilitySettings.showOnHomepage}
-                onChange={(v) => setForm((p) => ({ ...p, visibilitySettings: { ...p.visibilitySettings, showOnHomepage: v } }))}
+                onChange={(v) =>
+                  setForm((p) => ({
+                    ...p,
+                    visibilitySettings: { ...p.visibilitySettings, showOnHomepage: v },
+                  }))
+                }
               />
               <SwitchRow
                 label="Pin to Top of Campaign List"
+                description="Sorts this campaign above others on the homepage and on /campaigns (does not hide other campaigns)."
                 checked={form.visibilitySettings.pinToTop}
-                onChange={(v) => setForm((p) => ({ ...p, visibilitySettings: { ...p.visibilitySettings, pinToTop: v } }))}
+                onChange={(v) =>
+                  setForm((p) => ({
+                    ...p,
+                    visibilitySettings: { ...p.visibilitySettings, pinToTop: v },
+                  }))
+                }
               />
             </div>
           </div>
@@ -2127,11 +2149,24 @@ function AttributeEditor({
 
 // ── Reusable Switch Row ──
 
-function SwitchRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
+function SwitchRow({
+  label,
+  description,
+  checked,
+  onChange,
+}: {
+  label: string;
+  description?: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
   return (
-    <div className="flex items-center justify-between py-2">
-      <span className="text-sm">{label}</span>
-      <Switch checked={checked} onCheckedChange={onChange} />
+    <div className="flex items-start justify-between gap-4 py-1">
+      <div className="min-w-0">
+        <span className="text-sm font-medium">{label}</span>
+        {description && <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{description}</p>}
+      </div>
+      <Switch checked={checked} onCheckedChange={onChange} className="shrink-0 mt-0.5" />
     </div>
   );
 }
