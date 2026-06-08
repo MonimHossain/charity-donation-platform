@@ -312,9 +312,6 @@ const defaultForm: CampaignForm = {
 const CAMPAIGN_MODES: { value: CampaignMode; label: string; desc: string }[] = [
   { value: "standard", label: "Standard", desc: "Regular donation campaign" },
   { value: "fundraiser", label: "Fundraiser", desc: "Goal-based fundraising with progress bar" },
-  { value: "sponsorship", label: "Sponsorship", desc: "Recurring sponsorship programmes" },
-  { value: "zakat", label: "Zakat", desc: "Zakat-eligible donations" },
-  { value: "automated", label: "Automated", desc: "Automated/scheduled donation splits" },
   { value: "fidya_kaffarah", label: "Fidya / Kaffarah", desc: "Quantity-based Fidya and Kaffarah checkout" },
   { value: "ramadan_split", label: "Ramadan Split", desc: "Split gifts across Ramadan nights with weights" },
 ];
@@ -349,7 +346,6 @@ function getStatusTransitions(current: string): CampaignStatus[] {
 
 type WizardStepId =
   | "info"
-  | "type"
   | "attributes"
   | "fundraiser"
   | "checkout"
@@ -370,14 +366,9 @@ function buildWizardSteps(form: CampaignForm): WizardStep[] {
     {
       id: "info",
       title: "Campaign basics",
-      description: "Name your campaign, add descriptions, and upload images.",
-    },
-    {
-      id: "type",
-      title: "Campaign type",
       description: experience
-        ? "Choose an experience type and configure Fidya/Kaffarah or Ramadan settings."
-        : "Pick how donors will interact with this campaign.",
+        ? "Campaign details, images, type, and Fidya/Kaffarah or Ramadan settings."
+        : "Name your campaign, choose its type, and upload images.",
     },
   ];
 
@@ -954,6 +945,216 @@ export default function CampaignsPage() {
                 <FilePicker value={form.banner} onChange={(url) => setForm((p) => ({ ...p, banner: url }))} accept="image" />
               </div>
             </div>
+
+            <div className="space-y-4 rounded-xl border bg-muted/20 p-4 sm:p-5">
+              <div>
+                <h3 className="font-serif font-semibold text-lg">Campaign type</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Select the type of campaign. This determines which configuration options are available.
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {CAMPAIGN_MODES.map((m) => (
+                  <button
+                    key={m.value}
+                    type="button"
+                    onClick={() =>
+                      setForm((p) => ({
+                        ...p,
+                        campaignMode: m.value,
+                        experienceConfig:
+                          m.value === "fidya_kaffarah"
+                            ? { ...DEFAULT_FIDYA_CONFIG, ...(p.experienceConfig as FidyaKaffarahConfig) }
+                            : m.value === "ramadan_split"
+                              ? { ...DEFAULT_RAMADAN_CONFIG, ...(p.experienceConfig as RamadanSplitConfig) }
+                              : p.experienceConfig,
+                      }))
+                    }
+                    className={cn(
+                      "rounded-xl border-2 p-4 text-left transition-all",
+                      form.campaignMode === m.value
+                        ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                        : "border-border hover:border-primary/40"
+                    )}
+                  >
+                    <p className="font-semibold text-sm">{m.label}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{m.desc}</p>
+                  </button>
+                ))}
+              </div>
+
+              {form.campaignMode === "fidya_kaffarah" && (
+                <div className="space-y-4 rounded-xl border border-violet-200 bg-violet-50/50 p-5">
+                  <h4 className="font-semibold text-sm">Fidya / Kaffarah settings</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Configure options and unit prices shown on the campaign page.
+                  </p>
+                  {fidyaConfig.options.map((opt, idx) => (
+                    <div key={idx} className="grid grid-cols-3 gap-2">
+                      <Input
+                        value={opt.label}
+                        onChange={(e) =>
+                          setForm((p) => {
+                            const options = [...fidyaConfig.options];
+                            options[idx] = { ...options[idx], label: e.target.value };
+                            return { ...p, experienceConfig: { ...fidyaConfig, options } };
+                          })
+                        }
+                        placeholder="Label"
+                      />
+                      <Input
+                        value={opt.key}
+                        onChange={(e) =>
+                          setForm((p) => {
+                            const options = [...fidyaConfig.options];
+                            options[idx] = { ...options[idx], key: e.target.value };
+                            return { ...p, experienceConfig: { ...fidyaConfig, options } };
+                          })
+                        }
+                        placeholder="Key"
+                      />
+                      <Input
+                        type="number"
+                        value={opt.unitPrice ?? 0}
+                        onChange={(e) =>
+                          setForm((p) => {
+                            const options = [...fidyaConfig.options];
+                            options[idx] = { ...options[idx], unitPrice: Number(e.target.value) };
+                            return { ...p, experienceConfig: { ...fidyaConfig, options } };
+                          })
+                        }
+                        placeholder="Unit price"
+                      />
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setForm((p) => ({
+                        ...p,
+                        experienceConfig: {
+                          ...fidyaConfig,
+                          options: [
+                            ...fidyaConfig.options,
+                            { key: `opt-${fidyaConfig.options.length + 1}`, label: "New option", unitPrice: 0 },
+                          ],
+                        },
+                      }))
+                    }
+                  >
+                    Add option
+                  </Button>
+                  <div className="grid grid-cols-4 gap-2">
+                    <Input
+                      type="number"
+                      value={fidyaConfig.quantity?.min ?? 1}
+                      onChange={(e) =>
+                        setForm((p) => ({
+                          ...p,
+                          experienceConfig: {
+                            ...fidyaConfig,
+                            quantity: { ...fidyaConfig.quantity!, min: Number(e.target.value) },
+                          },
+                        }))
+                      }
+                      placeholder="Min qty"
+                    />
+                    <Input
+                      type="number"
+                      value={fidyaConfig.quantity?.max ?? 999}
+                      onChange={(e) =>
+                        setForm((p) => ({
+                          ...p,
+                          experienceConfig: {
+                            ...fidyaConfig,
+                            quantity: { ...fidyaConfig.quantity!, max: Number(e.target.value) },
+                          },
+                        }))
+                      }
+                      placeholder="Max qty"
+                    />
+                    <Input
+                      type="number"
+                      value={fidyaConfig.quantity?.default ?? 1}
+                      onChange={(e) =>
+                        setForm((p) => ({
+                          ...p,
+                          experienceConfig: {
+                            ...fidyaConfig,
+                            quantity: { ...fidyaConfig.quantity!, default: Number(e.target.value) },
+                          },
+                        }))
+                      }
+                      placeholder="Default"
+                    />
+                    <Input
+                      value={fidyaConfig.quantity?.label ?? "Quantity:"}
+                      onChange={(e) =>
+                        setForm((p) => ({
+                          ...p,
+                          experienceConfig: {
+                            ...fidyaConfig,
+                            quantity: { ...fidyaConfig.quantity!, label: e.target.value },
+                          },
+                        }))
+                      }
+                      placeholder="Quantity label"
+                    />
+                  </div>
+                  <label className="flex items-center gap-2 text-sm">
+                    <Switch
+                      checked={Boolean(fidyaConfig.allowCustomAmount)}
+                      onCheckedChange={(v) =>
+                        setForm((p) => ({ ...p, experienceConfig: { ...fidyaConfig, allowCustomAmount: v } }))
+                      }
+                    />
+                    Allow custom amount override
+                  </label>
+                </div>
+              )}
+
+              {form.campaignMode === "ramadan_split" && (
+                <div className="space-y-4 rounded-xl border border-amber-200 bg-amber-50/50 p-5">
+                  <h4 className="font-semibold text-sm">Ramadan Split settings</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Donors pick nights and optional weights on the public campaign page.
+                  </p>
+                  <div className="grid gap-4 sm:grid-cols-2 max-w-md">
+                    <div className="space-y-2">
+                      <Label>Ramadan start date</Label>
+                      <Input
+                        type="date"
+                        value={ramadanConfig.ramadanStartDate ?? ""}
+                        onChange={(e) =>
+                          setForm((p) => ({
+                            ...p,
+                            experienceConfig: { ...ramadanConfig, ramadanStartDate: e.target.value },
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Max nights</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={30}
+                        value={ramadanConfig.maxNights ?? 30}
+                        onChange={(e) =>
+                          setForm((p) => ({
+                            ...p,
+                            experienceConfig: { ...ramadanConfig, maxNights: Number(e.target.value) },
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-2">
                 <Label>Category</Label>
@@ -1051,213 +1252,6 @@ export default function CampaignsPage() {
                 </div>
               )}
             </div>
-          </div>
-        )}
-
-        {currentStepId === "type" && (
-          <div className="space-y-4">
-            <h3 className="font-serif font-semibold text-lg">Campaign Mode</h3>
-            <p className="text-sm text-muted-foreground">Select the type of campaign. This determines which configuration options are available.</p>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {CAMPAIGN_MODES.map((m) => (
-                <button
-                  key={m.value}
-                  type="button"
-                  onClick={() =>
-                    setForm((p) => ({
-                      ...p,
-                      campaignMode: m.value,
-                      experienceConfig:
-                        m.value === "fidya_kaffarah"
-                          ? { ...DEFAULT_FIDYA_CONFIG, ...(p.experienceConfig as FidyaKaffarahConfig) }
-                          : m.value === "ramadan_split"
-                            ? { ...DEFAULT_RAMADAN_CONFIG, ...(p.experienceConfig as RamadanSplitConfig) }
-                            : p.experienceConfig,
-                    }))
-                  }
-                  className={cn(
-                    "rounded-xl border-2 p-4 text-left transition-all",
-                    form.campaignMode === m.value
-                      ? "border-primary bg-primary/5 ring-1 ring-primary/20"
-                      : "border-border hover:border-primary/40"
-                  )}
-                >
-                  <p className="font-semibold text-sm">{m.label}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{m.desc}</p>
-                </button>
-              ))}
-            </div>
-
-            {form.campaignMode === "fidya_kaffarah" && (
-              <div className="mt-6 space-y-4 rounded-xl border border-violet-200 bg-violet-50/50 p-5">
-                <h4 className="font-semibold text-sm">Fidya / Kaffarah settings</h4>
-                <p className="text-xs text-muted-foreground">
-                  Configure options and unit prices shown on the campaign page.
-                </p>
-                {fidyaConfig.options.map((opt, idx) => (
-                  <div key={idx} className="grid grid-cols-3 gap-2">
-                    <Input
-                      value={opt.label}
-                      onChange={(e) =>
-                        setForm((p) => {
-                          const options = [...fidyaConfig.options];
-                          options[idx] = { ...options[idx], label: e.target.value };
-                          return { ...p, experienceConfig: { ...fidyaConfig, options } };
-                        })
-                      }
-                      placeholder="Label"
-                    />
-                    <Input
-                      value={opt.key}
-                      onChange={(e) =>
-                        setForm((p) => {
-                          const options = [...fidyaConfig.options];
-                          options[idx] = { ...options[idx], key: e.target.value };
-                          return { ...p, experienceConfig: { ...fidyaConfig, options } };
-                        })
-                      }
-                      placeholder="Key"
-                    />
-                    <Input
-                      type="number"
-                      value={opt.unitPrice ?? 0}
-                      onChange={(e) =>
-                        setForm((p) => {
-                          const options = [...fidyaConfig.options];
-                          options[idx] = { ...options[idx], unitPrice: Number(e.target.value) };
-                          return { ...p, experienceConfig: { ...fidyaConfig, options } };
-                        })
-                      }
-                      placeholder="Unit price"
-                    />
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    setForm((p) => ({
-                      ...p,
-                      experienceConfig: {
-                        ...fidyaConfig,
-                        options: [
-                          ...fidyaConfig.options,
-                          { key: `opt-${fidyaConfig.options.length + 1}`, label: "New option", unitPrice: 0 },
-                        ],
-                      },
-                    }))
-                  }
-                >
-                  Add option
-                </Button>
-                <div className="grid grid-cols-4 gap-2">
-                  <Input
-                    type="number"
-                    value={fidyaConfig.quantity?.min ?? 1}
-                    onChange={(e) =>
-                      setForm((p) => ({
-                        ...p,
-                        experienceConfig: {
-                          ...fidyaConfig,
-                          quantity: { ...fidyaConfig.quantity!, min: Number(e.target.value) },
-                        },
-                      }))
-                    }
-                    placeholder="Min qty"
-                  />
-                  <Input
-                    type="number"
-                    value={fidyaConfig.quantity?.max ?? 999}
-                    onChange={(e) =>
-                      setForm((p) => ({
-                        ...p,
-                        experienceConfig: {
-                          ...fidyaConfig,
-                          quantity: { ...fidyaConfig.quantity!, max: Number(e.target.value) },
-                        },
-                      }))
-                    }
-                    placeholder="Max qty"
-                  />
-                  <Input
-                    type="number"
-                    value={fidyaConfig.quantity?.default ?? 1}
-                    onChange={(e) =>
-                      setForm((p) => ({
-                        ...p,
-                        experienceConfig: {
-                          ...fidyaConfig,
-                          quantity: { ...fidyaConfig.quantity!, default: Number(e.target.value) },
-                        },
-                      }))
-                    }
-                    placeholder="Default"
-                  />
-                  <Input
-                    value={fidyaConfig.quantity?.label ?? "Quantity:"}
-                    onChange={(e) =>
-                      setForm((p) => ({
-                        ...p,
-                        experienceConfig: {
-                          ...fidyaConfig,
-                          quantity: { ...fidyaConfig.quantity!, label: e.target.value },
-                        },
-                      }))
-                    }
-                    placeholder="Quantity label"
-                  />
-                </div>
-                <label className="flex items-center gap-2 text-sm">
-                  <Switch
-                    checked={Boolean(fidyaConfig.allowCustomAmount)}
-                    onCheckedChange={(v) =>
-                      setForm((p) => ({ ...p, experienceConfig: { ...fidyaConfig, allowCustomAmount: v } }))
-                    }
-                  />
-                  Allow custom amount override
-                </label>
-              </div>
-            )}
-
-            {form.campaignMode === "ramadan_split" && (
-              <div className="mt-6 space-y-4 rounded-xl border border-amber-200 bg-amber-50/50 p-5">
-                <h4 className="font-semibold text-sm">Ramadan Split settings</h4>
-                <p className="text-xs text-muted-foreground">
-                  Donors pick nights and optional weights on the public campaign page.
-                </p>
-                <div className="grid gap-4 sm:grid-cols-2 max-w-md">
-                  <div className="space-y-2">
-                    <Label>Ramadan start date</Label>
-                    <Input
-                      type="date"
-                      value={ramadanConfig.ramadanStartDate ?? ""}
-                      onChange={(e) =>
-                        setForm((p) => ({
-                          ...p,
-                          experienceConfig: { ...ramadanConfig, ramadanStartDate: e.target.value },
-                        }))
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Max nights</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={30}
-                      value={ramadanConfig.maxNights ?? 30}
-                      onChange={(e) =>
-                        setForm((p) => ({
-                          ...p,
-                          experienceConfig: { ...ramadanConfig, maxNights: Number(e.target.value) },
-                        }))
-                      }
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         )}
 
