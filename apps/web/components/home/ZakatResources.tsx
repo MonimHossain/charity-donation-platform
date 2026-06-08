@@ -1,9 +1,9 @@
 import Link from "next/link";
 
 const cards = [
-  { title: "Zakat Calculator", image: "https://images.unsplash.com/photo-1593113598332-cd288d649433?auto=format&fit=crop&w=800&q=70", href: "/zakat", desc: "Calculate your Zakat in minutes and donate with confidence." },
-  { title: "Zakat Appeal", image: "https://images.unsplash.com/photo-1469571486292-0ba58a3f068b?auto=format&fit=crop&w=800&q=70", href: "/donate?cause=zakat", desc: "Give Zakat to verified causes and track your impact." },
-  { title: "Zakat Guide", image: "https://images.unsplash.com/photo-1532629345422-7515f3d16bb6?auto=format&fit=crop&w=800&q=70", href: "/zakat", desc: "Learn what counts, thresholds (Nisab), and how to give correctly." },
+  { title: "Zakat Guide", image: "https://images.unsplash.com/photo-1532629345422-7515f3d16bb6?auto=format&fit=crop&w=800&q=70", href: "/zakat", desc: "Our guide covering all you need to know about Zakat, zakat calculator and donate with zakat." },
+  { title: "Zakat Appeal", image: "https://images.unsplash.com/photo-1469571486292-0ba58a3f068b?auto=format&fit=crop&w=800&q=70", href: "/donate?cause=zakat", desc: "Our guide covering all you need to know about Zakat, zakat calculator and donate with zakat." },
+  { title: "Zakat Calculator", image: "https://images.unsplash.com/photo-1593113598332-cd288d649433?auto=format&fit=crop&w=800&q=70", href: "/zakat", desc: "Our guide covering all you need to know about Zakat, zakat calculator and donate with zakat." },
 ];
 
 const ZakatResources = () => (

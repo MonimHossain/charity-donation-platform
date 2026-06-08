@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { homeOutlineButtonClass } from "@/lib/home-buttons";
 
 const StorySection = () => (
   <section className="container-wide py-24 grid lg:grid-cols-12 gap-12 items-center">
@@ -34,9 +34,9 @@ const StorySection = () => (
           </li>
         ))}
       </ul>
-      <Button asChild size="lg" className="mt-10 rounded-full">
-        <Link href="/about">Read our story</Link>
-      </Button>
+      <Link href="/about" className={`${homeOutlineButtonClass} mt-10 px-8 py-3 text-base`}>
+        Read our story
+      </Link>
     </div>
   </section>
 );

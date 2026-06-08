@@ -1,8 +1,8 @@
 "use client";
 
 import { ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import QuickDonate from "./QuickDonate";
+import { homeOutlineButtonClass } from "@/lib/home-buttons";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 
@@ -58,17 +58,16 @@ const Hero = () => {
         <div className="lg:col-span-6 animate-fade-up">
           <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary text-accent-deep text-[11px] font-bold tracking-[0.18em] uppercase">
             <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-            UK Muslim Charity · Est. 2018
+            Delivering mercy worldwide
           </span>
 
           <h1 className="mt-4 font-serif text-3xl sm:text-4xl lg:text-5xl xl:text-[3.25rem] leading-[1.05] tracking-tight text-primary text-balance">
-            Save a life.{" "}
-            <em className="not-italic italic text-accent">Transform</em> a future.{" "}
-            Give with <em className="not-italic italic text-accent">purpose</em>.
+            Give with purpose.{" "}
+            <span className="underline-brush">change lives</span>.
           </h1>
 
           <p className="mt-4 text-base lg:text-lg text-muted-foreground max-w-lg leading-relaxed">
-            Your trusted UK charity delivering food, water, healthcare and education to those who need it most — with full transparency.
+            Your Zakat and Sadaqah reach the world&apos;s most vulnerable — from Gaza to Sudan — transforming hardship into lasting hope.
           </p>
 
           <div className="mt-5">
@@ -76,9 +75,9 @@ const Hero = () => {
           </div>
 
           <div className="mt-4 flex flex-wrap gap-3">
-            <Button asChild size="lg" variant="outline" className="rounded-full px-6">
-              <Link href="/campaigns">Browse Appeals <ArrowRight className="w-4 h-4" /></Link>
-            </Button>
+            <Link href="/campaigns" className={`${homeOutlineButtonClass} px-6 py-3 text-sm`}>
+              Browse appeals <ArrowRight className="w-4 h-4" />
+            </Link>
           </div>
         </div>
 

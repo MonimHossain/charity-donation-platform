@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, Heart, User as UserIcon, ChevronDown, CalendarDays, Timer, ShoppingBasket } from "lucide-react";
+import { Menu, X, User as UserIcon, ChevronDown, CalendarDays, Timer, ShoppingBasket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import GlobalSearch from "./GlobalSearch";
 import CurrencySwitcher from "./CurrencySwitcher";
@@ -227,8 +227,8 @@ export default function SiteHeader() {
           </div>
 
           <div className="hidden lg:flex items-center gap-2">
-            <Button asChild size="sm" className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90">
-              <Link href="/donate?cause=gaza">Gaza Emergency</Link>
+            <Button asChild size="sm" className="rounded-full bg-accent text-accent-foreground hover:bg-accent/90">
+              <Link href="/donate">Donate</Link>
             </Button>
             {/* Show extra controls when scrolled */}
             <div
@@ -255,7 +255,7 @@ export default function SiteHeader() {
           {/* Mobile */}
           <div className="flex lg:hidden items-center gap-1.5 ml-auto">
             <Button asChild size="sm" className="rounded-full h-9 px-3 bg-accent text-accent-foreground hover:bg-accent/90">
-              <Link href="/donate"><Heart className="w-4 h-4" /> Donate</Link>
+              <Link href="/donate">Donate</Link>
             </Button>
             <button
               onClick={() => setOpen((v) => !v)}

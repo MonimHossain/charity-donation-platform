@@ -9,6 +9,7 @@ import { isCampaignExpired } from "@/lib/campaign-expiration";
 import { CampaignExpirationCountdown } from "@/components/campaigns/CampaignExpirationCountdown";
 import { CampaignFeaturedBadge } from "@/components/campaigns/CampaignFeaturedBadge";
 import { demoCampaigns } from "@/lib/mock/campaigns";
+import { homeDonateButtonClass } from "@/lib/home-buttons";
 import {
   CAMPAIGN_MODE_LABELS,
   isExperienceCampaignMode,
@@ -101,7 +102,7 @@ const AppealCard = ({
   onExpired?: () => void;
 }) => (
   <div className={`group relative flex flex-col overflow-hidden rounded-2xl sm:rounded-3xl bg-card border border-border/60 shadow-soft hover:shadow-lift hover:-translate-y-1 transition-all duration-500 ${large ? "sm:col-span-2 lg:col-span-2" : ""}`}>
-    <Link href={`/campaigns/${a.slug}`} className="relative block overflow-hidden">
+    <Link href={`/causes/${a.slug}`} className="relative block overflow-hidden">
       <div className={`relative overflow-hidden ${large ? "aspect-[8/3]" : "aspect-[4/3]"}`}>
         <img
           src={a.image}
@@ -167,20 +168,13 @@ const AppealCard = ({
         {a.impact}
       </div>
 
-      <div className="mt-auto pt-2 flex items-stretch gap-2">
+      <div className="mt-auto pt-2">
         <Link
           href={`/donate?cause=${a.slug}`}
-          className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors shadow-soft"
+          className={`w-full px-4 py-2.5 text-sm ${homeDonateButtonClass}`}
         >
           Donate now
           <ArrowUpRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-        </Link>
-        <Link
-          href={`/campaigns/${a.slug}`}
-          className="inline-flex items-center justify-center px-4 py-2.5 rounded-full border border-border text-foreground text-sm font-semibold hover:bg-secondary transition-colors"
-          aria-label={`View details for ${a.title}`}
-        >
-          Details
         </Link>
       </div>
     </div>
@@ -259,7 +253,7 @@ const FeaturedCampaigns = () => {
       </div>
       <Link
         href="/campaigns"
-        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors shadow-soft whitespace-nowrap"
+        className={`px-5 py-2.5 text-sm whitespace-nowrap ${homeDonateButtonClass}`}
       >
         View all appeals <ArrowUpRight className="w-4 h-4" />
       </Link>

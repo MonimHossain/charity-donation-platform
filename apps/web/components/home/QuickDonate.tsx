@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Heart, ShieldCheck, ChevronDown, HandHeart, Repeat, CircleDollarSign } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ShieldCheck, ChevronDown, HandHeart, CircleDollarSign } from "lucide-react";
+import { homeDonateButtonClass } from "@/lib/home-buttons";
 
 const PRESETS = [10, 25, 50, 100, 250];
 
 const FREQUENCIES = [
-  { value: "single", label: "Single" },
-  { value: "monthly", label: "Monthly" },
+  { value: "single", label: "Single Donation" },
+  { value: "monthly", label: "Monthly Donation" },
 ] as const;
 
 const CAUSES = [
@@ -72,7 +72,7 @@ export default function QuickDonate({ defaultAmount = 50, campaign = "gaza", var
                 key={f.value}
                 type="button"
                 onClick={() => setFreq(f.value as "single" | "monthly")}
-                className={`px-4 py-1.5 text-xs font-bold rounded-full transition-colors ${
+                className={`px-3 sm:px-4 py-1.5 text-[11px] sm:text-xs font-bold rounded-full transition-colors ${
                   freq === f.value
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
@@ -144,12 +144,13 @@ export default function QuickDonate({ defaultAmount = 50, campaign = "gaza", var
           </div>
         </div>
 
-        <Button
+        <button
+          type="button"
           onClick={go}
-          className="w-full rounded-full h-12 mt-3 text-base font-bold bg-accent text-accent-foreground hover:bg-accent/90"
+          className={`w-full h-12 mt-3 text-base font-bold ${homeDonateButtonClass}`}
         >
-          <Heart className="w-5 h-5" /> Donate {symbol}{final}{freq === "monthly" ? "/mo" : ""}
-        </Button>
+          Donate {symbol}{final}{freq === "monthly" ? "/mo" : ""}
+        </button>
 
         <p className="sm:hidden mt-2 flex items-center justify-center gap-1 text-[11px] text-muted-foreground">
           <ShieldCheck className="w-3.5 h-3.5 text-accent-deep" /> Secure checkout
@@ -243,14 +244,14 @@ export default function QuickDonate({ defaultAmount = 50, campaign = "gaza", var
         />
       </div>
 
-      <Button
+      <button
+        type="button"
         onClick={go}
-        className="w-full mt-4 rounded-full text-base bg-accent text-accent-foreground hover:bg-accent/90"
-        size="lg"
+        className={`w-full mt-4 h-12 text-base font-bold ${homeDonateButtonClass}`}
       >
-        <Heart className="w-5 h-5" /> Donate {symbol}{final}
-        {freq === "monthly" && "/mo"} now
-      </Button>
+        Donate {symbol}{final}
+        {freq === "monthly" && "/mo"}
+      </button>
 
       <div className={`mt-3 flex items-center justify-center gap-1.5 text-[11px] ${dark ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
         <ShieldCheck className="w-3.5 h-3.5" /> Secure · Apple Pay · Google Pay · Card
