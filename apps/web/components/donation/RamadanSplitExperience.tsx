@@ -2,34 +2,51 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarDays, Eye } from "lucide-react";
+import { Eye } from "lucide-react";
 import { toast } from "sonner";
 
 import PageShell, { PageHero } from "@/components/site/PageShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { addDonationCartItem } from "@/lib/stores/donationCartStore";
 import {
+  buildEqualRamadanNightPreview,
   buildRamadanCalendarDates,
-  buildRamadanNightPreview,
   buildRecurringDonationPlan,
-  clampWeight,
-  formatRamadanDate,
+  formatRamadanStartPill,
   getRamadanAdminConfig,
-  parseWeightInput,
+  getRamadanPresetDates,
+  type RamadanGivingPreset,
 } from "@/lib/ramadan-split";
 import RamadanPreviewModal from "@/components/donation/RamadanPreviewModal";
 import type { DonationExperienceRamadanSplit, DonationPageDto } from "@icac/shared-types";
 import type { DonationSource } from "@/lib/donation-source";
+import { CURRENCIES, type CurrencyCode } from "@/lib/currency";
 import {
-  RAMADAN_REGIONS,
   useRamadanRegion,
   type RamadanRegionId,
 } from "@/lib/ramadan-region";
 
 const PRESET_AMOUNTS = [40, 50, 100, 250, 500, 1000, 5000];
+
+type GivingOption = RamadanGivingPreset | "custom";
+
+const GIVING_OPTIONS: Array<{ id: GivingOption; label: string }> = [
+  { id: "all_30", label: "Maximize Blessings All 30 Nights" },
+  { id: "last_10", label: "Popular Last 10 Nights" },
+  { id: "odd_5", label: "Sunnah Last 5 Odd Nights" },
+  { id: "custom", label: "Custom" },
+];
+
+function pillClass(active: boolean) {
+  return cn(
+    "rounded-full border px-4 py-3 text-sm font-semibold transition-colors text-center",
+    active
+      ? "bg-accent text-accent-foreground border-accent"
+      : "bg-background border-accent/50 text-foreground hover:border-accent"
+  );
+}
 
 export function RamadanSplitForm({
   source,
@@ -41,44 +58,43 @@ export function RamadanSplitForm({
   embedded?: boolean;
 }) {
   const router = useRouter();
-  const { regionId, regionLabel, source: regionSource, setRegionId } = useRamadanRegion();
-  const { ramadanStartDate, maxNights } = getRamadanAdminConfig(experience, regionId);
+  const { regionId, regionLabel, setRegionId } = useRamadanRegion();
+  const { ramadanStartDate, maxNights, startChoices } = getRamadanAdminConfig(experience, regionId);
   const calendarDates = useMemo(
     () => buildRamadanCalendarDates(ramadanStartDate, maxNights),
     [ramadanStartDate, maxNights]
   );
 
-  const [selectedDates, setSelectedDates] = useState<string[]>(() => [...calendarDates]);
-  const [amount, setAmount] = useState(50);
+  const [givingOption, setGivingOption] = useState<GivingOption>("odd_5");
+  const [selectedDates, setSelectedDates] = useState<string[]>(() =>
+    getRamadanPresetDates("odd_5", calendarDates)
+  );
+  const [amount, setAmount] = useState(100);
   const [customAmount, setCustomAmount] = useState("");
-  const [customizeWeights, setCustomizeWeights] = useState(false);
-  const [weights, setWeights] = useState<number[]>(() => calendarDates.map(() => 1));
   const [previewOpen, setPreviewOpen] = useState(false);
-
-  useEffect(() => {
-    setSelectedDates([...calendarDates]);
-    setWeights(calendarDates.map(() => 1));
-  }, [calendarDates, regionId]);
+  const [previewNights, setPreviewNights] = useState<ReturnType<typeof buildEqualRamadanNightPreview>>([]);
 
   const currency = experience.currency ?? source.currency ?? "GBP";
+  const sym = CURRENCIES[(currency as CurrencyCode) || "GBP"]?.symbol ?? "£";
   const baseTotal = customAmount ? Number(customAmount) : amount;
   const campaignId = experience.campaignId ?? source.campaignId ?? source.id;
+
+  useEffect(() => {
+    if (givingOption === "custom") {
+      setSelectedDates((prev) => prev.filter((d) => calendarDates.includes(d)));
+      return;
+    }
+    setSelectedDates(getRamadanPresetDates(givingOption, calendarDates));
+  }, [calendarDates, givingOption, regionId]);
 
   const selectedOrdered = useMemo(
     () => calendarDates.filter((d) => selectedDates.includes(d)),
     [calendarDates, selectedDates]
   );
 
-  const activeWeights = useMemo(() => {
-    return selectedOrdered.map((date) => {
-      const idx = calendarDates.indexOf(date);
-      return clampWeight(weights[idx] ?? 1);
-    });
-  }, [selectedOrdered, calendarDates, weights]);
-
   const nightPreview = useMemo(
-    () => buildRamadanNightPreview(selectedOrdered, activeWeights, Number(baseTotal) || 0),
-    [selectedOrdered, activeWeights, baseTotal]
+    () => buildEqualRamadanNightPreview(selectedOrdered, Number(baseTotal) || 0),
+    [selectedOrdered, baseTotal]
   );
 
   const dailyBreakdown = useMemo(() => nightPreview.map((n) => n.amount), [nightPreview]);
@@ -93,125 +109,180 @@ export function RamadanSplitForm({
     });
   }
 
-  function updateWeightAt(index: number, raw: string) {
-    const w = parseWeightInput(raw);
-    setWeights((prev) => {
-      const next = [...prev];
-      while (next.length < calendarDates.length) next.push(1);
-      next[index] = w;
-      return next;
-    });
+  function selectGivingOption(option: GivingOption) {
+    setGivingOption(option);
+    if (option !== "custom") {
+      setSelectedDates(getRamadanPresetDates(option, calendarDates));
+    }
   }
 
-  const canAdd =
+  function openPreviewForOption(option: GivingOption) {
+    const dates =
+      option === "custom"
+        ? selectedOrdered
+        : getRamadanPresetDates(option, calendarDates);
+    if (dates.length === 0) {
+      toast.error("No nights selected to preview");
+      return;
+    }
+    setPreviewNights(buildEqualRamadanNightPreview(dates, Number(baseTotal) || 0));
+    setPreviewOpen(true);
+  }
+
+  const canDonate =
     selectedOrdered.length > 0 &&
     Number.isFinite(baseTotal) &&
     baseTotal > 0 &&
     nightPreview.every((n) => n.amount >= 0);
 
+  function handleDonate() {
+    const recurringPlan = buildRecurringDonationPlan({
+      donationPageId: source.id,
+      donationPageSlug: source.slug,
+      campaignId,
+      currency,
+      totalAmount: Number(baseTotal),
+      nights: nightPreview,
+    });
+
+    addDonationCartItem({
+      kind: "ramadan_split",
+      donationPageId: source.id,
+      donationPageSlug: source.slug,
+      title: source.title,
+      category: source.category,
+      amount: Number(baseTotal),
+      currency,
+      description: `Ramadan split — ${selectedOrdered.length} nights — ${sym}${Number(baseTotal).toFixed(2)}`,
+      campaignId,
+      donationType: "ramadan",
+      ramadan: {
+        ramadanStartDate,
+        regionId,
+        regionLabel,
+        selectedDates: selectedOrdered,
+        weights: selectedOrdered.map(() => 1),
+        dailyBreakdown,
+        nights: selectedOrdered.length,
+        campaignId,
+        notes: `Ramadan split (${selectedOrdered.length} nights)`,
+        recurringPlan,
+      },
+    });
+    toast.success("Added to cart");
+    router.push("/donation/checkout");
+  }
+
   return (
     <>
-      <div className={cn("space-y-6", embedded ? "" : "rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-soft")}>
-        <div className="rounded-full bg-accent text-accent-foreground text-center py-3 text-sm font-bold uppercase tracking-wider">
-          Split your gift across Ramadan nights
+      <div className={cn("space-y-5", embedded ? "" : "rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-soft")}>
+        <div className="rounded-full bg-accent text-accent-foreground text-center py-3.5 text-sm font-bold">
+          Total is Split Across Nights
         </div>
 
-        <div>
-          <p className="text-xs uppercase tracking-widest text-accent-deep font-bold">Amount</p>
-          <div className="mt-2 grid grid-cols-4 gap-2">
-            {PRESET_AMOUNTS.map((a) => {
-              const active = !customAmount && amount === a;
+        {/* Amount */}
+        <div className="grid grid-cols-4 gap-2">
+          {PRESET_AMOUNTS.map((a) => {
+            const active = !customAmount && amount === a;
+            return (
+              <button
+                key={a}
+                type="button"
+                onClick={() => {
+                  setAmount(a);
+                  setCustomAmount("");
+                }}
+                className={pillClass(active)}
+              >
+                {sym} {a}
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => setCustomAmount(customAmount || String(amount))}
+            className={pillClass(Boolean(customAmount))}
+          >
+            Other
+          </button>
+        </div>
+        {customAmount !== "" && (
+          <Input
+            type="number"
+            inputMode="decimal"
+            min={1}
+            placeholder="Enter other amount"
+            value={customAmount}
+            onChange={(e) => setCustomAmount(e.target.value)}
+            className="rounded-full h-11 text-center"
+          />
+        )}
+
+        {/* Regional start dates */}
+        <div className="space-y-2">
+          <p className="text-sm text-muted-foreground">Ramadan Starts From</p>
+          <div className="flex flex-col gap-2">
+            {startChoices.map((choice) => {
+              const choiceRegion = (choice.region ?? choice.id) as RamadanRegionId;
+              const active = regionId === choiceRegion;
               return (
                 <button
-                  key={a}
+                  key={choiceRegion}
                   type="button"
-                  onClick={() => {
-                    setAmount(a);
-                    setCustomAmount("");
-                  }}
-                  className={cn(
-                    "rounded-xl py-3 text-sm font-bold border transition-colors",
-                    active
-                      ? "bg-accent text-accent-foreground border-accent"
-                      : "bg-background border-border hover:border-primary/40"
-                  )}
+                  onClick={() => setRegionId(choiceRegion)}
+                  className={pillClass(active)}
                 >
-                  £ {a}
+                  {formatRamadanStartPill(choice.date)}
                 </button>
               );
             })}
-            <button
-              type="button"
-              onClick={() => setCustomAmount(String(baseTotal || ""))}
-              className={cn(
-                "rounded-xl py-3 text-sm font-bold border transition-colors",
-                customAmount
-                  ? "bg-accent text-accent-foreground border-accent"
-                  : "bg-background border-border hover:border-primary/40"
-              )}
-            >
-              Other
-            </button>
-          </div>
-          <div className="mt-3">
-            <Input
-              type="number"
-              inputMode="decimal"
-              min={1}
-              placeholder="Enter other amount"
-              value={customAmount}
-              onChange={(e) => setCustomAmount(e.target.value)}
-              className="rounded-xl h-11"
-            />
           </div>
         </div>
 
-        <div className="space-y-3">
-          <p className="text-xs uppercase tracking-widest text-accent-deep font-bold flex items-center gap-2">
-            <CalendarDays className="w-4 h-4" />
-            Select Ramadan nights
+        {/* Giving options */}
+        <div className="space-y-2">
+          <p className="text-sm text-muted-foreground">
+            Customize your {maxNights} nights of giving
           </p>
-          <p className="text-xs text-muted-foreground">
-            Ramadan begins {formatRamadanDate(ramadanStartDate)} for your area ({regionLabel}).
-            Choose up to {maxNights} nights ({selectedOrdered.length} selected).
-          </p>
-          <div className="rounded-2xl border border-border p-3 bg-secondary/30 space-y-3">
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Your Ramadan calendar
-              </Label>
-              <select
-                value={regionId}
-                onChange={(e) => setRegionId(e.target.value as RamadanRegionId)}
-                className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm"
-                aria-label="Ramadan start date region"
-              >
-                {RAMADAN_REGIONS.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.label}
-                  </option>
-                ))}
-              </select>
-              <p className="text-[11px] text-muted-foreground">
-                {regionSource === "preference"
-                  ? "You chose this calendar."
-                  : regionSource === "timezone"
-                    ? "Detected from your device timezone."
-                    : regionSource === "locale"
-                      ? "Detected from your browser locale."
-                      : "Default calendar for your area."}{" "}
-                Change the region if your local moon-sighting differs.
-              </p>
-            </div>
-            <Input
-              type="date"
-              value={ramadanStartDate}
-              readOnly
-              disabled
-              className="rounded-xl h-11 bg-background opacity-80"
-              aria-label="Ramadan start date for your region"
-            />
-            <div className="grid grid-cols-5 sm:grid-cols-6 gap-2">
+          <div className="space-y-2">
+            {GIVING_OPTIONS.map((opt) => {
+              const active = givingOption === opt.id;
+              return (
+                <div key={opt.id} className="flex gap-2 items-stretch">
+                  <button
+                    type="button"
+                    onClick={() => selectGivingOption(opt.id)}
+                    className={cn(pillClass(active), "flex-1 text-left")}
+                  >
+                    {opt.label}
+                  </button>
+                  <button
+                    type="button"
+                    title={`Preview ${opt.label}`}
+                    onClick={() => openPreviewForOption(opt.id)}
+                    className={cn(
+                      "shrink-0 rounded-full border px-3 flex items-center justify-center transition-colors",
+                      active
+                        ? "bg-accent/20 border-accent text-accent-deep"
+                        : "border-border text-muted-foreground hover:border-accent/50 hover:text-foreground"
+                    )}
+                  >
+                    <Eye className="w-4 h-4" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Custom calendar */}
+        {givingOption === "custom" && (
+          <div className="rounded-2xl border border-border p-3 bg-secondary/20">
+            <p className="text-xs text-muted-foreground mb-3">
+              Tap nights to include ({selectedOrdered.length} selected). Your gift is split equally
+              across selected nights.
+            </p>
+            <div className="grid grid-cols-5 gap-2">
               {calendarDates.map((date) => {
                 const selected = selectedDates.includes(date);
                 return (
@@ -223,7 +294,7 @@ export function RamadanSplitForm({
                       "rounded-xl py-2 px-1 text-center text-xs font-semibold border transition-colors",
                       selected
                         ? "bg-accent text-accent-foreground border-accent"
-                        : "bg-background border-border hover:border-primary/40 text-muted-foreground"
+                        : "bg-background border-border hover:border-accent/40 text-muted-foreground"
                     )}
                   >
                     <span className="block text-[10px] opacity-80">
@@ -237,107 +308,22 @@ export function RamadanSplitForm({
               })}
             </div>
           </div>
-        </div>
-
-        <div className="rounded-2xl border border-border p-4 space-y-3">
-          <label className="flex items-center gap-2 text-sm font-semibold">
-            <input
-              type="checkbox"
-              checked={customizeWeights}
-              onChange={(e) => setCustomizeWeights(e.target.checked)}
-            />
-            Customize weight per selected night (default is 1)
-          </label>
-          {customizeWeights && selectedOrdered.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-xs text-muted-foreground">
-                Weights cannot be negative. Higher weight = larger share of your total.
-              </p>
-              <div className="grid gap-2 max-h-48 overflow-y-auto">
-                {selectedOrdered.map((date) => {
-                  const index = calendarDates.indexOf(date);
-                  return (
-                    <div key={date} className="grid grid-cols-[1fr_80px] gap-2 items-center">
-                      <span className="text-xs font-medium truncate">{formatRamadanDate(date)}</span>
-                      <Input
-                        type="number"
-                        inputMode="decimal"
-                        min={0}
-                        step={1}
-                        value={weights[index] ?? 1}
-                        onChange={(e) => updateWeightAt(index, e.target.value)}
-                        className="h-9 text-sm"
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            className="rounded-full"
-            disabled={!canAdd}
-            onClick={() => setPreviewOpen(true)}
-          >
-            <Eye className="w-4 h-4" /> Preview schedule
-          </Button>
-        </div>
+        )}
 
         <Button
           size="lg"
-          className="w-full rounded-full bg-accent hover:bg-accent/90 h-14 text-base"
-          disabled={!canAdd}
-          onClick={() => {
-            const recurringPlan = buildRecurringDonationPlan({
-              donationPageId: source.id,
-              donationPageSlug: source.slug,
-              campaignId,
-              currency,
-              totalAmount: Number(baseTotal),
-              nights: nightPreview,
-            });
-
-            addDonationCartItem({
-              kind: "ramadan_split",
-              donationPageId: source.id,
-              donationPageSlug: source.slug,
-              title: source.title,
-              category: source.category,
-              amount: Number(baseTotal),
-              currency,
-              description: `Ramadan split — ${selectedOrdered.length} nights — £${Number(baseTotal).toFixed(2)}`,
-              campaignId,
-              donationType: "ramadan",
-              ramadan: {
-                ramadanStartDate,
-                regionId,
-                regionLabel,
-                selectedDates: selectedOrdered,
-                weights: activeWeights,
-                dailyBreakdown,
-                nights: selectedOrdered.length,
-                campaignId,
-                notes: `Ramadan split (${selectedOrdered.length} nights)`,
-                recurringPlan,
-              },
-            });
-            toast.success("Added to cart");
-            router.push("/donation/checkout");
-          }}
+          className="w-full rounded-full bg-accent hover:bg-accent/90 h-14 text-base font-bold"
+          disabled={!canDonate}
+          onClick={handleDonate}
         >
-          Add to cart
+          Donate
         </Button>
       </div>
 
       <RamadanPreviewModal
         open={previewOpen}
         onOpenChange={setPreviewOpen}
-        nights={nightPreview}
+        nights={previewOpen ? previewNights : nightPreview}
         total={Number(baseTotal) || 0}
         currency={currency}
       />
@@ -366,7 +352,7 @@ export default function RamadanSplitExperience({
     <PageShell title={page.title} description={page.shortDescription ?? ""}>
       <section className="container-wide py-16 sm:py-20">
         <PageHero eyebrow={page.category} title={page.title} description={page.shortDescription ?? ""} />
-        <div className="mt-10 max-w-2xl mx-auto">
+        <div className="mt-10 max-w-md mx-auto">
           <RamadanSplitForm source={source} experience={experience} />
         </div>
       </section>

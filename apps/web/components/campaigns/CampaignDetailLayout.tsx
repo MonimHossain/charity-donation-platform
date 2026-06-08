@@ -52,11 +52,9 @@ export interface CampaignDetailLayoutProps {
   percentage: number;
   daysLeft: number | null;
   isFundraiser: boolean;
-  isRamadanSplit: boolean;
   recentDonations: RecentDonation[];
   relatedCampaigns: RelatedCampaign[];
   heroSidebar: ReactNode | null;
-  experienceContent?: ReactNode;
   onShare: (platform: string) => void;
   donateHref?: string;
 }
@@ -67,11 +65,9 @@ export function CampaignDetailLayout({
   percentage,
   daysLeft,
   isFundraiser,
-  isRamadanSplit,
   recentDonations,
   relatedCampaigns,
   heroSidebar,
-  experienceContent,
   onShare,
   donateHref,
 }: CampaignDetailLayoutProps) {
@@ -81,7 +77,7 @@ export function CampaignDetailLayout({
   const pageDescription =
     campaign.seoSettings?.metaDescription || campaign.shortDescription.slice(0, 155);
   const checkoutLink = donateHref ?? `/donate?cause=${campaign.slug}&campaignId=${campaign.id}`;
-  const showSidebar = Boolean(heroSidebar) && !isRamadanSplit;
+  const showSidebar = Boolean(heroSidebar);
 
   return (
     <PageShell title={pageTitle} description={pageDescription}>
@@ -196,11 +192,6 @@ export function CampaignDetailLayout({
               <aside className="lg:col-span-5 xl:col-span-4">
                 {heroSidebar}
               </aside>
-            )}
-
-            {/* Ramadan experience — full width */}
-            {isRamadanSplit && experienceContent && (
-              <div className="lg:col-span-12 min-w-0">{experienceContent}</div>
             )}
 
             {/* 4. Rich text / campaign overview — below banner block */}

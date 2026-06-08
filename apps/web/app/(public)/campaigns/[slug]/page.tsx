@@ -195,7 +195,6 @@ function CampaignDetailApi({ slug: slugProp }: { slug: string }) {
   const sym = CURRENCY_SYMBOLS[campaign.currency] || "\u00a3";
   const isFundraiser = campaign.campaignMode === "fundraiser";
   const isExperienceMode = isExperienceCampaignMode(campaign.campaignMode);
-  const isRamadanSplit = campaign.campaignMode === "ramadan_split";
   const fs = campaign.fundraiserSettings;
   const percentage =
     isFundraiser && fs?.targetAmount > 0
@@ -237,9 +236,7 @@ function CampaignDetailApi({ slug: slugProp }: { slug: string }) {
     </div>
   );
 
-  const heroSidebar = isExperienceMode ? (
-    !isRamadanSplit ? experienceWidget : null
-  ) : (
+  const heroSidebar = isExperienceMode ? experienceWidget : (
     <CampaignDonationCard {...donationCardProps} />
   );
 
@@ -250,11 +247,9 @@ function CampaignDetailApi({ slug: slugProp }: { slug: string }) {
       percentage={percentage}
       daysLeft={daysLeft}
       isFundraiser={isFundraiser}
-      isRamadanSplit={isRamadanSplit}
       recentDonations={recentDonations}
       relatedCampaigns={relatedCampaigns}
       heroSidebar={heroSidebar}
-      experienceContent={isExperienceMode ? experienceWidget : undefined}
       onShare={handleShare}
     />
   );

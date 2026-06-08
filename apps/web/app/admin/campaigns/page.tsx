@@ -389,19 +389,19 @@ function buildWizardSteps(form: CampaignForm): WizardStep[] {
     });
   }
 
-  if (!experience) {
+  steps.push({
+    id: "checkout",
+    title: "Checkout options",
+    description: experience
+      ? "Gift Aid, dedications, comments, and upsells for Fidya/Kaffarah or Ramadan checkout."
+      : "Gift Aid, dedications, comments, and upsell toggles.",
+  });
+  if (form.checkoutSettings.enableUpsell) {
     steps.push({
-      id: "checkout",
-      title: "Checkout options",
-      description: "Gift Aid, dedications, comments, and upsell toggles.",
+      id: "upsells",
+      title: "Upsell add-ons",
+      description: "Optional extra amounts donors can add at checkout.",
     });
-    if (form.checkoutSettings.enableUpsell) {
-      steps.push({
-        id: "upsells",
-        title: "Upsell add-ons",
-        description: "Optional extra amounts donors can add at checkout.",
-      });
-    }
   }
 
   steps.push(
@@ -1514,7 +1514,10 @@ export default function CampaignsPage() {
         {currentStepId === "checkout" && (
           <div className="space-y-4">
             <h3 className="font-serif font-semibold text-lg">Checkout Settings</h3>
-            <p className="text-sm text-muted-foreground">Configure what options donors see at checkout.</p>
+            <p className="text-sm text-muted-foreground">
+              Configure what options donors see at checkout
+              {isExperienceMode ? " after they add a Fidya/Kaffarah or Ramadan split gift to the cart" : ""}.
+            </p>
             <div className="space-y-3">
               <SwitchRow
                 label="Allow Anonymous Donations"

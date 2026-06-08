@@ -129,9 +129,38 @@ export function clearRamadanRegionPreference() {
   window.dispatchEvent(new Event("ramadan-region-change"));
 }
 
+type RamadanRegionSnapshot = {
+  regionId: RamadanRegionId;
+  source: RamadanRegionSource;
+};
+
+const SERVER_SNAPSHOT: RamadanRegionSnapshot = {
+  regionId: "western",
+  source: "default",
+};
+
+let regionSnapshot: RamadanRegionSnapshot = SERVER_SNAPSHOT;
+
+function refreshRamadanRegionSnapshot(): RamadanRegionSnapshot {
+  const next = detectRamadanRegion();
+  if (regionSnapshot.regionId === next.regionId && regionSnapshot.source === next.source) {
+    return regionSnapshot;
+  }
+  regionSnapshot = next;
+  return regionSnapshot;
+}
+
+export function getRamadanRegionSnapshot(): RamadanRegionSnapshot {
+  if (typeof window === "undefined") return SERVER_SNAPSHOT;
+  return refreshRamadanRegionSnapshot();
+}
+
 function subscribeRegion(onStoreChange: () => void) {
   if (typeof window === "undefined") return () => {};
-  const handler = () => onStoreChange();
+  const handler = () => {
+    refreshRamadanRegionSnapshot();
+    onStoreChange();
+  };
   window.addEventListener("ramadan-region-change", handler);
   window.addEventListener("storage", handler);
   return () => {
@@ -143,8 +172,8 @@ function subscribeRegion(onStoreChange: () => void) {
 export function useRamadanRegion() {
   const detected = useSyncExternalStore(
     subscribeRegion,
-    () => detectRamadanRegion(),
-    () => ({ regionId: "western" as RamadanRegionId, source: "default" as RamadanRegionSource })
+    getRamadanRegionSnapshot,
+    () => SERVER_SNAPSHOT
   );
 
   const setRegionId = useCallback((regionId: RamadanRegionId) => {

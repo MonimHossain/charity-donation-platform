@@ -33,6 +33,12 @@ import {
 import { StripeCheckoutForm } from "@/components/payments/StripeCheckoutForm";
 import { PayPalCheckoutButton } from "@/components/payments/PayPalCheckoutButton";
 import { clearDonationCart, useDonationCart } from "@/lib/stores/donationCartStore";
+import CheckoutGiftAidStep from "@/components/donation/CheckoutGiftAidStep";
+import CheckoutStepIndicator, { type CheckoutFlowStep } from "@/components/donation/CheckoutStepIndicator";
+import {
+  fetchCheckoutCampaignConfig,
+  type CheckoutCampaignConfig,
+} from "@/lib/checkout-campaign-config";
 
 type GatewayId = "stripe" | "paypal" | "telr" | "paytabs";
 
@@ -50,14 +56,32 @@ const DEDICATION_TYPES = [
   "As a gift to",
 ];
 
+const DEFAULT_CAMPAIGN_CONFIG: CheckoutCampaignConfig = {
+  checkoutSettings: {
+    allowAnonymous: true,
+    enableGiftAid: false,
+    enableDedication: true,
+    enableComments: false,
+    enableUpsell: false,
+    enableFeeCoverage: false,
+  },
+  upsells: [],
+};
+
 function DonationCheckoutContent() {
   const router = useRouter();
   const { items, subtotal, currency, removeItem, clear } = useDonationCart();
 
+  const [campaignConfig, setCampaignConfig] = useState<CheckoutCampaignConfig>(DEFAULT_CAMPAIGN_CONFIG);
+  const [configLoading, setConfigLoading] = useState(true);
+  const [flowStep, setFlowStep] = useState<CheckoutFlowStep>("details");
+
   const [donorName, setDonorName] = useState("");
   const [donorEmail, setDonorEmail] = useState("");
   const [donorPhone, setDonorPhone] = useState("");
+  const [donorComment, setDonorComment] = useState("");
   const [giftAid, setGiftAid] = useState(false);
+  const [selectedUpsellIds, setSelectedUpsellIds] = useState<Set<string>>(new Set());
   const [showDedication, setShowDedication] = useState(false);
   const [dedicationType, setDedicationType] = useState(DEDICATION_TYPES[2]);
   const [dedicationName, setDedicationName] = useState("");
@@ -73,11 +97,53 @@ function DonationCheckoutContent() {
   const [showPayPal, setShowPayPal] = useState(false);
 
   const currencyInfo = CURRENCIES[currency as keyof typeof CURRENCIES] ?? CURRENCIES.GBP;
-  const giftAidExtra = useMemo(
-    () => (giftAid && currency === "GBP" ? +(subtotal * 0.25).toFixed(2) : 0),
-    [giftAid, subtotal, currency]
+  const { checkoutSettings, upsells } = campaignConfig;
+
+  const activeUpsells = useMemo(
+    () => (checkoutSettings.enableUpsell ? upsells.filter((u) => u.isActive !== false) : []),
+    [checkoutSettings.enableUpsell, upsells]
   );
-  const totalWithGiftAid = subtotal + giftAidExtra;
+
+  const upsellTotal = useMemo(
+    () =>
+      activeUpsells
+        .filter((u) => selectedUpsellIds.has(u.id))
+        .reduce((sum, u) => sum + Number(u.amount || 0), 0),
+    [activeUpsells, selectedUpsellIds]
+  );
+
+  const donationAmount = subtotal + upsellTotal;
+  const giftAidBoost = giftAid && currency === "GBP" ? +(donationAmount * 0.25).toFixed(2) : 0;
+  const charityValue = donationAmount + giftAidBoost;
+  const chargeAmount = donationAmount;
+
+  const showGiftAidStep = checkoutSettings.enableGiftAid && currency === "GBP";
+
+  const flowSteps = useMemo(() => {
+    const steps: Array<{ id: CheckoutFlowStep; label: string }> = [];
+    if (showGiftAidStep) steps.push({ id: "gift-aid", label: "Gift Aid" });
+    steps.push({ id: "details", label: "Your Details" });
+    steps.push({ id: "payment", label: "Donate" });
+    return steps;
+  }, [showGiftAidStep]);
+
+  useEffect(() => {
+    const slug = items[0]?.donationPageSlug;
+    if (!slug) {
+      setCampaignConfig(DEFAULT_CAMPAIGN_CONFIG);
+      setConfigLoading(false);
+      return;
+    }
+    setConfigLoading(true);
+    fetchCheckoutCampaignConfig(slug)
+      .then(setCampaignConfig)
+      .finally(() => setConfigLoading(false));
+  }, [items]);
+
+  useEffect(() => {
+    if (configLoading) return;
+    setFlowStep(showGiftAidStep ? "gift-aid" : "details");
+  }, [showGiftAidStep, configLoading, items[0]?.donationPageSlug]);
 
   useEffect(() => {
     fetchPaymentsConfig()
@@ -99,10 +165,40 @@ function DonationCheckoutContent() {
   const paypalClientId =
     paymentPublicKeys.paypal || process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
 
+  function toggleUpsell(id: string) {
+    setSelectedUpsellIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function goToDetails() {
+    setFlowStep("details");
+  }
+
+  function goToPayment() {
+    if (!donorName.trim() || !donorEmail.trim()) return;
+    setFlowStep("payment");
+  }
+
+  function goBackFromDetails() {
+    if (showGiftAidStep) setFlowStep("gift-aid");
+  }
+
+  function goBackFromPayment() {
+    setFlowStep("details");
+    setStripeClientSecret(null);
+    setShowPayPal(false);
+    setPendingDonationId(null);
+    setPaymentError("");
+  }
+
   const redirectToThankYou = (donationId?: string) => {
     clear();
     const summaryParams = new URLSearchParams({
-      amount: subtotal.toString(),
+      amount: donationAmount.toString(),
       currency,
       frequency: "single",
       giftAid: giftAid.toString(),
@@ -150,10 +246,15 @@ function DonationCheckoutContent() {
         }
       }
 
+      const upsellSummary = activeUpsells
+        .filter((u) => selectedUpsellIds.has(u.id))
+        .map((u) => `${u.label} (${currencyInfo.symbol}${u.amount})`)
+        .join(", ");
+
       const cartSummary = items.map((i) => i.description).join("; ");
       const primary = items[0];
       const donation = await createDonation({
-        amount: subtotal,
+        amount: chargeAmount,
         currency,
         frequency: "single",
         giftAid,
@@ -164,10 +265,16 @@ function DonationCheckoutContent() {
         donorPhone: donorPhone || undefined,
         campaignId: primary?.campaignId,
         quantity: 1,
-        unitPrice: subtotal,
-        message: `Donation cart: ${cartSummary}`,
+        unitPrice: chargeAmount,
+        message: [
+          `Donation cart: ${cartSummary}`,
+          upsellSummary ? `Upsells: ${upsellSummary}` : "",
+          donorComment.trim() ? `Comment: ${donorComment.trim()}` : "",
+        ]
+          .filter(Boolean)
+          .join(" · "),
         dedication:
-          showDedication && dedicationName.trim()
+          checkoutSettings.enableDedication && showDedication && dedicationName.trim()
             ? {
                 type: dedicationType,
                 recipientName: dedicationName.trim(),
@@ -178,7 +285,6 @@ function DonationCheckoutContent() {
       });
 
       const donationId = donation.id as string;
-      const chargeAmount = giftAid ? totalWithGiftAid : subtotal;
 
       if (selectedGateway === "telr") {
         const { redirectUrl } = await initTelrPayment({
@@ -238,6 +344,14 @@ function DonationCheckoutContent() {
     );
   }
 
+  if (configLoading) {
+    return (
+      <div className="container-wide py-20 flex justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
     <>
       <section className="bg-secondary/40 border-b border-border">
@@ -260,226 +374,341 @@ function DonationCheckoutContent() {
       </section>
 
       <section className="container-wide py-8 lg:py-12 grid lg:grid-cols-12 gap-8">
-        <form onSubmit={handleSubmit} className="lg:col-span-7 space-y-6">
-          <div className="rounded-3xl bg-card border border-border p-6 lg:p-8 shadow-soft space-y-2">
-            <h1 className="font-serif text-2xl md:text-3xl text-primary">Place your donation</h1>
-            <p className="text-sm text-muted-foreground">
-              Your amount and giving type are already set. Enter your details and pay below.
-            </p>
-          </div>
+        <div className="lg:col-span-7 space-y-6">
+          {flowStep === "gift-aid" && showGiftAidStep && (
+            <CheckoutGiftAidStep
+              currencySymbol={currencyInfo.symbol}
+              donationAmount={donationAmount}
+              giftAid={giftAid}
+              onGiftAidChange={setGiftAid}
+              showUpsells={checkoutSettings.enableUpsell}
+              upsells={activeUpsells}
+              selectedUpsellIds={selectedUpsellIds}
+              onToggleUpsell={toggleUpsell}
+              onNext={goToDetails}
+              onPrevious={() => router.push("/campaigns")}
+              flowSteps={flowSteps}
+            />
+          )}
 
-          <div className="rounded-3xl bg-card border border-border p-6 lg:p-8 shadow-soft space-y-6">
-            <p className="text-xs uppercase tracking-widest text-accent-deep font-bold">Your details</p>
-            <div className="grid sm:grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="donor-name" className="text-xs">
-                  Full name *
-                </Label>
-                <Input
-                  id="donor-name"
-                  required
-                  value={donorName}
-                  onChange={(e) => setDonorName(e.target.value)}
-                  className="mt-1 h-12 rounded-xl"
-                  placeholder="Jane Smith"
-                />
+          {flowStep === "details" && (
+            <div className="rounded-3xl bg-card border border-border p-6 lg:p-8 shadow-soft space-y-6 max-w-xl mx-auto lg:mx-0">
+              <div className="space-y-1">
+                <h1 className="font-serif text-2xl md:text-3xl text-primary">Your details</h1>
+                <p className="text-sm text-muted-foreground">
+                  Enter your contact details so we can send your receipt.
+                </p>
               </div>
-              <div>
-                <Label htmlFor="donor-email" className="text-xs">
-                  Email (for receipt) *
-                </Label>
-                <Input
-                  id="donor-email"
-                  type="email"
-                  required
-                  value={donorEmail}
-                  onChange={(e) => setDonorEmail(e.target.value)}
-                  className="mt-1 h-12 rounded-xl"
-                  placeholder="you@email.com"
-                />
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="donor-phone" className="text-xs">
-                Phone (optional)
-              </Label>
-              <Input
-                id="donor-phone"
-                type="tel"
-                value={donorPhone}
-                onChange={(e) => setDonorPhone(e.target.value)}
-                className="mt-1 h-12 rounded-xl"
-                placeholder="+44 7700 900000"
-              />
-            </div>
 
-            {currency === "GBP" && (
-              <label className="flex items-start gap-3 cursor-pointer rounded-2xl border border-border p-4">
-                <input
-                  type="checkbox"
-                  checked={giftAid}
-                  onChange={(e) => setGiftAid(e.target.checked)}
-                  className="mt-1 w-4 h-4 accent-primary"
-                />
-                <span className="text-sm text-muted-foreground">
-                  I am a UK taxpayer and would like to claim Gift Aid on this donation (+25%).
-                </span>
-              </label>
-            )}
-          </div>
-
-          <div className="rounded-3xl bg-card border border-border shadow-soft overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setShowDedication(!showDedication)}
-              className="w-full p-6 lg:px-8 flex items-center justify-between text-left"
-            >
-              <span className="flex items-center gap-2">
-                <MessageSquare className="w-5 h-5 text-primary" />
-                <span className="font-semibold">Donate on behalf of someone</span>
-              </span>
-              {showDedication ? (
-                <ChevronUp className="w-5 h-5 text-muted-foreground" />
-              ) : (
-                <ChevronDown className="w-5 h-5 text-muted-foreground" />
-              )}
-            </button>
-            {showDedication && (
-              <div className="px-6 pb-6 lg:px-8 space-y-4 border-t border-border">
+              <div className="grid sm:grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs">Dedication type</Label>
-                  <select
-                    value={dedicationType}
-                    onChange={(e) => setDedicationType(e.target.value)}
-                    className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  >
-                    {DEDICATION_TYPES.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="grid sm:grid-cols-2 gap-3">
-                  <div>
-                    <Label htmlFor="ded-name" className="text-xs">
-                      Recipient name
-                    </Label>
-                    <Input
-                      id="ded-name"
-                      value={dedicationName}
-                      onChange={(e) => setDedicationName(e.target.value)}
-                      className="mt-1 rounded-xl h-10"
-                      placeholder="John Smith"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="ded-email" className="text-xs">
-                      Recipient email (optional)
-                    </Label>
-                    <Input
-                      id="ded-email"
-                      type="email"
-                      value={dedicationEmail}
-                      onChange={(e) => setDedicationEmail(e.target.value)}
-                      className="mt-1 rounded-xl h-10"
-                      placeholder="john@email.com"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="ded-msg" className="text-xs">
-                    Personal message (optional)
+                  <Label htmlFor="donor-name" className="text-xs">
+                    Full name *
                   </Label>
-                  <textarea
-                    id="ded-msg"
-                    value={dedicationMessage}
-                    onChange={(e) => setDedicationMessage(e.target.value)}
-                    rows={3}
-                    className="mt-1 flex w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
-                    placeholder="Write a heartfelt message..."
+                  <Input
+                    id="donor-name"
+                    required
+                    value={donorName}
+                    onChange={(e) => setDonorName(e.target.value)}
+                    className="mt-1 h-12 rounded-xl"
+                    placeholder="Jane Smith"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="donor-email" className="text-xs">
+                    Email (for receipt) *
+                  </Label>
+                  <Input
+                    id="donor-email"
+                    type="email"
+                    required
+                    value={donorEmail}
+                    onChange={(e) => setDonorEmail(e.target.value)}
+                    className="mt-1 h-12 rounded-xl"
+                    placeholder="you@email.com"
                   />
                 </div>
               </div>
-            )}
-          </div>
+              <div>
+                <Label htmlFor="donor-phone" className="text-xs">
+                  Phone (optional)
+                </Label>
+                <Input
+                  id="donor-phone"
+                  type="tel"
+                  value={donorPhone}
+                  onChange={(e) => setDonorPhone(e.target.value)}
+                  className="mt-1 h-12 rounded-xl"
+                  placeholder="+44 7700 900000"
+                />
+              </div>
 
-          <div className="rounded-3xl bg-card border border-border p-6 lg:p-8 shadow-soft space-y-5">
-            <p className="text-xs uppercase tracking-widest text-accent-deep font-bold">Payment method</p>
-            <div className="grid sm:grid-cols-2 gap-3">
-              {availableGateways.map((gw) => (
-                <button
-                  key={gw}
-                  type="button"
-                  onClick={() => {
-                    setSelectedGateway(gw);
-                    setStripeClientSecret(null);
-                    setShowPayPal(false);
-                    setPendingDonationId(null);
-                  }}
-                  disabled={!!stripeClientSecret || showPayPal}
-                  className={cn(
-                    "h-14 rounded-2xl font-semibold text-base flex items-center justify-center gap-2 transition-all border-2 capitalize",
-                    selectedGateway === gw
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "border-border hover:border-primary/50"
-                  )}
-                >
-                  {gw === "stripe" && <CreditCard className="w-5 h-5" />}
-                  {GATEWAY_LABELS[gw]}
-                </button>
-              ))}
-            </div>
-
-            {paymentError && <p className="text-sm text-destructive">{paymentError}</p>}
-
-            {stripeClientSecret && stripePublishableKey && pendingDonationId && (
-              <StripeCheckoutForm
-                publishableKey={stripePublishableKey}
-                clientSecret={stripeClientSecret}
-                donationId={pendingDonationId}
-                onSuccess={() => redirectToThankYou(pendingDonationId)}
-                onError={(msg) => setPaymentError(msg)}
-              />
-            )}
-
-            {showPayPal && paypalClientId && pendingDonationId && (
-              <PayPalCheckoutButton
-                clientId={paypalClientId}
-                amount={giftAid ? totalWithGiftAid : subtotal}
-                currency={currency}
-                donationId={pendingDonationId}
-                onSuccess={() => redirectToThankYou(pendingDonationId)}
-                onError={(msg) => setPaymentError(msg)}
-              />
-            )}
-
-            <Button
-              type="submit"
-              disabled={
-                submitting ||
-                !donorName ||
-                !donorEmail ||
-                availableGateways.length === 0 ||
-                !!stripeClientSecret ||
-                showPayPal
-              }
-              size="lg"
-              className="w-full rounded-full text-base bg-accent text-accent-foreground hover:bg-accent/90 h-14"
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" /> Processing…
-                </>
-              ) : (
-                <>
-                  <Heart className="w-5 h-5" /> Pay {currencyInfo.symbol}
-                  {totalWithGiftAid.toFixed(2)}
-                </>
+              {checkoutSettings.enableComments && (
+                <div>
+                  <Label htmlFor="donor-comment" className="text-xs">
+                    Comments (optional)
+                  </Label>
+                  <textarea
+                    id="donor-comment"
+                    value={donorComment}
+                    onChange={(e) => setDonorComment(e.target.value)}
+                    rows={3}
+                    className="mt-1 flex w-full rounded-xl border border-input bg-background px-3 py-2 text-sm resize-none"
+                    placeholder="Any message for our team..."
+                  />
+                </div>
               )}
-            </Button>
-          </div>
-        </form>
+
+              {!showGiftAidStep && checkoutSettings.enableUpsell && activeUpsells.length > 0 && (
+                <div className="rounded-2xl bg-secondary/50 border border-border p-5 space-y-4">
+                  <p className="text-sm font-semibold text-foreground">Please support us further</p>
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    {activeUpsells.map((upsell) => {
+                      const selected = selectedUpsellIds.has(upsell.id);
+                      return (
+                        <label
+                          key={upsell.id}
+                          className={cn(
+                            "flex items-start gap-3 cursor-pointer rounded-xl border bg-card px-4 py-3.5 transition-colors",
+                            selected ? "border-accent ring-1 ring-accent/30" : "border-border"
+                          )}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selected}
+                            onChange={() => toggleUpsell(upsell.id)}
+                            className="mt-0.5 h-4 w-4 accent-accent rounded shrink-0"
+                          />
+                          <span className="text-sm font-medium">
+                            {upsell.label}
+                            {upsell.amount > 0 && (
+                              <span className="text-muted-foreground">
+                                {" "}
+                                — {currencyInfo.symbol}
+                                {Number(upsell.amount).toFixed(0)}
+                              </span>
+                            )}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {!showGiftAidStep && checkoutSettings.enableGiftAid && currency === "GBP" && (
+                <label className="flex items-start gap-3 cursor-pointer rounded-2xl border border-border p-4">
+                  <input
+                    type="checkbox"
+                    checked={giftAid}
+                    onChange={(e) => setGiftAid(e.target.checked)}
+                    className="mt-1 w-4 h-4 accent-primary"
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    I am a UK taxpayer and would like to claim Gift Aid on this donation (+25% to
+                    charity at no extra cost).
+                  </span>
+                </label>
+              )}
+
+              {checkoutSettings.enableDedication && (
+                <div className="rounded-2xl border border-border overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setShowDedication(!showDedication)}
+                    className="w-full p-4 flex items-center justify-between text-left"
+                  >
+                    <span className="flex items-center gap-2 text-sm font-semibold">
+                      <MessageSquare className="w-4 h-4 text-primary" />
+                      Donate on behalf of someone
+                    </span>
+                    {showDedication ? (
+                      <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                    )}
+                  </button>
+                  {showDedication && (
+                    <div className="px-4 pb-4 space-y-4 border-t border-border">
+                      <div>
+                        <Label className="text-xs">Dedication type</Label>
+                        <select
+                          value={dedicationType}
+                          onChange={(e) => setDedicationType(e.target.value)}
+                          className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        >
+                          {DEDICATION_TYPES.map((t) => (
+                            <option key={t} value={t}>
+                              {t}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="grid sm:grid-cols-2 gap-3">
+                        <div>
+                          <Label htmlFor="ded-name" className="text-xs">
+                            Recipient name
+                          </Label>
+                          <Input
+                            id="ded-name"
+                            value={dedicationName}
+                            onChange={(e) => setDedicationName(e.target.value)}
+                            className="mt-1 rounded-xl h-10"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="ded-email" className="text-xs">
+                            Recipient email (optional)
+                          </Label>
+                          <Input
+                            id="ded-email"
+                            type="email"
+                            value={dedicationEmail}
+                            onChange={(e) => setDedicationEmail(e.target.value)}
+                            className="mt-1 rounded-xl h-10"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label htmlFor="ded-msg" className="text-xs">
+                          Personal message (optional)
+                        </Label>
+                        <textarea
+                          id="ded-msg"
+                          value={dedicationMessage}
+                          onChange={(e) => setDedicationMessage(e.target.value)}
+                          rows={3}
+                          className="mt-1 flex w-full rounded-xl border border-input bg-background px-3 py-2 text-sm resize-none"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                {showGiftAidStep && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={goBackFromDetails}
+                    className="rounded-full min-w-[120px] border-accent text-accent hover:bg-accent/10"
+                  >
+                    Previous
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  onClick={goToPayment}
+                  disabled={!donorName.trim() || !donorEmail.trim()}
+                  className="rounded-full min-w-[120px] bg-accent text-accent-foreground hover:bg-accent/90"
+                >
+                  Next
+                </Button>
+              </div>
+
+              <CheckoutStepIndicator steps={flowSteps} current="details" />
+            </div>
+          )}
+
+          {flowStep === "payment" && (
+            <form onSubmit={handleSubmit} className="rounded-3xl bg-card border border-border p-6 lg:p-8 shadow-soft space-y-6 max-w-xl mx-auto lg:mx-0">
+              <div className="space-y-1">
+                <h1 className="font-serif text-2xl md:text-3xl text-primary">Complete your donation</h1>
+                <p className="text-sm text-muted-foreground">Choose a payment method and confirm.</p>
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-xs uppercase tracking-widest text-accent-deep font-bold">Payment method</p>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {availableGateways.map((gw) => (
+                    <button
+                      key={gw}
+                      type="button"
+                      onClick={() => {
+                        setSelectedGateway(gw);
+                        setStripeClientSecret(null);
+                        setShowPayPal(false);
+                        setPendingDonationId(null);
+                      }}
+                      disabled={!!stripeClientSecret || showPayPal}
+                      className={cn(
+                        "h-14 rounded-2xl font-semibold text-base flex items-center justify-center gap-2 transition-all border-2 capitalize",
+                        selectedGateway === gw
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "border-border hover:border-primary/50"
+                      )}
+                    >
+                      {gw === "stripe" && <CreditCard className="w-5 h-5" />}
+                      {GATEWAY_LABELS[gw]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {paymentError && <p className="text-sm text-destructive">{paymentError}</p>}
+
+              {stripeClientSecret && stripePublishableKey && pendingDonationId && (
+                <StripeCheckoutForm
+                  publishableKey={stripePublishableKey}
+                  clientSecret={stripeClientSecret}
+                  donationId={pendingDonationId}
+                  onSuccess={() => redirectToThankYou(pendingDonationId)}
+                  onError={(msg) => setPaymentError(msg)}
+                />
+              )}
+
+              {showPayPal && paypalClientId && pendingDonationId && (
+                <PayPalCheckoutButton
+                  clientId={paypalClientId}
+                  amount={chargeAmount}
+                  currency={currency}
+                  donationId={pendingDonationId}
+                  onSuccess={() => redirectToThankYou(pendingDonationId)}
+                  onError={(msg) => setPaymentError(msg)}
+                />
+              )}
+
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={goBackFromPayment}
+                  disabled={submitting || !!stripeClientSecret || showPayPal}
+                  className="rounded-full min-w-[120px] border-accent text-accent hover:bg-accent/10"
+                >
+                  Previous
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={
+                    submitting ||
+                    !donorName ||
+                    !donorEmail ||
+                    availableGateways.length === 0 ||
+                    !!stripeClientSecret ||
+                    showPayPal
+                  }
+                  size="lg"
+                  className="rounded-full min-w-[160px] bg-accent text-accent-foreground hover:bg-accent/90 h-12"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" /> Processing…
+                    </>
+                  ) : (
+                    <>
+                      <Heart className="w-5 h-5" /> Donate {currencyInfo.symbol}
+                      {chargeAmount.toFixed(2)}
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              <CheckoutStepIndicator steps={flowSteps} current="payment" />
+            </form>
+          )}
+        </div>
 
         <aside className="lg:col-span-5 lg:sticky lg:top-28 self-start space-y-4">
           <div className="rounded-3xl bg-card border border-border p-6 shadow-soft space-y-4">
@@ -509,40 +738,48 @@ function DonationCheckoutContent() {
                 </li>
               ))}
             </ul>
+            {activeUpsells
+              .filter((u) => selectedUpsellIds.has(u.id))
+              .map((u) => (
+                <div
+                  key={u.id}
+                  className="flex items-center justify-between text-sm rounded-xl border border-border px-4 py-3"
+                >
+                  <span className="text-muted-foreground">{u.label}</span>
+                  <span className="font-semibold tabular-nums">
+                    {currencyInfo.symbol}
+                    {Number(u.amount).toFixed(2)}
+                  </span>
+                </div>
+              ))}
           </div>
 
-          {showDedication && dedicationName.trim() && (
+          {checkoutSettings.enableDedication && showDedication && dedicationName.trim() && (
             <div className="rounded-2xl bg-card border border-border p-5 text-sm">
               <p className="font-semibold text-primary flex items-center gap-2">
                 <Gift className="w-4 h-4" /> {dedicationType}
               </p>
               <p className="text-muted-foreground mt-1">{dedicationName}</p>
-              {dedicationMessage.trim() && (
-                <p className="text-muted-foreground mt-1 italic">&ldquo;{dedicationMessage}&rdquo;</p>
-              )}
             </div>
           )}
 
           <div className="rounded-3xl gradient-plum text-primary-foreground p-6 lg:p-8 shadow-lift">
-            <p className="text-xs uppercase tracking-widest text-accent font-bold">Total · {currency}</p>
+            <p className="text-xs uppercase tracking-widest text-accent font-bold">You pay · {currency}</p>
             <p className="font-serif text-5xl mt-1 tabular-nums">
               {currencyInfo.symbol}
-              {totalWithGiftAid.toFixed(2)}
+              {chargeAmount.toFixed(2)}
             </p>
-            {giftAid && (
-              <p className="text-sm text-primary-foreground/75 mt-1">
-                Includes Gift Aid +{currencyInfo.symbol}
-                {giftAidExtra.toFixed(2)}
+            {giftAid && giftAidBoost > 0 && (
+              <p className="text-sm text-primary-foreground/80 mt-2">
+                Charity receives {currencyInfo.symbol}
+                {charityValue.toFixed(2)} with Gift Aid (+{currencyInfo.symbol}
+                {giftAidBoost.toFixed(2)} at no extra cost)
               </p>
             )}
             <div className="mt-6 space-y-2 text-sm">
               <p className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-accent shrink-0" />
                 {items.length} item{items.length === 1 ? "" : "s"} in your cart
-              </p>
-              <p className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-accent shrink-0" />
-                100% donation policy on Zakat
               </p>
             </div>
           </div>

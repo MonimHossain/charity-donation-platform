@@ -55,6 +55,20 @@ export function normalizeBreakdown(total: number, weights: number[]): number[] {
   return rounded;
 }
 
+function ordinalSuffix(day: number): string {
+  if (day >= 11 && day <= 13) return "th";
+  switch (day % 10) {
+    case 1:
+      return "st";
+    case 2:
+      return "nd";
+    case 3:
+      return "rd";
+    default:
+      return "th";
+  }
+}
+
 export function formatRamadanDate(iso: string): string {
   const d = new Date(`${iso}T12:00:00`);
   if (Number.isNaN(d.getTime())) return iso;
@@ -64,6 +78,39 @@ export function formatRamadanDate(iso: string): string {
     month: "short",
     year: "numeric",
   });
+}
+
+/** e.g. "Wednesday Feb 18th" — used on regional start-date pills */
+export function formatRamadanStartPill(iso: string): string {
+  const d = new Date(`${iso}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return iso;
+  const weekday = d.toLocaleDateString("en-GB", { weekday: "long" });
+  const month = d.toLocaleDateString("en-GB", { month: "short" });
+  const day = d.getDate();
+  return `${weekday} ${month} ${day}${ordinalSuffix(day)}`;
+}
+
+export type RamadanGivingPreset = "all_30" | "last_10" | "odd_5";
+
+export function getRamadanPresetDates(
+  preset: RamadanGivingPreset,
+  calendarDates: string[]
+): string[] {
+  if (preset === "all_30") return [...calendarDates];
+  if (preset === "last_10") return calendarDates.slice(-10);
+  const oddIndices = [20, 22, 24, 26, 28];
+  return oddIndices.map((i) => calendarDates[i]).filter((d): d is string => Boolean(d));
+}
+
+export function buildEqualRamadanNightPreview(
+  selectedDates: string[],
+  total: number
+): RamadanNightPreview[] {
+  return buildRamadanNightPreview(
+    selectedDates,
+    selectedDates.map(() => 1),
+    total
+  );
 }
 
 export type RamadanNightPreview = {
