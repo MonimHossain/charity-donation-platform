@@ -40,6 +40,7 @@ function mapCampaigns(items: Array<Record<string, unknown>>): Appeal[] {
     .filter((c): c is Record<string, unknown> => Boolean(c?.slug))
     .filter(
       (c) =>
+        String(c.campaignMode ?? "") !== "fundraiser" &&
         !isCampaignExpired(
           Boolean(c.expirationEnabled),
           c.expiresAt as string | null | undefined

@@ -5,6 +5,17 @@ import { USE_MOCK_DATA } from "@/lib/config";
 import { demoCampaigns, getCampaignBySlug as mockGetBySlug } from "@/lib/mock";
 import { fetchCampaigns, fetchCampaignBySlug } from "@/lib/api";
 import { queryKeys } from "./query-keys";
+import { isCampaignExpired } from "@/lib/campaign-expiration";
+
+function isFundraiserCampaign(c: Record<string, unknown>) {
+  return String(c.campaignMode ?? "") === "fundraiser";
+}
+
+function excludeFundraisers(items: unknown[]) {
+  return items.filter(
+    (c) => !isFundraiserCampaign(c as Record<string, unknown>)
+  );
+}
 
 export function useCampaignsList(params?: Record<string, string>) {
   return useQuery({
@@ -26,17 +37,40 @@ export function useHomepageAppeals() {
     queryFn: async () => {
       if (USE_MOCK_DATA) {
         const featured = demoCampaigns.filter((c) => c.featured);
-        const items = (featured.length > 0 ? featured : demoCampaigns).slice(0, 6);
+        const pool = excludeFundraisers(featured.length > 0 ? featured : demoCampaigns);
+        const items = pool.slice(0, 6);
         return { items, total: items.length, showingFeatured: featured.length > 0 };
       }
-      const featuredRes = await fetchCampaigns({ featured: "true", limit: "6" });
-      const featuredItems = featuredRes.items ?? [];
+      const featuredRes = await fetchCampaigns({ featured: "true", limit: "12" });
+      const featuredItems = excludeFundraisers(featuredRes.items ?? []).slice(0, 6);
       if (featuredItems.length > 0) {
         return { items: featuredItems, total: featuredItems.length, showingFeatured: true };
       }
-      const fallbackRes = await fetchCampaigns({ limit: "6" });
-      const items = fallbackRes.items ?? [];
-      return { items, total: fallbackRes.total ?? items.length, showingFeatured: false };
+      const fallbackRes = await fetchCampaigns({ limit: "12" });
+      const items = excludeFundraisers(fallbackRes.items ?? []).slice(0, 6);
+      return { items, total: items.length, showingFeatured: false };
+    },
+  });
+}
+
+/** Published fundraiser campaigns for the homepage Live Fundraisers section. */
+export function useHomepageFundraisers() {
+  return useQuery({
+    queryKey: queryKeys.homepageFundraisers,
+    queryFn: async () => {
+      if (USE_MOCK_DATA) {
+        return { items: [], total: 0 };
+      }
+      const res = await fetchCampaigns({ mode: "fundraiser", limit: "12" });
+      const items = (res.items ?? []).filter(
+        (c: Record<string, unknown>) =>
+          isFundraiserCampaign(c) &&
+          !isCampaignExpired(
+            Boolean(c.expirationEnabled),
+            c.expiresAt as string | null | undefined
+          )
+      );
+      return { items, total: items.length };
     },
   });
 }
