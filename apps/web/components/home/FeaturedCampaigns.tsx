@@ -9,6 +9,10 @@ import { isCampaignExpired } from "@/lib/campaign-expiration";
 import { CampaignExpirationCountdown } from "@/components/campaigns/CampaignExpirationCountdown";
 import { CampaignFeaturedBadge } from "@/components/campaigns/CampaignFeaturedBadge";
 import { demoCampaigns } from "@/lib/mock/campaigns";
+import {
+  CAMPAIGN_MODE_LABELS,
+  isExperienceCampaignMode,
+} from "@/lib/campaign-experience";
 
 type Appeal = {
   slug: string;
@@ -35,6 +39,25 @@ const impactBySlug: Record<string, string> = {
   emergency: "Deployed within 72 hours",
 };
 
+const impactByMode: Record<string, string> = {
+  fidya_kaffarah: "Pay Fidya or Kaffarah with ease",
+  ramadan_split: "Split your giving across Ramadan nights",
+};
+
+function appealTag(c: Record<string, unknown>) {
+  const mode = String(c.campaignMode ?? "");
+  if (isExperienceCampaignMode(mode)) {
+    return CAMPAIGN_MODE_LABELS[mode] ?? "Appeal";
+  }
+  return String(c.category ?? c.tag ?? "Appeal");
+}
+
+function appealImpact(c: Record<string, unknown>) {
+  const mode = String(c.campaignMode ?? "");
+  if (impactByMode[mode]) return impactByMode[mode];
+  return impactBySlug[String(c.slug)] ?? "Your gift makes a difference";
+}
+
 function mapCampaigns(items: Array<Record<string, unknown>>): Appeal[] {
   return items
     .filter((c): c is Record<string, unknown> => Boolean(c?.slug))
@@ -46,11 +69,10 @@ function mapCampaigns(items: Array<Record<string, unknown>>): Appeal[] {
           c.expiresAt as string | null | undefined
         )
     )
-    .slice(0, 6)
     .map((c) => ({
     slug: String(c.slug),
     title: String(c.title),
-    tag: String(c.category ?? c.tag ?? "Appeal"),
+    tag: appealTag(c),
     excerpt: String(c.shortDescription ?? c.summary ?? ""),
     image: getCampaignCardImage({
       thumbnail: c.thumbnail as string | undefined,
@@ -63,7 +85,7 @@ function mapCampaigns(items: Array<Record<string, unknown>>): Appeal[] {
     raised: Number(c.raisedAmount ?? c.raised ?? 0),
     goal: Number(c.goalAmount ?? c.goal ?? 1),
     donors: Number(c.donorCount ?? c.donors ?? 0),
-    impact: impactBySlug[String(c.slug)] ?? "Your gift makes a difference",
+    impact: appealImpact(c),
     expirationEnabled: Boolean(c.expirationEnabled),
     expiresAt: (c.expiresAt as string | null | undefined) ?? null,
   }));

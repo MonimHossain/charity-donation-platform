@@ -17,6 +17,55 @@ function excludeFundraisers(items: unknown[]) {
   );
 }
 
+function isAppealCandidate(c: Record<string, unknown>) {
+  return (
+    Boolean(c.slug) &&
+    !isFundraiserCampaign(c) &&
+    !isCampaignExpired(
+      Boolean(c.expirationEnabled),
+      c.expiresAt as string | null | undefined
+    )
+  );
+}
+
+function compareAppeals(a: Record<string, unknown>, b: Record<string, unknown>) {
+  const aPinned = (a.visibilitySettings as { pinToTop?: boolean } | undefined)?.pinToTop ? 1 : 0;
+  const bPinned = (b.visibilitySettings as { pinToTop?: boolean } | undefined)?.pinToTop ? 1 : 0;
+  if (aPinned !== bPinned) return bPinned - aPinned;
+
+  const aOrder = Number(a.sortOrder ?? 0);
+  const bOrder = Number(b.sortOrder ?? 0);
+  if (aOrder !== bOrder) return aOrder - bOrder;
+
+  const aCreated = new Date(String(a.createdAt ?? 0)).getTime();
+  const bCreated = new Date(String(b.createdAt ?? 0)).getTime();
+  return bCreated - aCreated;
+}
+
+function pickHomepageAppeals(items: unknown[]) {
+  return excludeFundraisers(items)
+    .filter((c) => isAppealCandidate(c as Record<string, unknown>))
+    .sort((a, b) => compareAppeals(a as Record<string, unknown>, b as Record<string, unknown>));
+}
+
+async function fetchAllPublishedCampaigns() {
+  const pageSize = 50;
+  let page = 1;
+  let allItems: unknown[] = [];
+  let total = 0;
+
+  while (true) {
+    const res = await fetchCampaigns({ limit: String(pageSize), page: String(page) });
+    const items = res.items ?? [];
+    total = res.total ?? items.length;
+    allItems = allItems.concat(items);
+    if (allItems.length >= total || items.length === 0) break;
+    page += 1;
+  }
+
+  return allItems;
+}
+
 export function useCampaignsList(params?: Record<string, string>) {
   return useQuery({
     queryKey: queryKeys.campaigns(params),
@@ -30,25 +79,18 @@ export function useCampaignsList(params?: Record<string, string>) {
   });
 }
 
-/** Featured campaigns for the homepage Our Appeals section, with fallback to latest published. */
+/** All published non-fundraiser campaigns for the homepage Our Appeals section. */
 export function useHomepageAppeals() {
   return useQuery({
     queryKey: queryKeys.homepageAppeals,
     queryFn: async () => {
       if (USE_MOCK_DATA) {
-        const featured = demoCampaigns.filter((c) => c.featured);
-        const pool = excludeFundraisers(featured.length > 0 ? featured : demoCampaigns);
-        const items = pool.slice(0, 6);
-        return { items, total: items.length, showingFeatured: featured.length > 0 };
+        const items = pickHomepageAppeals(demoCampaigns);
+        return { items, total: items.length };
       }
-      const featuredRes = await fetchCampaigns({ featured: "true", limit: "12" });
-      const featuredItems = excludeFundraisers(featuredRes.items ?? []).slice(0, 6);
-      if (featuredItems.length > 0) {
-        return { items: featuredItems, total: featuredItems.length, showingFeatured: true };
-      }
-      const fallbackRes = await fetchCampaigns({ limit: "12" });
-      const items = excludeFundraisers(fallbackRes.items ?? []).slice(0, 6);
-      return { items, total: items.length, showingFeatured: false };
+      const allItems = await fetchAllPublishedCampaigns();
+      const items = pickHomepageAppeals(allItems);
+      return { items, total: items.length };
     },
   });
 }

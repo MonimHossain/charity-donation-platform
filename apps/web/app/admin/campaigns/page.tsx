@@ -1285,7 +1285,7 @@ export default function CampaignsPage() {
                   <Star className="h-3.5 w-3.5 text-amber-500" /> Featured
                 </label>
                 <p className="text-xs text-muted-foreground pl-9">
-                  Shows on the homepage Our Appeals section, pinned to the top of the campaigns list, with a Featured badge.
+                  Shows a Featured badge on this appeal. All published campaigns appear in Our Appeals except fundraisers.
                 </p>
               </div>
               <label className="flex items-center gap-2 text-sm">
