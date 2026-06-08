@@ -496,8 +496,8 @@ export default function CampaignsPage() {
     setShowEditor(true);
   }
 
-  function openEdit(c: Campaign) {
-    setForm({
+  function campaignToForm(c: Campaign): CampaignForm {
+    return {
       title: c.title || "",
       slug: c.slug || "",
       shortDescription: c.shortDescription || "",
@@ -505,26 +505,79 @@ export default function CampaignsPage() {
       thumbnail: c.thumbnail || "",
       banner: c.banner || "",
       category: c.category || "",
-      tags: c.tags || [],
+      tags: [...(c.tags || [])],
       status: c.status || "draft",
       isFeatured: c.isFeatured || false,
       isUrgent: c.isUrgent || false,
-      expirationEnabled: Boolean((c as Campaign).expirationEnabled),
-      expiresAt: (c as Campaign).expiresAt || "",
+      expirationEnabled: Boolean(c.expirationEnabled),
+      expiresAt: c.expiresAt || "",
       campaignMode: c.campaignMode || "standard",
       currency: c.currency || "GBP",
-      experienceConfig: (c as any).experienceConfig || {},
-      attributes: c.attributes || [],
-      upsells: c.upsells || [],
+      experienceConfig: (c as Campaign & { experienceConfig?: CampaignForm["experienceConfig"] }).experienceConfig
+        ? { ...(c as Campaign & { experienceConfig?: CampaignForm["experienceConfig"] }).experienceConfig! }
+        : {},
+      attributes: (c.attributes || []).map((attr) => ({
+        ...attr,
+        singlePaymentConfig: {
+          ...attr.singlePaymentConfig,
+          presetAmounts: [...attr.singlePaymentConfig.presetAmounts],
+        },
+        regularPaymentConfig: {
+          ...attr.regularPaymentConfig,
+          presetAmounts: [...attr.regularPaymentConfig.presetAmounts],
+        },
+        quantityConfig: { ...attr.quantityConfig },
+        customFields: (attr.customFields || []).map((field) => ({ ...field, options: [...field.options] })),
+      })),
+      upsells: (c.upsells || []).map((upsell) => ({ ...upsell })),
       fundraiserSettings: { ...defaultForm.fundraiserSettings, ...(c.fundraiserSettings || {}) },
       checkoutSettings: { ...defaultForm.checkoutSettings, ...(c.checkoutSettings || {}) },
       visibilitySettings: { ...defaultForm.visibilitySettings, ...(c.visibilitySettings || {}) },
-      paymentGateways: c.paymentGateways || ["stripe"],
+      paymentGateways: [...(c.paymentGateways || ["stripe"])],
       seoSettings: { ...defaultForm.seoSettings, ...(c.seoSettings || {}) },
-    });
+    };
+  }
+
+  function cloneCampaignIds(formData: CampaignForm): CampaignForm {
+    return {
+      ...formData,
+      attributes: formData.attributes.map((attr) => ({
+        ...attr,
+        id: uid(),
+        customFields: attr.customFields.map((field) => ({ ...field, id: uid() })),
+      })),
+      upsells: formData.upsells.map((upsell) => ({ ...upsell, id: uid() })),
+    };
+  }
+
+  function openEdit(c: Campaign) {
+    setForm(campaignToForm(c));
     setEditingId(c.id);
     setCurrentStepIndex(0);
     setShowEditor(true);
+  }
+
+  function openCopy(c: Campaign) {
+    const baseSlug = (c.slug || generateSlug(c.title || "campaign")).replace(/-copy(-\d+)?$/, "");
+    const copyTitle = `${c.title || "Untitled campaign"} (Copy)`;
+
+    setForm(
+      cloneCampaignIds({
+        ...campaignToForm(c),
+        title: copyTitle,
+        slug: `${baseSlug}-copy`,
+        status: "draft",
+        fundraiserSettings: {
+          ...defaultForm.fundraiserSettings,
+          ...(c.fundraiserSettings || {}),
+          raisedAmount: 0,
+        },
+      })
+    );
+    setEditingId(null);
+    setCurrentStepIndex(0);
+    setShowEditor(true);
+    toast.success("Campaign duplicated — review and save as new");
   }
 
   function validateStep(stepId: WizardStepId): boolean {
@@ -731,8 +784,17 @@ export default function CampaignsPage() {
                       </td>
                       <td className="px-5 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(c)}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(c)} title="Edit campaign">
                             <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => openCopy(c)}
+                            title="Duplicate campaign"
+                          >
+                            <Copy className="h-3.5 w-3.5" />
                           </Button>
                           <Popover
                             open={statusMenuOpenId === c.id}
