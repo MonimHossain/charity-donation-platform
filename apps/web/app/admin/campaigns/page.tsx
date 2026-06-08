@@ -532,7 +532,7 @@ export default function CampaignsPage() {
       toast.error("Please enter a campaign title before continuing.");
       return false;
     }
-    if (stepId === "info" && form.expirationEnabled && !form.expiresAt) {
+    if (stepId === "info" && form.campaignMode !== "fundraiser" && form.expirationEnabled && !form.expiresAt) {
       toast.warning("Please set a campaign expiration date and time.");
       return false;
     }
@@ -547,7 +547,7 @@ export default function CampaignsPage() {
 
   function validateBeforeSave(): boolean {
     if (!form.title.trim()) return false;
-    if (form.expirationEnabled && !form.expiresAt) {
+    if (form.campaignMode !== "fundraiser" && form.expirationEnabled && !form.expiresAt) {
       toast.warning("Please set a campaign expiration date and time.");
       return false;
     }
@@ -583,7 +583,13 @@ export default function CampaignsPage() {
         ...form,
         slug,
         attributes: normalizeCampaignAttributes(form.attributes),
-        expiresAt: form.expirationEnabled ? form.expiresAt : null,
+        expiresAt:
+          form.campaignMode === "fundraiser"
+            ? null
+            : form.expirationEnabled
+              ? form.expiresAt
+              : null,
+        expirationEnabled: form.campaignMode === "fundraiser" ? false : form.expirationEnabled,
       };
 
       if (editingId) {
@@ -962,6 +968,9 @@ export default function CampaignsPage() {
                       setForm((p) => ({
                         ...p,
                         campaignMode: m.value,
+                        ...(m.value === "fundraiser"
+                          ? { expirationEnabled: false, expiresAt: "" }
+                          : {}),
                         experienceConfig:
                           m.value === "fidya_kaffarah"
                             ? { ...DEFAULT_FIDYA_CONFIG, ...(p.experienceConfig as FidyaKaffarahConfig) }
@@ -1223,6 +1232,7 @@ export default function CampaignsPage() {
               </label>
             </div>
 
+            {form.campaignMode !== "fundraiser" && (
             <div className="rounded-xl border bg-muted/20 p-4 space-y-3">
               <label className="flex items-center justify-between gap-4 text-sm">
                 <span className="font-medium">Campaign Expiration</span>
@@ -1257,6 +1267,7 @@ export default function CampaignsPage() {
                 </div>
               )}
             </div>
+            )}
           </div>
         )}
 
