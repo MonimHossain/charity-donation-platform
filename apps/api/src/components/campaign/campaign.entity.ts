@@ -180,6 +180,12 @@ export class Campaign {
   @Column({ type: "boolean", default: false })
   isUrgent!: boolean;
 
+  @Column({ type: "boolean", default: false })
+  expirationEnabled!: boolean;
+
+  @Column({ type: "varchar", length: 50, nullable: true })
+  expiresAt?: string | null;
+
   @Column({ type: "varchar", length: 20, default: "standard" })
   campaignMode!: CampaignMode;
 

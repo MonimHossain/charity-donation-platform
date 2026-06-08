@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils";
 import { fetchCampaignBySlug, fetchRecentDonations } from "@/lib/api";
 import { toast } from "sonner";
 import { CampaignDonationExperience } from "@/components/campaigns/CampaignDonationExperience";
+import { CampaignExpirationCountdown } from "@/components/campaigns/CampaignExpirationCountdown";
 import MarkdownRenderer from "@/components/blog/MarkdownRenderer";
 import { CAMPAIGN_MODE_LABELS, isExperienceCampaignMode } from "@/lib/campaign-experience";
 import { getCampaignHeroImage, resolveMediaUrl } from "@/lib/campaign-media";
@@ -135,6 +136,8 @@ interface CampaignData {
   status: string;
   isFeatured: boolean;
   isUrgent: boolean;
+  expirationEnabled?: boolean;
+  expiresAt?: string | null;
   campaignMode: string;
   currency: string;
   donorCount: number;
@@ -366,6 +369,10 @@ function CampaignDetailApi({ slug: slugProp }: { slug: string }) {
       {/* ── Main Content ── */}
       <section className="py-12">
         <div className="container-wide">
+          {campaign.expirationEnabled && campaign.expiresAt && (
+            <CampaignExpirationCountdown expiresAt={campaign.expiresAt} className="mb-8" />
+          )}
+
           {isExperienceMode ? (
             <div className={cn("grid gap-10", isRamadanSplit ? "lg:grid-cols-1" : "lg:grid-cols-[1fr_420px]")}>
               <div className={cn(isRamadanSplit ? "order-1" : "")}>

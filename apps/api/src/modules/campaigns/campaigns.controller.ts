@@ -3,6 +3,7 @@ import { AppDataSource } from "../../helper/connectDB.js";
 import { Campaign } from "../../components/campaign/campaign.entity.js";
 import { ILike } from "typeorm";
 import { logAudit } from "../../helper/auditLog.js";
+import { archiveExpiredCampaigns } from "./archiveExpiredCampaigns.js";
 
 const repo = () => AppDataSource.getRepository(Campaign);
 
@@ -42,6 +43,8 @@ export async function getCampaigns(req: Request, res: Response) {
 
 export async function getPublishedCampaigns(req: Request, res: Response) {
   try {
+    await archiveExpiredCampaigns(repo());
+
     const { category, mode, search, featured, page = "1", limit = "12" } = req.query;
     const where: any = { status: "published" };
     if (category) where.category = category;
@@ -65,8 +68,12 @@ export async function getPublishedCampaigns(req: Request, res: Response) {
 
 export async function getCampaignBySlug(req: Request, res: Response) {
   try {
+    await archiveExpiredCampaigns(repo());
+
     const campaign = await repo().findOne({ where: { slug: req.params.slug } });
-    if (!campaign) return res.status(404).json({ message: "Campaign not found" });
+    if (!campaign || campaign.status !== "published") {
+      return res.status(404).json({ message: "Campaign not found" });
+    }
     return res.json(campaign);
   } catch (error) {
     return res.status(500).json({ message: "Internal server error" });

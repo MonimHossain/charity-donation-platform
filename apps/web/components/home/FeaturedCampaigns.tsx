@@ -1,9 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useCallback, useMemo, useState } from "react";
 import { ArrowUpRight, Heart, Users, TrendingUp, Shield, Loader2 } from "lucide-react";
 import { useCampaignsList } from "@/lib/data/campaigns";
 import { getCampaignCardImage } from "@/lib/campaign-media";
+import { isCampaignExpired } from "@/lib/campaign-expiration";
+import { CampaignExpirationCountdown } from "@/components/campaigns/CampaignExpirationCountdown";
+import { demoCampaigns } from "@/lib/mock/campaigns";
 
 type Appeal = {
   slug: string;
@@ -16,9 +20,9 @@ type Appeal = {
   goal: number;
   donors: number;
   impact: string;
+  expirationEnabled?: boolean;
+  expiresAt?: string | null;
 };
-
-import { demoCampaigns } from "@/lib/mock/campaigns";
 
 const impactBySlug: Record<string, string> = {
   gaza: "Feeds a family for 1 week",
@@ -32,6 +36,13 @@ const impactBySlug: Record<string, string> = {
 function mapCampaigns(items: Array<Record<string, unknown>>): Appeal[] {
   return items
     .filter((c): c is Record<string, unknown> => Boolean(c?.slug))
+    .filter(
+      (c) =>
+        !isCampaignExpired(
+          Boolean(c.expirationEnabled),
+          c.expiresAt as string | null | undefined
+        )
+    )
     .slice(0, 6)
     .map((c) => ({
     slug: String(c.slug),
@@ -49,10 +60,20 @@ function mapCampaigns(items: Array<Record<string, unknown>>): Appeal[] {
     goal: Number(c.goalAmount ?? c.goal ?? 1),
     donors: Number(c.donorCount ?? c.donors ?? 0),
     impact: impactBySlug[String(c.slug)] ?? "Your gift makes a difference",
+    expirationEnabled: Boolean(c.expirationEnabled),
+    expiresAt: (c.expiresAt as string | null | undefined) ?? null,
   }));
 }
 
-const AppealCard = ({ a, large = false }: { a: Appeal; large?: boolean }) => (
+const AppealCard = ({
+  a,
+  large = false,
+  onExpired,
+}: {
+  a: Appeal;
+  large?: boolean;
+  onExpired?: () => void;
+}) => (
   <div className={`group relative flex flex-col overflow-hidden rounded-2xl sm:rounded-3xl bg-card border border-border/60 shadow-soft hover:shadow-lift hover:-translate-y-1 transition-all duration-500 ${large ? "sm:col-span-2 lg:col-span-2" : ""}`}>
     <Link href={`/campaigns/${a.slug}`} className="relative block overflow-hidden">
       <div className={`relative overflow-hidden ${large ? "aspect-[8/3]" : "aspect-[4/3]"}`}>
@@ -97,6 +118,14 @@ const AppealCard = ({ a, large = false }: { a: Appeal; large?: boolean }) => (
     <div className="flex flex-col flex-1 p-4 sm:p-5 gap-3">
       <p className="text-sm text-muted-foreground line-clamp-2">{a.excerpt}</p>
 
+      {a.expirationEnabled && a.expiresAt && (
+        <CampaignExpirationCountdown
+          expiresAt={a.expiresAt}
+          variant="compact"
+          onExpired={onExpired}
+        />
+      )}
+
       <div className="inline-flex items-center gap-1.5 self-start px-2.5 py-1 rounded-full bg-mint-soft text-accent-foreground text-[11px] font-semibold">
         <Heart className="w-3 h-3" />
         {a.impact}
@@ -123,11 +152,24 @@ const AppealCard = ({ a, large = false }: { a: Appeal; large?: boolean }) => (
 );
 
 const FeaturedCampaigns = () => {
-  const { data, isLoading } = useCampaignsList({ limit: "6" });
+  const { data, isLoading, refetch } = useCampaignsList({ limit: "6" });
+  const [hiddenSlugs, setHiddenSlugs] = useState<Set<string>>(() => new Set());
+
+  const handleExpired = useCallback(
+    (slug: string) => {
+      setHiddenSlugs((prev) => new Set(prev).add(slug));
+      void refetch();
+    },
+    [refetch]
+  );
+
   const sourceItems = (data?.items?.length ? data.items : demoCampaigns) as Array<
     Record<string, unknown>
   >;
-  const appeals = mapCampaigns(sourceItems);
+  const appeals = useMemo(
+    () => mapCampaigns(sourceItems).filter((a) => !hiddenSlugs.has(a.slug)),
+    [sourceItems, hiddenSlugs]
+  );
 
   if (isLoading) {
     return (
@@ -165,7 +207,12 @@ const FeaturedCampaigns = () => {
 
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6 lg:gap-8">
       {appeals.map((a, i) => (
-        <AppealCard key={a.slug} a={a} large={i === 0} />
+        <AppealCard
+          key={a.slug}
+          a={a}
+          large={i === 0}
+          onExpired={() => handleExpired(a.slug)}
+        />
       ))}
     </div>
 

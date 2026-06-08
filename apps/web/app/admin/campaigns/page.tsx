@@ -172,6 +172,8 @@ interface CampaignForm {
   status: string;
   isFeatured: boolean;
   isUrgent: boolean;
+  expirationEnabled: boolean;
+  expiresAt: string;
   campaignMode: CampaignMode;
   currency: string;
   experienceConfig: FidyaKaffarahConfig | RamadanSplitConfig | Record<string, never>;
@@ -194,6 +196,21 @@ interface Campaign extends CampaignForm {
 // ── Defaults ──
 
 const uid = () => Math.random().toString(36).slice(2, 10);
+
+function toDatetimeLocalValue(iso: string) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function fromDatetimeLocalValue(value: string) {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toISOString();
+}
 
 const defaultSinglePaymentConfig: SinglePaymentConfig = {
   priceType: "both",
@@ -263,6 +280,8 @@ const defaultForm: CampaignForm = {
   status: "draft",
   isFeatured: false,
   isUrgent: false,
+  expirationEnabled: false,
+  expiresAt: "",
   campaignMode: "standard",
   currency: "GBP",
   experienceConfig: {},
@@ -499,6 +518,8 @@ export default function CampaignsPage() {
       status: c.status || "draft",
       isFeatured: c.isFeatured || false,
       isUrgent: c.isUrgent || false,
+      expirationEnabled: Boolean((c as Campaign).expirationEnabled),
+      expiresAt: (c as Campaign).expiresAt || "",
       campaignMode: c.campaignMode || "standard",
       currency: c.currency || "GBP",
       experienceConfig: (c as any).experienceConfig || {},
@@ -520,6 +541,10 @@ export default function CampaignsPage() {
       toast.error("Please enter a campaign title before continuing.");
       return false;
     }
+    if (stepId === "info" && form.expirationEnabled && !form.expiresAt) {
+      toast.warning("Please set a campaign expiration date and time.");
+      return false;
+    }
     if (stepId === "attributes" && !isExperienceCampaignMode(form.campaignMode) && form.attributes.length === 0) {
       toast.warning(
         "Add at least one donation attribute. Without it, this campaign will not show any payment options to donors."
@@ -531,6 +556,10 @@ export default function CampaignsPage() {
 
   function validateBeforeSave(): boolean {
     if (!form.title.trim()) return false;
+    if (form.expirationEnabled && !form.expiresAt) {
+      toast.warning("Please set a campaign expiration date and time.");
+      return false;
+    }
     if (!isExperienceCampaignMode(form.campaignMode) && form.attributes.length === 0) {
       toast.warning(
         "Add at least one donation attribute. Without it, this campaign will not show any payment options to donors."
@@ -563,6 +592,7 @@ export default function CampaignsPage() {
         ...form,
         slug,
         attributes: normalizeCampaignAttributes(form.attributes),
+        expiresAt: form.expirationEnabled ? form.expiresAt : null,
       };
 
       if (editingId) {
@@ -985,6 +1015,41 @@ export default function CampaignsPage() {
                 <Switch checked={form.isUrgent} onCheckedChange={(v) => setForm((p) => ({ ...p, isUrgent: v }))} />
                 <Zap className="h-3.5 w-3.5 text-orange-500" /> Urgent
               </label>
+            </div>
+
+            <div className="rounded-xl border bg-muted/20 p-4 space-y-3">
+              <label className="flex items-center justify-between gap-4 text-sm">
+                <span className="font-medium">Campaign Expiration</span>
+                <Switch
+                  checked={form.expirationEnabled}
+                  onCheckedChange={(v) =>
+                    setForm((p) => ({
+                      ...p,
+                      expirationEnabled: v,
+                      expiresAt: v ? p.expiresAt : "",
+                    }))
+                  }
+                />
+              </label>
+              {form.expirationEnabled && (
+                <div className="space-y-2">
+                  <Label className="text-xs">Expires on</Label>
+                  <Input
+                    type="datetime-local"
+                    value={toDatetimeLocalValue(form.expiresAt)}
+                    min={toDatetimeLocalValue(new Date().toISOString())}
+                    onChange={(e) =>
+                      setForm((p) => ({
+                        ...p,
+                        expiresAt: fromDatetimeLocalValue(e.target.value),
+                      }))
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Donors will see a live countdown on the campaign page until this date and time.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}
