@@ -12,6 +12,7 @@ export interface DemoCampaign {
   image: string;
   tag: string;
   urgent?: boolean;
+  featured?: boolean;
   goal: number;
   raised: number;
   currency: string;

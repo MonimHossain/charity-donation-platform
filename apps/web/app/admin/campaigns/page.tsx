@@ -1208,10 +1208,15 @@ export default function CampaignsPage() {
               />
             </div>
             <div className="flex flex-wrap gap-6">
-              <label className="flex items-center gap-2 text-sm">
-                <Switch checked={form.isFeatured} onCheckedChange={(v) => setForm((p) => ({ ...p, isFeatured: v }))} />
-                <Star className="h-3.5 w-3.5 text-amber-500" /> Featured
-              </label>
+              <div className="space-y-1">
+                <label className="flex items-center gap-2 text-sm">
+                  <Switch checked={form.isFeatured} onCheckedChange={(v) => setForm((p) => ({ ...p, isFeatured: v }))} />
+                  <Star className="h-3.5 w-3.5 text-amber-500" /> Featured
+                </label>
+                <p className="text-xs text-muted-foreground pl-9">
+                  Shows on the homepage Our Appeals section, pinned to the top of the campaigns list, with a Featured badge.
+                </p>
+              </div>
               <label className="flex items-center gap-2 text-sm">
                 <Switch checked={form.isUrgent} onCheckedChange={(v) => setForm((p) => ({ ...p, isUrgent: v }))} />
                 <Zap className="h-3.5 w-3.5 text-orange-500" /> Urgent

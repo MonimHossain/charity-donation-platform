@@ -19,6 +19,28 @@ export function useCampaignsList(params?: Record<string, string>) {
   });
 }
 
+/** Featured campaigns for the homepage Our Appeals section, with fallback to latest published. */
+export function useHomepageAppeals() {
+  return useQuery({
+    queryKey: queryKeys.homepageAppeals,
+    queryFn: async () => {
+      if (USE_MOCK_DATA) {
+        const featured = demoCampaigns.filter((c) => c.featured);
+        const items = (featured.length > 0 ? featured : demoCampaigns).slice(0, 6);
+        return { items, total: items.length, showingFeatured: featured.length > 0 };
+      }
+      const featuredRes = await fetchCampaigns({ featured: "true", limit: "6" });
+      const featuredItems = featuredRes.items ?? [];
+      if (featuredItems.length > 0) {
+        return { items: featuredItems, total: featuredItems.length, showingFeatured: true };
+      }
+      const fallbackRes = await fetchCampaigns({ limit: "6" });
+      const items = fallbackRes.items ?? [];
+      return { items, total: fallbackRes.total ?? items.length, showingFeatured: false };
+    },
+  });
+}
+
 export function useCampaignBySlug(slug: string) {
   return useQuery({
     queryKey: queryKeys.campaign(slug),

@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import { ArrowUpRight, Heart, Users, TrendingUp, Shield, Loader2 } from "lucide-react";
-import { useCampaignsList } from "@/lib/data/campaigns";
+import { useHomepageAppeals } from "@/lib/data/campaigns";
 import { getCampaignCardImage } from "@/lib/campaign-media";
 import { isCampaignExpired } from "@/lib/campaign-expiration";
 import { CampaignExpirationCountdown } from "@/components/campaigns/CampaignExpirationCountdown";
+import { CampaignFeaturedBadge } from "@/components/campaigns/CampaignFeaturedBadge";
 import { demoCampaigns } from "@/lib/mock/campaigns";
 
 type Appeal = {
@@ -15,6 +16,7 @@ type Appeal = {
   tag: string;
   excerpt: string;
   image: string;
+  featured?: boolean;
   urgent?: boolean;
   raised: number;
   goal: number;
@@ -56,6 +58,7 @@ function mapCampaigns(items: Array<Record<string, unknown>>): Appeal[] {
       image: c.image as string | undefined,
     }),
     urgent: Boolean(c.isUrgent ?? c.urgent),
+    featured: Boolean(c.isFeatured ?? c.featured),
     raised: Number(c.raisedAmount ?? c.raised ?? 0),
     goal: Number(c.goalAmount ?? c.goal ?? 1),
     donors: Number(c.donorCount ?? c.donors ?? 0),
@@ -91,16 +94,26 @@ const AppealCard = ({
         <div className="absolute inset-0 bg-gradient-to-t from-primary/90 via-primary/30 to-transparent" />
 
         <div className="absolute top-3 left-3 right-3 flex items-start justify-between gap-2">
-          {a.urgent ? (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-destructive text-destructive-foreground text-[10px] sm:text-xs font-bold uppercase tracking-wider shadow-lg">
-              <span className="w-1.5 h-1.5 rounded-full bg-destructive-foreground animate-pulse" />
-              Urgent
-            </span>
-          ) : (
-            <span className="px-2.5 py-1 rounded-full bg-background/95 backdrop-blur text-primary text-[10px] sm:text-xs font-semibold uppercase tracking-wider shadow-md">
-              {a.tag}
-            </span>
-          )}
+          <div className="flex flex-wrap items-center gap-1.5">
+            {a.featured && <CampaignFeaturedBadge />}
+            {a.urgent ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-destructive text-destructive-foreground text-[10px] sm:text-xs font-bold uppercase tracking-wider shadow-lg">
+                <span className="w-1.5 h-1.5 rounded-full bg-destructive-foreground animate-pulse" />
+                Urgent
+              </span>
+            ) : (
+              !a.featured && (
+                <span className="px-2.5 py-1 rounded-full bg-background/95 backdrop-blur text-primary text-[10px] sm:text-xs font-semibold uppercase tracking-wider shadow-md">
+                  {a.tag}
+                </span>
+              )
+            )}
+            {a.featured && !a.urgent && (
+              <span className="px-2.5 py-1 rounded-full bg-background/95 backdrop-blur text-primary text-[10px] sm:text-xs font-semibold uppercase tracking-wider shadow-md">
+                {a.tag}
+              </span>
+            )}
+          </div>
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-background/95 backdrop-blur text-foreground text-[10px] sm:text-xs font-semibold shadow-md">
             <Users className="w-3 h-3 text-accent-deep" />
             {a.donors.toLocaleString()}
@@ -152,7 +165,7 @@ const AppealCard = ({
 );
 
 const FeaturedCampaigns = () => {
-  const { data, isLoading, refetch } = useCampaignsList({ limit: "6" });
+  const { data, isLoading, refetch } = useHomepageAppeals();
   const [hiddenSlugs, setHiddenSlugs] = useState<Set<string>>(() => new Set());
 
   const handleExpired = useCallback(

@@ -11,6 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { fetchCampaigns } from "@/lib/api";
 import { getCampaignCardImage } from "@/lib/campaign-media";
+import { CampaignFeaturedBadge } from "@/components/campaigns/CampaignFeaturedBadge";
 
 const CATEGORIES = [
   "All",
@@ -42,10 +43,12 @@ interface Campaign {
   goalAmount: number;
   currency: string;
   donorCount: number;
+  isFeatured: boolean;
   isUrgent: boolean;
   isEmergency: boolean;
   endDate?: string;
   status: string;
+  visibilitySettings?: { pinToTop?: boolean };
 }
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
@@ -58,6 +61,18 @@ function formatCurrency(amount: number, currency: string = "GBP") {
     return `${sym}${(amount / 1000).toFixed(amount % 1000 === 0 ? 0 : 1)}k`;
   }
   return `${sym}${amount.toLocaleString()}`;
+}
+
+function sortCampaignsForDisplay(campaigns: Campaign[]) {
+  return [...campaigns].sort((a, b) => {
+    if (Boolean(a.isFeatured) !== Boolean(b.isFeatured)) {
+      return a.isFeatured ? -1 : 1;
+    }
+    const aPinned = a.visibilitySettings?.pinToTop ? 1 : 0;
+    const bPinned = b.visibilitySettings?.pinToTop ? 1 : 0;
+    if (aPinned !== bPinned) return bPinned - aPinned;
+    return 0;
+  });
 }
 
 export default function CampaignsPage() {
@@ -86,6 +101,8 @@ function CampaignsPageApi() {
   const filtered = activeTag
     ? campaigns.filter((c) => c.tags?.includes(activeTag))
     : campaigns;
+
+  const sorted = sortCampaignsForDisplay(filtered);
 
   return (
     <>
@@ -164,13 +181,13 @@ function CampaignsPageApi() {
             <div className="py-20 text-center">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto" />
             </div>
-          ) : filtered.length === 0 ? (
+          ) : sorted.length === 0 ? (
             <p className="py-20 text-center text-muted-foreground">
               No campaigns found. Try a different category or search term.
             </p>
           ) : (
             <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-              {filtered.map((campaign) => {
+              {sorted.map((campaign) => {
                 const percentage = campaign.goalAmount > 0
                   ? Math.min(Math.round((Number(campaign.raisedAmount) / Number(campaign.goalAmount)) * 100), 100)
                   : 0;
@@ -196,16 +213,19 @@ function CampaignsPageApi() {
                           img.src = "/images/hero-1.webp";
                         }}
                       />
-                      {campaign.isUrgent && (
-                        <span className="absolute left-3 top-3 rounded-full bg-destructive px-3 py-1 text-xs font-bold text-white animate-pulse">
-                          URGENT
-                        </span>
-                      )}
-                      {campaign.isEmergency && !campaign.isUrgent && (
-                        <span className="absolute left-3 top-3 rounded-full bg-orange-500 px-3 py-1 text-xs font-bold text-white">
-                          EMERGENCY
-                        </span>
-                      )}
+                      <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
+                        {campaign.isFeatured && <CampaignFeaturedBadge />}
+                        {campaign.isUrgent && (
+                          <span className="rounded-full bg-destructive px-3 py-1 text-xs font-bold text-white animate-pulse">
+                            URGENT
+                          </span>
+                        )}
+                        {campaign.isEmergency && !campaign.isUrgent && (
+                          <span className="rounded-full bg-orange-500 px-3 py-1 text-xs font-bold text-white">
+                            EMERGENCY
+                          </span>
+                        )}
+                      </div>
                       <span className="absolute right-3 top-3 rounded-full bg-card/90 px-3 py-1 text-xs font-medium backdrop-blur-sm capitalize">
                         {campaign.category}
                       </span>

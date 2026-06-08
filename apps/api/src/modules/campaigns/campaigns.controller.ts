@@ -54,7 +54,7 @@ export async function getPublishedCampaigns(req: Request, res: Response) {
 
     const [items, total] = await repo().findAndCount({
       where,
-      order: { sortOrder: "ASC", createdAt: "DESC" },
+      order: { isFeatured: "DESC", sortOrder: "ASC", createdAt: "DESC" },
       skip: (Number(page) - 1) * Number(limit),
       take: Number(limit),
     });

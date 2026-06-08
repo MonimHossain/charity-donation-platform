@@ -33,6 +33,7 @@ import { fetchCampaignBySlug, fetchRecentDonations } from "@/lib/api";
 import { toast } from "sonner";
 import { CampaignDonationExperience } from "@/components/campaigns/CampaignDonationExperience";
 import { CampaignExpirationCountdown } from "@/components/campaigns/CampaignExpirationCountdown";
+import { CampaignFeaturedBadge } from "@/components/campaigns/CampaignFeaturedBadge";
 import MarkdownRenderer from "@/components/blog/MarkdownRenderer";
 import { CAMPAIGN_MODE_LABELS, isExperienceCampaignMode } from "@/lib/campaign-experience";
 import { getCampaignHeroImage, resolveMediaUrl } from "@/lib/campaign-media";
@@ -342,6 +343,7 @@ function CampaignDetailApi({ slug: slugProp }: { slug: string }) {
             <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm">
               {campaign.category}
             </span>
+            {campaign.isFeatured && <CampaignFeaturedBadge size="md" />}
             {campaign.isUrgent && (
               <span className="rounded-full bg-destructive px-3 py-1 text-xs font-bold text-white animate-pulse">
                 URGENT
