@@ -749,6 +749,7 @@ export default function CampaignsPage() {
                     <th className="px-5 py-3 text-left font-medium text-muted-foreground">Status</th>
                     <th className="px-5 py-3 text-left font-medium text-muted-foreground">Attributes</th>
                     <th className="px-5 py-3 text-left font-medium text-muted-foreground">Flags</th>
+                    <th className="px-5 py-3 text-left font-medium text-muted-foreground">Visibility</th>
                     <th className="px-5 py-3 text-right font-medium text-muted-foreground">Actions</th>
                   </tr>
                 </thead>
@@ -781,6 +782,13 @@ export default function CampaignsPage() {
                           {c.isFeatured && <Star className="h-4 w-4 text-amber-500 fill-amber-500" />}
                           {c.isUrgent && <Zap className="h-4 w-4 text-orange-500" />}
                         </div>
+                      </td>
+                      <td className="px-5 py-3">
+                        <CampaignVisibilityCell
+                          visibility={c.visibilitySettings}
+                          published={c.status === "published"}
+                          campaignMode={c.campaignMode || "standard"}
+                        />
                       </td>
                       <td className="px-5 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">
@@ -846,7 +854,7 @@ export default function CampaignsPage() {
                   ))}
                   {filtered.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-5 py-10 text-center text-muted-foreground">No campaigns found</td>
+                      <td colSpan={7} className="px-5 py-10 text-center text-muted-foreground">No campaigns found</td>
                     </tr>
                   )}
                 </tbody>
@@ -2148,6 +2156,66 @@ function AttributeEditor({
 }
 
 // ── Reusable Switch Row ──
+
+function CampaignVisibilityCell({
+  visibility,
+  published,
+  campaignMode,
+}: {
+  visibility?: VisibilitySettings;
+  published: boolean;
+  campaignMode: CampaignMode | string;
+}) {
+  const vs = visibility ?? { showInHeader: false, showOnHomepage: false, pinToTop: false };
+  const homepageLabel =
+    campaignMode === "fundraiser" ? "Live Fundraisers" : "Our Appeals";
+
+  const items = [
+    {
+      key: "header",
+      on: vs.showInHeader,
+      label: "Header",
+      title: "Show in Header Navigation — top site menu",
+    },
+    {
+      key: "homepage",
+      on: vs.showOnHomepage,
+      label: "Homepage",
+      title: `Show on Homepage — ${homepageLabel} section`,
+    },
+    {
+      key: "pinned",
+      on: vs.pinToTop,
+      label: "Pinned",
+      title: "Pin to Top — sorted first on homepage and /campaigns",
+    },
+  ];
+
+  const active = items.filter((i) => i.on);
+
+  if (active.length === 0) {
+    return <span className="text-xs text-muted-foreground">Not visible</span>;
+  }
+
+  return (
+    <div className="flex flex-wrap gap-1 max-w-[200px]">
+      {active.map((item) => (
+        <span
+          key={item.key}
+          title={`${item.title}${published ? "" : " (requires published status)"}`}
+          className={cn(
+            "inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+            published
+              ? "bg-primary/10 text-primary"
+              : "bg-muted text-muted-foreground border border-dashed border-border"
+          )}
+        >
+          {item.label}
+        </span>
+      ))}
+    </div>
+  );
+}
 
 function SwitchRow({
   label,
