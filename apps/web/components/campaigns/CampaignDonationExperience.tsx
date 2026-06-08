@@ -9,6 +9,8 @@ import {
   type RamadanSplitConfig,
 } from "@/lib/campaign-experience";
 import { campaignToDonationSource } from "@/lib/donation-source";
+import type { CheckoutSettings } from "@/components/campaigns/campaign-detail-types";
+import { DEFAULT_CHECKOUT_SETTINGS, type CampaignUpsell } from "@/lib/checkout-campaign-config";
 import type { DonationExperienceFidyaKaffarah, DonationExperienceRamadanSplit } from "@icac/shared-types";
 
 interface CampaignExperienceProps {
@@ -20,6 +22,8 @@ interface CampaignExperienceProps {
     category: string;
     currency?: string;
     campaignMode: string;
+    checkoutSettings?: CheckoutSettings;
+    upsells?: CampaignUpsell[];
     experienceConfig?: FidyaKaffarahConfig | RamadanSplitConfig | Record<string, unknown>;
   };
   embedded?: boolean;
@@ -27,11 +31,21 @@ interface CampaignExperienceProps {
 
 export function CampaignDonationExperience({ campaign, embedded = true }: CampaignExperienceProps) {
   const source = campaignToDonationSource(campaign);
+  const checkoutSettings = campaign.checkoutSettings ?? DEFAULT_CHECKOUT_SETTINGS;
+  const checkoutUpsells = campaign.upsells ?? [];
 
   if (campaign.campaignMode === "fidya_kaffarah") {
     const config = { ...DEFAULT_FIDYA_CONFIG, ...(campaign.experienceConfig as FidyaKaffarahConfig) };
     const experience: DonationExperienceFidyaKaffarah = { type: "fidya_kaffarah", ...config };
-    return <FidyaKaffarahForm source={source} experience={experience} embedded={embedded} />;
+    return (
+      <FidyaKaffarahForm
+        source={source}
+        experience={experience}
+        embedded={embedded}
+        checkoutSettings={checkoutSettings}
+        checkoutUpsells={checkoutUpsells}
+      />
+    );
   }
 
   if (campaign.campaignMode === "ramadan_split") {
@@ -42,7 +56,15 @@ export function CampaignDonationExperience({ campaign, embedded = true }: Campai
       campaignId: campaign.id,
       currency: campaign.currency,
     };
-    return <RamadanSplitForm source={source} experience={experience} embedded={embedded} />;
+    return (
+      <RamadanSplitForm
+        source={source}
+        experience={experience}
+        embedded={embedded}
+        checkoutSettings={checkoutSettings}
+        checkoutUpsells={checkoutUpsells}
+      />
+    );
   }
 
   return null;

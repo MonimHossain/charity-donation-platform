@@ -9,15 +9,21 @@ import { cn } from "@/lib/utils";
 import { addDonationCartItem } from "@/lib/stores/donationCartStore";
 import type { DonationExperienceFidyaKaffarah } from "@icac/shared-types";
 import type { DonationSource } from "@/lib/donation-source";
+import type { CheckoutSettings } from "@/components/campaigns/campaign-detail-types";
+import type { CampaignUpsell } from "@/lib/checkout-campaign-config";
 
 export default function FidyaKaffarahForm({
   source,
   experience,
   embedded = false,
+  checkoutSettings,
+  checkoutUpsells,
 }: {
   source: DonationSource;
   experience: DonationExperienceFidyaKaffarah;
   embedded?: boolean;
+  checkoutSettings?: CheckoutSettings;
+  checkoutUpsells?: CampaignUpsell[];
 }) {
   const router = useRouter();
   const options = experience.options ?? [];
@@ -40,7 +46,7 @@ export default function FidyaKaffarahForm({
     allowCustom && Number.isFinite(customTotal)
       ? Math.max(customMin, Math.min(customMax, customTotal))
       : computedTotal;
-  const currency = source.currency ?? "GBP";
+  const currency = (source.currency ?? "GBP").toUpperCase();
 
   return (
     <div className={cn("space-y-5", embedded ? "" : "rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-soft")}>
@@ -118,6 +124,8 @@ export default function FidyaKaffarahForm({
             description: `${label} × ${boundedQty} — £${total.toFixed(2)}`,
             campaignId: source.campaignId ?? source.id,
             donationType: selectedKey,
+            checkoutSettings,
+            checkoutUpsells,
             fidya: { optionKey: selectedKey, optionLabel: label },
           });
           toast.success("Added to cart");

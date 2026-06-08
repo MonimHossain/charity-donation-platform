@@ -2,6 +2,8 @@
 
 import { useSyncExternalStore } from "react";
 import type { RecurringDonationPlan } from "@icac/shared-types";
+import type { CheckoutSettings } from "@/components/campaigns/campaign-detail-types";
+import type { CampaignUpsell } from "@/lib/checkout-campaign-config";
 
 const STORAGE_KEY = "icac_donation_cart_v1";
 
@@ -21,6 +23,10 @@ export type DonationCartItem = {
   description: string;
   campaignId?: string;
   donationType?: string;
+  /** Snapshot of campaign checkout toggles when the item was added. */
+  checkoutSettings?: CheckoutSettings;
+  /** Snapshot of active campaign upsells when the item was added. */
+  checkoutUpsells?: CampaignUpsell[];
   fidya?: {
     optionKey: string;
     optionLabel: string;
@@ -124,7 +130,7 @@ export function getDonationCartTotal(currency = "GBP"): number {
 
 export function useDonationCart() {
   const items = useSyncExternalStore(subscribeDonationCart, getDonationCartSnapshot, () => []);
-  const currency = items[0]?.currency ?? "GBP";
+  const currency = (items[0]?.currency ?? "GBP").toUpperCase();
   const subtotal = items.reduce((s, i) => s + Number(i.amount || 0), 0);
   return {
     items,

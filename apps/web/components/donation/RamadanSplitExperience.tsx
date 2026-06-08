@@ -27,6 +27,8 @@ import {
   useRamadanRegion,
   type RamadanRegionId,
 } from "@/lib/ramadan-region";
+import type { CheckoutSettings } from "@/components/campaigns/campaign-detail-types";
+import type { CampaignUpsell } from "@/lib/checkout-campaign-config";
 
 const PRESET_AMOUNTS = [40, 50, 100, 250, 500, 1000, 5000];
 
@@ -52,10 +54,14 @@ export function RamadanSplitForm({
   source,
   experience,
   embedded = false,
+  checkoutSettings,
+  checkoutUpsells,
 }: {
   source: DonationSource;
   experience: DonationExperienceRamadanSplit;
   embedded?: boolean;
+  checkoutSettings?: CheckoutSettings;
+  checkoutUpsells?: CampaignUpsell[];
 }) {
   const router = useRouter();
   const { regionId, regionLabel, setRegionId } = useRamadanRegion();
@@ -74,7 +80,7 @@ export function RamadanSplitForm({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewNights, setPreviewNights] = useState<ReturnType<typeof buildEqualRamadanNightPreview>>([]);
 
-  const currency = experience.currency ?? source.currency ?? "GBP";
+  const currency = (experience.currency ?? source.currency ?? "GBP").toUpperCase();
   const sym = CURRENCIES[(currency as CurrencyCode) || "GBP"]?.symbol ?? "£";
   const baseTotal = customAmount ? Number(customAmount) : amount;
   const campaignId = experience.campaignId ?? source.campaignId ?? source.id;
@@ -156,6 +162,8 @@ export function RamadanSplitForm({
       description: `Ramadan split — ${selectedOrdered.length} nights — ${sym}${Number(baseTotal).toFixed(2)}`,
       campaignId,
       donationType: "ramadan",
+      checkoutSettings,
+      checkoutUpsells,
       ramadan: {
         ramadanStartDate,
         regionId,

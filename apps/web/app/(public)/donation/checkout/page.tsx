@@ -36,7 +36,9 @@ import { clearDonationCart, useDonationCart } from "@/lib/stores/donationCartSto
 import CheckoutGiftAidStep from "@/components/donation/CheckoutGiftAidStep";
 import CheckoutStepIndicator, { type CheckoutFlowStep } from "@/components/donation/CheckoutStepIndicator";
 import {
-  fetchCheckoutCampaignConfig,
+  DEFAULT_CAMPAIGN_CONFIG,
+  isGiftAidCheckoutEnabled,
+  resolveCheckoutCampaignConfig,
   type CheckoutCampaignConfig,
 } from "@/lib/checkout-campaign-config";
 
@@ -55,18 +57,6 @@ const DEDICATION_TYPES = [
   "On behalf of",
   "As a gift to",
 ];
-
-const DEFAULT_CAMPAIGN_CONFIG: CheckoutCampaignConfig = {
-  checkoutSettings: {
-    allowAnonymous: true,
-    enableGiftAid: false,
-    enableDedication: true,
-    enableComments: false,
-    enableUpsell: false,
-    enableFeeCoverage: false,
-  },
-  upsells: [],
-};
 
 function DonationCheckoutContent() {
   const router = useRouter();
@@ -113,11 +103,13 @@ function DonationCheckoutContent() {
   );
 
   const donationAmount = subtotal + upsellTotal;
-  const giftAidBoost = giftAid && currency === "GBP" ? +(donationAmount * 0.25).toFixed(2) : 0;
+  const giftAidBoost = giftAid && isGiftAidCheckoutEnabled(checkoutSettings, currency)
+    ? +(donationAmount * 0.25).toFixed(2)
+    : 0;
   const charityValue = donationAmount + giftAidBoost;
   const chargeAmount = donationAmount;
 
-  const showGiftAidStep = checkoutSettings.enableGiftAid && currency === "GBP";
+  const showGiftAidStep = isGiftAidCheckoutEnabled(checkoutSettings, currency);
 
   const flowSteps = useMemo(() => {
     const steps: Array<{ id: CheckoutFlowStep; label: string }> = [];
@@ -128,14 +120,13 @@ function DonationCheckoutContent() {
   }, [showGiftAidStep]);
 
   useEffect(() => {
-    const slug = items[0]?.donationPageSlug;
-    if (!slug) {
+    if (!items.length) {
       setCampaignConfig(DEFAULT_CAMPAIGN_CONFIG);
       setConfigLoading(false);
       return;
     }
     setConfigLoading(true);
-    fetchCheckoutCampaignConfig(slug)
+    resolveCheckoutCampaignConfig(items)
       .then(setCampaignConfig)
       .finally(() => setConfigLoading(false));
   }, [items]);
@@ -494,21 +485,6 @@ function DonationCheckoutContent() {
                     })}
                   </div>
                 </div>
-              )}
-
-              {!showGiftAidStep && checkoutSettings.enableGiftAid && currency === "GBP" && (
-                <label className="flex items-start gap-3 cursor-pointer rounded-2xl border border-border p-4">
-                  <input
-                    type="checkbox"
-                    checked={giftAid}
-                    onChange={(e) => setGiftAid(e.target.checked)}
-                    className="mt-1 w-4 h-4 accent-primary"
-                  />
-                  <span className="text-sm text-muted-foreground">
-                    I am a UK taxpayer and would like to claim Gift Aid on this donation (+25% to
-                    charity at no extra cost).
-                  </span>
-                </label>
               )}
 
               {checkoutSettings.enableDedication && (
