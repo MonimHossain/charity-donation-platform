@@ -33,7 +33,7 @@ function asBool(value: unknown): boolean {
   return value === true || value === "true" || value === 1;
 }
 
-function normalizeCheckoutSettings(raw?: Partial<CheckoutSettings> | null): CheckoutSettings {
+export function normalizeCheckoutSettings(raw?: Partial<CheckoutSettings> | null): CheckoutSettings {
   if (!raw) return { ...DEFAULT_CHECKOUT_SETTINGS };
   return {
     allowAnonymous: raw.allowAnonymous !== false,
@@ -114,18 +114,14 @@ export async function resolveCheckoutCampaignConfig(
   items: DonationCartItem[]
 ): Promise<CheckoutCampaignConfig> {
   const fromCart = resolveCheckoutConfigFromCart(items);
-  const hasEmbedded = items.some((item) => item.checkoutSettings);
-  if (hasEmbedded) {
+  const primary = items[0];
+
+  if (!primary?.donationPageSlug && !primary?.campaignId) {
     return fromCart;
   }
 
-  const primary = items[0];
-  if (!primary?.donationPageSlug) {
-    return DEFAULT_CAMPAIGN_CONFIG;
-  }
-
   const fetched = await fetchCheckoutCampaignConfig(
-    primary.donationPageSlug,
+    primary.donationPageSlug || primary.campaignId || "",
     primary.campaignId
   );
 
@@ -138,9 +134,10 @@ export async function resolveCheckoutCampaignConfig(
   };
 }
 
-export function isGiftAidCheckoutEnabled(
-  checkoutSettings: CheckoutSettings,
-  currency: string
-): boolean {
-  return checkoutSettings.enableGiftAid && currency.toUpperCase() === "GBP";
+export function isGiftAidCheckoutEnabled(checkoutSettings: CheckoutSettings): boolean {
+  return normalizeCheckoutSettings(checkoutSettings).enableGiftAid;
+}
+
+export function giftAidBoostApplies(currency: string): boolean {
+  return currency.toUpperCase() === "GBP";
 }

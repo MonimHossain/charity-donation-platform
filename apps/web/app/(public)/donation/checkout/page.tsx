@@ -38,6 +38,7 @@ import CheckoutStepIndicator, { type CheckoutFlowStep } from "@/components/donat
 import {
   DEFAULT_CAMPAIGN_CONFIG,
   isGiftAidCheckoutEnabled,
+  normalizeCheckoutSettings,
   resolveCheckoutCampaignConfig,
   type CheckoutCampaignConfig,
 } from "@/lib/checkout-campaign-config";
@@ -103,13 +104,14 @@ function DonationCheckoutContent() {
   );
 
   const donationAmount = subtotal + upsellTotal;
-  const giftAidBoost = giftAid && isGiftAidCheckoutEnabled(checkoutSettings, currency)
-    ? +(donationAmount * 0.25).toFixed(2)
-    : 0;
+  const giftAidBoost =
+    giftAid && isGiftAidCheckoutEnabled(checkoutSettings)
+      ? +(donationAmount * 0.25).toFixed(2)
+      : 0;
   const charityValue = donationAmount + giftAidBoost;
   const chargeAmount = donationAmount;
 
-  const showGiftAidStep = isGiftAidCheckoutEnabled(checkoutSettings, currency);
+  const showGiftAidStep = isGiftAidCheckoutEnabled(checkoutSettings);
 
   const flowSteps = useMemo(() => {
     const steps: Array<{ id: CheckoutFlowStep; label: string }> = [];
@@ -119,17 +121,30 @@ function DonationCheckoutContent() {
     return steps;
   }, [showGiftAidStep]);
 
+  const cartConfigKey = useMemo(
+    () => items.map((i) => `${i.id}:${i.donationPageSlug}:${i.campaignId}`).join("|"),
+    [items]
+  );
+
   useEffect(() => {
     if (!items.length) {
       setCampaignConfig(DEFAULT_CAMPAIGN_CONFIG);
       setConfigLoading(false);
       return;
     }
+    let cancelled = false;
     setConfigLoading(true);
     resolveCheckoutCampaignConfig(items)
-      .then(setCampaignConfig)
-      .finally(() => setConfigLoading(false));
-  }, [items]);
+      .then((config) => {
+        if (!cancelled) setCampaignConfig(config);
+      })
+      .finally(() => {
+        if (!cancelled) setConfigLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [cartConfigKey, items]);
 
   useEffect(() => {
     if (configLoading) return;
