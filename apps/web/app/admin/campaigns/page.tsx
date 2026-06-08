@@ -33,6 +33,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { FilePicker } from "@/components/ui/file-picker";
 import RichTextEditor from "@/components/admin/RichTextEditor";
+import RamadanStartDatesEditor from "@/components/admin/RamadanStartDatesEditor";
 import { cn } from "@/lib/utils";
 import {
   fetchAdminCampaigns,
@@ -1198,37 +1199,33 @@ export default function CampaignsPage() {
                 <div className="space-y-4 rounded-xl border border-amber-200 bg-amber-50/50 p-5">
                   <h4 className="font-semibold text-sm">Ramadan Split settings</h4>
                   <p className="text-xs text-muted-foreground">
-                    Donors pick nights and optional weights on the public campaign page.
+                    Donors pick nights and optional weights on the public campaign page. Set start dates
+                    for each global region — the site shows the right date based on donor location.
                   </p>
-                  <div className="grid gap-4 sm:grid-cols-2 max-w-md">
-                    <div className="space-y-2">
-                      <Label>Ramadan start date</Label>
-                      <Input
-                        type="date"
-                        value={ramadanConfig.ramadanStartDate ?? ""}
-                        onChange={(e) =>
-                          setForm((p) => ({
-                            ...p,
-                            experienceConfig: { ...ramadanConfig, ramadanStartDate: e.target.value },
-                          }))
-                        }
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Max nights</Label>
-                      <Input
-                        type="number"
-                        min={1}
-                        max={30}
-                        value={ramadanConfig.maxNights ?? 30}
-                        onChange={(e) =>
-                          setForm((p) => ({
-                            ...p,
-                            experienceConfig: { ...ramadanConfig, maxNights: Number(e.target.value) },
-                          }))
-                        }
-                      />
-                    </div>
+                  <RamadanStartDatesEditor
+                    ramadanStartDate={ramadanConfig.ramadanStartDate}
+                    startChoices={ramadanConfig.startChoices}
+                    onChange={(next) =>
+                      setForm((p) => ({
+                        ...p,
+                        experienceConfig: { ...ramadanConfig, ...next },
+                      }))
+                    }
+                  />
+                  <div className="space-y-2 max-w-xs">
+                    <Label>Max nights</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={30}
+                      value={ramadanConfig.maxNights ?? 30}
+                      onChange={(e) =>
+                        setForm((p) => ({
+                          ...p,
+                          experienceConfig: { ...ramadanConfig, maxNights: Number(e.target.value) },
+                        }))
+                      }
+                    />
                   </div>
                 </div>
               )}

@@ -11,8 +11,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { FilePicker } from "@/components/ui/file-picker";
+import RamadanStartDatesEditor from "@/components/admin/RamadanStartDatesEditor";
 import { createAdminDonationPage } from "@/lib/api";
-import type { DonationExperience } from "@icac/shared-types";
+import { DEFAULT_RAMADAN_CONFIG } from "@/lib/campaign-experience";
+import type { DonationExperience, RamadanStartChoice } from "@icac/shared-types";
 
 function slugify(s: string): string {
   return String(s || "")
@@ -37,7 +39,10 @@ export default function AdminDonationPageCreatePage() {
   const [image, setImage] = useState("");
   const [status, setStatus] = useState<"draft" | "published" | "archived">("draft");
   const [experienceType, setExperienceType] = useState<DonationExperience["type"]>("standard");
-  const [ramadanStartDate, setRamadanStartDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [ramadanConfig, setRamadanConfig] = useState(() => ({
+    ramadanStartDate: DEFAULT_RAMADAN_CONFIG.ramadanStartDate,
+    startChoices: DEFAULT_RAMADAN_CONFIG.startChoices as RamadanStartChoice[],
+  }));
   const [saving, setSaving] = useState(false);
 
   const computedSlug = useMemo(() => slug || slugify(title), [slug, title]);
@@ -57,12 +62,13 @@ export default function AdminDonationPageCreatePage() {
     if (experienceType === "ramadan_split") {
       return {
         type: "ramadan_split",
-        ramadanStartDate,
+        ramadanStartDate: ramadanConfig.ramadanStartDate,
+        startChoices: ramadanConfig.startChoices,
         maxNights: 30,
       };
     }
     return { type: "standard" };
-  }, [experienceType, ramadanStartDate]);
+  }, [experienceType, ramadanConfig]);
 
   async function handleSave() {
     if (!title.trim()) {
@@ -186,17 +192,19 @@ export default function AdminDonationPageCreatePage() {
         </div>
 
         {experienceType === "ramadan_split" && (
-          <div>
-            <Label>Ramadan start date</Label>
-            <Input
-              type="date"
-              className="mt-1"
-              value={ramadanStartDate}
-              onChange={(e) => setRamadanStartDate(e.target.value)}
+          <div className="space-y-2">
+            <Label>Ramadan start dates by region</Label>
+            <RamadanStartDatesEditor
+              ramadanStartDate={ramadanConfig.ramadanStartDate}
+              startChoices={ramadanConfig.startChoices}
+              onChange={(next) =>
+                setRamadanConfig((p) => ({
+                  ...p,
+                  ramadanStartDate: next.ramadanStartDate ?? p.ramadanStartDate,
+                  startChoices: next.startChoices,
+                }))
+              }
             />
-            <p className="text-xs text-muted-foreground mt-1">
-              Donors choose nights and weights on the public page (up to 30 days from this date).
-            </p>
           </div>
         )}
 

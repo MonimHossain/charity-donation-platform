@@ -27,6 +27,8 @@ export type DonationCartItem = {
   };
   ramadan?: {
     ramadanStartDate: string;
+    regionId?: string;
+    regionLabel?: string;
     selectedDates: string[];
     weights: number[];
     dailyBreakdown: number[];

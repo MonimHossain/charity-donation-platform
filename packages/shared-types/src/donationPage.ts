@@ -37,8 +37,15 @@ export type DonationExperienceFidyaKaffarah = {
   ctaBehavior?: "checkout_now";
 };
 
-/** @deprecated Legacy admin start options — use ramadanStartDate */
-export type RamadanStartChoice = { id: string; label: string; date: string };
+export type RamadanRegionId = "middle_east" | "south_asia" | "western";
+
+export type RamadanStartChoice = {
+  id: string;
+  label: string;
+  date: string;
+  /** Maps this start date to a global region (auto-selected from donor location). */
+  region?: RamadanRegionId;
+};
 
 export type DonationExperienceRamadanSplit = {
   type: "ramadan_split";

@@ -7,14 +7,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { FilePicker } from "@/components/ui/file-picker";
-import { getRamadanAdminConfig } from "@/lib/ramadan-split";
+import RamadanStartDatesEditor from "@/components/admin/RamadanStartDatesEditor";
+import { DEFAULT_RAMADAN_CONFIG } from "@/lib/campaign-experience";
+import { normalizeRamadanStartChoices } from "@/lib/ramadan-region";
 import { useDonationPage, upsertDonationPage } from "@/lib/stores/donationPageStore";
 import { useDonationPageAdmin, useDonationPageMutations } from "@/lib/data/donation-pages";
 import { USE_MOCK_DATA } from "@/lib/config";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import type { DonationExperience, DonationPageDto } from "@icac/shared-types";
+import type { DonationExperience, DonationPageDto, RamadanStartChoice } from "@icac/shared-types";
 import { getExperienceMeta } from "@/lib/donation-experience";
 import { cn } from "@/lib/utils";
 
@@ -37,7 +39,10 @@ export default function AdminDonationPageEditPage() {
   const [fidyaQty, setFidyaQty] = useState({ min: 1, max: 999, default: 1, label: "Quantity:" });
   const [fidyaAllowCustomAmount, setFidyaAllowCustomAmount] = useState(false);
   const [fidyaCustomAmount, setFidyaCustomAmount] = useState({ min: 1, max: 100000, placeholder: "Enter amount", label: "Custom amount" });
-  const [ramadanStartDate, setRamadanStartDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [ramadanConfig, setRamadanConfig] = useState(() => ({
+    ramadanStartDate: DEFAULT_RAMADAN_CONFIG.ramadanStartDate,
+    startChoices: DEFAULT_RAMADAN_CONFIG.startChoices as RamadanStartChoice[],
+  }));
   const [image, setImage] = useState("");
 
   const publicUrl = useMemo(() => `/campaigns/${page?.slug ?? ""}`, [page?.slug]);
@@ -66,8 +71,11 @@ export default function AdminDonationPageEditPage() {
         label: String((exp as any).customAmount?.label ?? "Custom amount"),
       });
     } else if (exp.type === "ramadan_split") {
-      const { ramadanStartDate: start } = getRamadanAdminConfig(exp);
-      setRamadanStartDate(start);
+      const startChoices = normalizeRamadanStartChoices(exp);
+      setRamadanConfig({
+        ramadanStartDate: exp.ramadanStartDate ?? startChoices[0]?.date ?? DEFAULT_RAMADAN_CONFIG.ramadanStartDate,
+        startChoices,
+      });
     }
 
     setImage(String((page as any).image ?? ""));
@@ -134,7 +142,8 @@ export default function AdminDonationPageEditPage() {
     if (experienceType === "ramadan_split") {
       return {
         type: "ramadan_split",
-        ramadanStartDate,
+        ramadanStartDate: ramadanConfig.ramadanStartDate,
+        startChoices: ramadanConfig.startChoices,
         maxNights: 30,
         campaignId: (page as DonationPageDto).campaignId ?? undefined,
       };
@@ -338,15 +347,20 @@ export default function AdminDonationPageEditPage() {
 
               {experienceType === "ramadan_split" && (
                 <div className="space-y-3">
-                  <Label className="text-sm font-semibold">Ramadan start date</Label>
-                  <Input
-                    type="date"
-                    value={ramadanStartDate}
-                    onChange={(e) => setRamadanStartDate(e.target.value)}
+                  <Label className="text-sm font-semibold">Ramadan start dates by region</Label>
+                  <RamadanStartDatesEditor
+                    ramadanStartDate={ramadanConfig.ramadanStartDate}
+                    startChoices={ramadanConfig.startChoices}
+                    onChange={(next) =>
+                      setRamadanConfig((p) => ({
+                        ...p,
+                        ramadanStartDate: next.ramadanStartDate ?? p.ramadanStartDate,
+                        startChoices: next.startChoices,
+                      }))
+                    }
                   />
                   <p className="text-sm text-muted-foreground">
                     Donors pick which nights to give (up to 30) and optional weights on the public page.
-                    You do not set nights or weights here.
                   </p>
                 </div>
               )}

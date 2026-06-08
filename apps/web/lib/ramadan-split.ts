@@ -1,4 +1,9 @@
 import type { DonationExperienceRamadanSplit, RecurringDonationPlan, RecurringInstallment } from "@icac/shared-types";
+import {
+  normalizeRamadanStartChoices,
+  type RamadanRegionId,
+  resolveRamadanStartDate,
+} from "./ramadan-region";
 
 export const RAMADAN_MAX_NIGHTS = 30;
 
@@ -11,16 +16,17 @@ export function parseWeightInput(raw: string): number {
   return clampWeight(Number(raw));
 }
 
-export function getRamadanAdminConfig(exp: DonationExperienceRamadanSplit) {
-  const ramadanStartDate =
-    exp.ramadanStartDate ??
-    exp.startChoices?.[0]?.date ??
-    new Date().toISOString().slice(0, 10);
+export function getRamadanAdminConfig(
+  exp: DonationExperienceRamadanSplit,
+  regionId: RamadanRegionId = "western"
+) {
+  const startChoices = normalizeRamadanStartChoices(exp);
+  const ramadanStartDate = resolveRamadanStartDate(exp, regionId);
   const maxNights = Math.min(
     RAMADAN_MAX_NIGHTS,
     Math.max(1, Number(exp.maxNights ?? RAMADAN_MAX_NIGHTS))
   );
-  return { ramadanStartDate, maxNights };
+  return { ramadanStartDate, maxNights, startChoices, regionId };
 }
 
 export function buildRamadanCalendarDates(startDate: string, maxNights: number): string[] {

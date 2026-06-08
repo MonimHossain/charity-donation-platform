@@ -1,4 +1,5 @@
 import type { DonationExperienceFidyaKaffarah, DonationExperienceRamadanSplit } from "@icac/shared-types";
+import { buildDefaultRamadanStartChoices } from "./ramadan-region";
 
 export type FidyaKaffarahConfig = Omit<DonationExperienceFidyaKaffarah, "type">;
 export type RamadanSplitConfig = Omit<DonationExperienceRamadanSplit, "type">;
@@ -15,9 +16,12 @@ export const DEFAULT_FIDYA_CONFIG: FidyaKaffarahConfig = {
   customAmount: { min: 1, max: 100000, placeholder: "Enter amount", label: "Custom amount" },
 };
 
+const defaultRamadanDate = new Date().toISOString().slice(0, 10);
+
 export const DEFAULT_RAMADAN_CONFIG: RamadanSplitConfig = {
-  ramadanStartDate: new Date().toISOString().slice(0, 10),
+  ramadanStartDate: defaultRamadanDate,
   maxNights: 30,
+  startChoices: buildDefaultRamadanStartChoices(defaultRamadanDate),
 };
 
 export const CAMPAIGN_MODE_LABELS: Record<string, string> = {

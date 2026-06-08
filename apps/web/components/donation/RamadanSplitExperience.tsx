@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarDays, Eye } from "lucide-react";
 import { toast } from "sonner";
@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import PageShell, { PageHero } from "@/components/site/PageShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { addDonationCartItem } from "@/lib/stores/donationCartStore";
 import {
@@ -22,6 +23,11 @@ import {
 import RamadanPreviewModal from "@/components/donation/RamadanPreviewModal";
 import type { DonationExperienceRamadanSplit, DonationPageDto } from "@icac/shared-types";
 import type { DonationSource } from "@/lib/donation-source";
+import {
+  RAMADAN_REGIONS,
+  useRamadanRegion,
+  type RamadanRegionId,
+} from "@/lib/ramadan-region";
 
 const PRESET_AMOUNTS = [40, 50, 100, 250, 500, 1000, 5000];
 
@@ -35,7 +41,8 @@ export function RamadanSplitForm({
   embedded?: boolean;
 }) {
   const router = useRouter();
-  const { ramadanStartDate, maxNights } = getRamadanAdminConfig(experience);
+  const { regionId, regionLabel, source: regionSource, setRegionId } = useRamadanRegion();
+  const { ramadanStartDate, maxNights } = getRamadanAdminConfig(experience, regionId);
   const calendarDates = useMemo(
     () => buildRamadanCalendarDates(ramadanStartDate, maxNights),
     [ramadanStartDate, maxNights]
@@ -47,6 +54,11 @@ export function RamadanSplitForm({
   const [customizeWeights, setCustomizeWeights] = useState(false);
   const [weights, setWeights] = useState<number[]>(() => calendarDates.map(() => 1));
   const [previewOpen, setPreviewOpen] = useState(false);
+
+  useEffect(() => {
+    setSelectedDates([...calendarDates]);
+    setWeights(calendarDates.map(() => 1));
+  }, [calendarDates, regionId]);
 
   const currency = experience.currency ?? source.currency ?? "GBP";
   const baseTotal = customAmount ? Number(customAmount) : amount;
@@ -160,17 +172,44 @@ export function RamadanSplitForm({
             Select Ramadan nights
           </p>
           <p className="text-xs text-muted-foreground">
-            Ramadan begins {formatRamadanDate(ramadanStartDate)}. Choose up to {maxNights} nights
-            ({selectedOrdered.length} selected).
+            Ramadan begins {formatRamadanDate(ramadanStartDate)} for your area ({regionLabel}).
+            Choose up to {maxNights} nights ({selectedOrdered.length} selected).
           </p>
-          <div className="rounded-2xl border border-border p-3 bg-secondary/30">
+          <div className="rounded-2xl border border-border p-3 bg-secondary/30 space-y-3">
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Your Ramadan calendar
+              </Label>
+              <select
+                value={regionId}
+                onChange={(e) => setRegionId(e.target.value as RamadanRegionId)}
+                className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm"
+                aria-label="Ramadan start date region"
+              >
+                {RAMADAN_REGIONS.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-[11px] text-muted-foreground">
+                {regionSource === "preference"
+                  ? "You chose this calendar."
+                  : regionSource === "timezone"
+                    ? "Detected from your device timezone."
+                    : regionSource === "locale"
+                      ? "Detected from your browser locale."
+                      : "Default calendar for your area."}{" "}
+                Change the region if your local moon-sighting differs.
+              </p>
+            </div>
             <Input
               type="date"
               value={ramadanStartDate}
               readOnly
               disabled
-              className="rounded-xl h-11 bg-background mb-3 opacity-80"
-              aria-label="Ramadan start date set by admin"
+              className="rounded-xl h-11 bg-background opacity-80"
+              aria-label="Ramadan start date for your region"
             />
             <div className="grid grid-cols-5 sm:grid-cols-6 gap-2">
               {calendarDates.map((date) => {
@@ -276,6 +315,8 @@ export function RamadanSplitForm({
               donationType: "ramadan",
               ramadan: {
                 ramadanStartDate,
+                regionId,
+                regionLabel,
                 selectedDates: selectedOrdered,
                 weights: activeWeights,
                 dailyBreakdown,

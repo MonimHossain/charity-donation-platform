@@ -130,11 +130,19 @@ export interface FidyaKaffarahExperienceConfig {
   customAmount?: { min?: number; max?: number; placeholder?: string; label?: string };
 }
 
+export interface RamadanStartChoice {
+  id: string;
+  label: string;
+  date: string;
+  region?: "middle_east" | "south_asia" | "western";
+}
+
 export interface RamadanSplitExperienceConfig {
   ramadanStartDate?: string;
   maxNights?: number;
   currency?: string;
   campaignId?: string;
+  startChoices?: RamadanStartChoice[];
 }
 
 export type CampaignExperienceConfig =
