@@ -58,6 +58,116 @@ export async function createPaymentIntent(req: Request, res: Response) {
   }
 }
 
+function stripeRecurringFromFrequency(frequency: string): Stripe.PriceCreateParams.Recurring {
+  const f = frequency === "annually" ? "yearly" : frequency;
+  if (f === "weekly") return { interval: "week" };
+  if (f === "yearly") return { interval: "year" };
+  if (f === "quarterly") return { interval: "month", interval_count: 3 };
+  return { interval: "month" };
+}
+
+/** Create an incomplete Stripe subscription and return the first invoice PaymentIntent client secret. */
+export async function createSubscriptionCheckout(req: Request, res: Response) {
+  try {
+    const {
+      amount,
+      currency,
+      frequency,
+      donorEmail,
+      donorName,
+      recurringDonationId,
+      donationId,
+      campaignId,
+    } = req.body;
+
+    if (!amount || !donorEmail || !donorName) {
+      return res.status(400).json({ message: "Amount, donor email, and name are required" });
+    }
+
+    const stripe = getStripe();
+    const customer = await stripe.customers.create({
+      email: donorEmail,
+      name: donorName,
+      metadata: {
+        recurringDonationId: recurringDonationId || "",
+        donationId: donationId || "",
+      },
+    });
+
+    const price = await stripe.prices.create({
+      unit_amount: Math.round(Number(amount) * 100),
+      currency: (currency || "gbp").toLowerCase(),
+      recurring: stripeRecurringFromFrequency(frequency || "monthly"),
+      product_data: { name: "Recurring Donation" },
+    });
+
+    const subscription = await stripe.subscriptions.create({
+      customer: customer.id,
+      items: [{ price: price.id }],
+      payment_behavior: "default_incomplete",
+      payment_settings: {
+        save_default_payment_method: "on_subscription",
+        payment_method_types: ["card"],
+      },
+      expand: ["latest_invoice.payment_intent"],
+      metadata: {
+        recurringDonationId: recurringDonationId || "",
+        donationId: donationId || "",
+        campaignId: campaignId || "",
+      },
+    });
+
+    const invoice = subscription.latest_invoice as Stripe.Invoice;
+    const paymentIntent = invoice.payment_intent as Stripe.PaymentIntent;
+
+    if (!paymentIntent?.client_secret) {
+      return res.status(500).json({ message: "Could not initialize subscription payment" });
+    }
+
+    await stripe.paymentIntents.update(paymentIntent.id, {
+      metadata: {
+        donationId: donationId || "",
+        recurringDonationId: recurringDonationId || "",
+        subscriptionId: subscription.id,
+      },
+    });
+
+    if (recurringDonationId) {
+      await recurringRepo().update(recurringDonationId, {
+        stripeSubscriptionId: subscription.id,
+        stripeCustomerId: customer.id,
+      });
+    }
+
+    if (donationId) {
+      await donationRepo().update(donationId, { stripePaymentIntentId: paymentIntent.id });
+    }
+
+    await paymentLogRepo().save(
+      paymentLogRepo().create({
+        donationId: donationId || undefined,
+        recurringDonationId: recurringDonationId || undefined,
+        type: "charge",
+        provider: "stripe",
+        providerTransactionId: paymentIntent.id,
+        amount: Number(amount),
+        currency: (currency || "GBP").toUpperCase(),
+        status: "pending",
+      })
+    );
+
+    return res.json({
+      clientSecret: paymentIntent.client_secret,
+      paymentIntentId: paymentIntent.id,
+      subscriptionId: subscription.id,
+      customerId: customer.id,
+    });
+  } catch (error: any) {
+    console.error("Create subscription checkout error:", error);
+    return res.status(500).json({ message: error.message || "Internal server error" });
+  }
+}
+
 export async function createSubscription(req: Request, res: Response) {
   try {
     const { email, name, paymentMethodId, amount, currency, interval, recurringDonationId } = req.body;
@@ -301,9 +411,11 @@ export async function getPaymentStatus(req: Request, res: Response) {
 /** Client-side confirmation after Payment Element succeeds (works without webhooks in dev). */
 export async function confirmStripePayment(req: Request, res: Response) {
   try {
-    const { paymentIntentId, donationId } = req.body as {
+    const { paymentIntentId, donationId, recurringDonationId, subscriptionId } = req.body as {
       paymentIntentId?: string;
       donationId?: string;
+      recurringDonationId?: string;
+      subscriptionId?: string;
     };
 
     if (!paymentIntentId) {
@@ -313,14 +425,40 @@ export async function confirmStripePayment(req: Request, res: Response) {
     const stripe = getStripe();
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
     const resolvedDonationId = donationId || paymentIntent.metadata?.donationId;
+    const resolvedRecurringId =
+      recurringDonationId || paymentIntent.metadata?.recurringDonationId;
+    const resolvedSubscriptionId =
+      subscriptionId || paymentIntent.metadata?.subscriptionId;
 
     if (paymentIntent.status === "succeeded") {
       if (resolvedDonationId) {
         await completeDonation(resolvedDonationId);
       }
+      if (resolvedRecurringId) {
+        const recurring = await recurringRepo().findOneBy({ id: resolvedRecurringId });
+        if (recurring) {
+          recurring.status = "active";
+          if (resolvedSubscriptionId) {
+            recurring.stripeSubscriptionId = resolvedSubscriptionId;
+          }
+          recurring.lastPaymentDate = new Date();
+          recurring.totalPayments = (recurring.totalPayments || 0) + 1;
+          recurring.totalPaid =
+            Number(recurring.totalPaid || 0) + paymentIntent.amount / 100;
+          recurring.failedAttempts = 0;
+          const next = new Date();
+          if (recurring.frequency === "weekly") next.setDate(next.getDate() + 7);
+          else if (recurring.frequency === "yearly") next.setFullYear(next.getFullYear() + 1);
+          else if (recurring.frequency === "quarterly") next.setMonth(next.getMonth() + 3);
+          else next.setMonth(next.getMonth() + 1);
+          recurring.nextPaymentDate = next;
+          await recurringRepo().save(recurring);
+        }
+      }
       await paymentLogRepo().save(
         paymentLogRepo().create({
           donationId: resolvedDonationId || undefined,
+          recurringDonationId: resolvedRecurringId || undefined,
           type: "charge",
           provider: "stripe",
           providerTransactionId: paymentIntent.id,
@@ -332,6 +470,8 @@ export async function confirmStripePayment(req: Request, res: Response) {
       return res.json({
         status: "succeeded",
         donationId: resolvedDonationId,
+        recurringDonationId: resolvedRecurringId,
+        subscriptionId: resolvedSubscriptionId,
         paymentIntentId: paymentIntent.id,
       });
     }

@@ -285,9 +285,39 @@ export async function createStripePaymentIntent(payload: { amount: number; curre
   return data as { clientSecret: string; paymentIntentId: string };
 }
 
-export async function confirmStripePayment(payload: { paymentIntentId: string; donationId?: string }) {
+export async function confirmStripePayment(payload: {
+  paymentIntentId: string;
+  donationId?: string;
+  recurringDonationId?: string;
+  subscriptionId?: string;
+}) {
   const { data } = await api.post("/payments/stripe/confirm", payload);
-  return data as { status: string; donationId?: string; paymentIntentId?: string };
+  return data as {
+    status: string;
+    donationId?: string;
+    recurringDonationId?: string;
+    subscriptionId?: string;
+    paymentIntentId?: string;
+  };
+}
+
+export async function createStripeSubscriptionCheckout(payload: {
+  amount: number;
+  currency: string;
+  frequency: string;
+  donorEmail: string;
+  donorName: string;
+  recurringDonationId?: string;
+  donationId?: string;
+  campaignId?: string;
+}) {
+  const { data } = await api.post("/payments/stripe/create-subscription-checkout", payload);
+  return data as {
+    clientSecret: string;
+    paymentIntentId: string;
+    subscriptionId: string;
+    customerId: string;
+  };
 }
 
 export async function createStripeSubscription(payload: Record<string, unknown>) {

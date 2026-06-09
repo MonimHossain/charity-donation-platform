@@ -17,7 +17,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Heart, Loader2 } from "lucide-react";
-import { confirmStripePayment, createStripePaymentIntent } from "@/lib/api";
+import {
+  confirmStripePayment,
+  createStripePaymentIntent,
+  createStripeSubscriptionCheckout,
+} from "@/lib/api";
+import {
+  isRecurringFrequency,
+  normalizeRecurringFrequency,
+  recurringIntervalLabel,
+  type DonationFrequencyOption,
+} from "@/lib/stripe-recurring";
 
 const CURRENCY_COUNTRY: Record<string, string> = {
   GBP: "GB",
@@ -191,6 +201,9 @@ function CheckoutForm({
   amount,
   currencySymbol,
   currencyCode,
+  frequency = "single",
+  recurringDonationId,
+  campaignId,
   onSuccess,
   onError,
 }: {
@@ -200,9 +213,13 @@ function CheckoutForm({
   amount: number;
   currencySymbol: string;
   currencyCode: string;
+  frequency?: DonationFrequencyOption;
+  recurringDonationId?: string;
+  campaignId?: string;
   onSuccess: () => void;
   onError: (msg: string) => void;
 }) {
+  const isRecurring = isRecurringFrequency(frequency);
   const stripe = useStripe();
   const elements = useElements();
   const [processing, setProcessing] = useState(false);
@@ -229,11 +246,16 @@ function CheckoutForm({
   );
 
   const finalizePayment = useCallback(
-    async (paymentIntentId: string) => {
-      await confirmStripePayment({ paymentIntentId, donationId });
+    async (paymentIntentId: string, subscriptionId?: string) => {
+      await confirmStripePayment({
+        paymentIntentId,
+        donationId,
+        recurringDonationId,
+        subscriptionId,
+      });
       onSuccess();
     },
-    [donationId, onSuccess]
+    [donationId, onSuccess, recurringDonationId]
   );
 
   const confirmWithNewIntent = useCallback(async () => {
@@ -246,11 +268,30 @@ function CheckoutForm({
       throw new Error(submitError.message || "Please check your payment details.");
     }
 
-    const { clientSecret } = await createStripePaymentIntent({
-      amount,
-      currency: currencyCode,
-      donationId,
-    });
+    let clientSecret: string;
+    let subscriptionId: string | undefined;
+
+    if (isRecurring) {
+      const checkout = await createStripeSubscriptionCheckout({
+        amount,
+        currency: currencyCode,
+        frequency: normalizeRecurringFrequency(frequency),
+        donorEmail: donorEmail.trim(),
+        donorName: donorName.trim(),
+        recurringDonationId,
+        donationId,
+        campaignId,
+      });
+      clientSecret = checkout.clientSecret;
+      subscriptionId = checkout.subscriptionId;
+    } else {
+      const intent = await createStripePaymentIntent({
+        amount,
+        currency: currencyCode,
+        donationId,
+      });
+      clientSecret = intent.clientSecret;
+    }
 
     const { error, paymentIntent } = await stripe.confirmPayment({
       elements,
@@ -275,15 +316,19 @@ function CheckoutForm({
       throw new Error("Payment could not be confirmed");
     }
 
-    await finalizePayment(paymentIntent.id);
+    await finalizePayment(paymentIntent.id, subscriptionId);
   }, [
     amount,
+    campaignId,
     currencyCode,
     donationId,
     donorEmail,
     donorName,
     elements,
     finalizePayment,
+    frequency,
+    isRecurring,
+    recurringDonationId,
     returnUrl,
     stripe,
   ]);
@@ -320,8 +365,19 @@ function CheckoutForm({
   const showWalletHint =
     expressReady && !expressWalletsAvailable && !fallbackWalletAvailable;
 
+  const payLabel = isRecurring
+    ? `Donate ${formattedAmount}/${recurringIntervalLabel(frequency)} now`
+    : `Donate ${formattedAmount} now`;
+
   return (
     <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-soft space-y-5">
+      {isRecurring && (
+        <p className="text-xs text-center text-accent-deep font-medium rounded-xl bg-secondary/60 px-3 py-2">
+          Recurring gift — your card will be charged {formattedAmount} every{" "}
+          {recurringIntervalLabel(frequency)} (sandbox test mode).
+        </p>
+      )}
+      {!isRecurring && (
       <div className="space-y-3">
         <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-accent-deep">
           Express checkout
@@ -383,8 +439,9 @@ function CheckoutForm({
         )}
         {showWalletHint && <WalletSetupHint showHttpsHelp={needsHttps} />}
       </div>
+      )}
 
-      <OrPayByCardDivider />
+      {!isRecurring && <OrPayByCardDivider />}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
@@ -451,7 +508,7 @@ function CheckoutForm({
         ) : (
           <>
             <Heart className="h-5 w-5" strokeWidth={2.25} />
-            Donate {formattedAmount} now
+            {payLabel}
           </>
         )}
       </button>
@@ -472,6 +529,9 @@ export function StripeCheckoutForm({
   amount,
   currencySymbol,
   currencyCode,
+  frequency = "single",
+  recurringDonationId,
+  campaignId,
   onSuccess,
   onError,
 }: {
@@ -482,14 +542,18 @@ export function StripeCheckoutForm({
   amount: number;
   currencySymbol: string;
   currencyCode: string;
+  frequency?: DonationFrequencyOption;
+  recurringDonationId?: string;
+  campaignId?: string;
   onSuccess: () => void;
   onError: (msg: string) => void;
 }) {
   const stripePromise = useMemo(() => loadStripe(publishableKey), [publishableKey]);
+  const isRecurring = isRecurringFrequency(frequency);
 
   const elementsOptions = useMemo(
     () => ({
-      mode: "payment" as const,
+      mode: (isRecurring ? "subscription" : "payment") as "subscription" | "payment",
       amount: Math.round(amount * 100),
       currency: currencyCode.toLowerCase(),
       paymentMethodTypes: ["card"],
@@ -517,7 +581,7 @@ export function StripeCheckoutForm({
         },
       },
     }),
-    [amount, currencyCode]
+    [amount, currencyCode, isRecurring]
   );
 
   return (
@@ -529,6 +593,9 @@ export function StripeCheckoutForm({
         amount={amount}
         currencySymbol={currencySymbol}
         currencyCode={currencyCode}
+        frequency={frequency}
+        recurringDonationId={recurringDonationId}
+        campaignId={campaignId}
         onSuccess={onSuccess}
         onError={onError}
       />

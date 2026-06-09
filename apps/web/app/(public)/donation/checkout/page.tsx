@@ -23,9 +23,11 @@ import { CURRENCIES } from "@/lib/currency";
 import {
   createAutomatedSchedule,
   createDonation,
+  createRecurringDonation,
   fetchPaymentsConfig,
   getApiErrorMessage,
 } from "@/lib/api";
+import { isRecurringFrequency } from "@/lib/stripe-recurring";
 import { StripeCheckoutForm } from "@/components/payments/StripeCheckoutForm";
 import { clearDonationCart, useDonationCart } from "@/lib/stores/donationCartStore";
 import CheckoutGiftAidStep from "@/components/donation/CheckoutGiftAidStep";
@@ -70,6 +72,8 @@ function DonationCheckoutContent() {
   const [submitting, setSubmitting] = useState(false);
   const [paymentError, setPaymentError] = useState("");
   const [pendingDonationId, setPendingDonationId] = useState<string | null>(null);
+  const [pendingRecurringDonationId, setPendingRecurringDonationId] = useState<string | null>(null);
+  const [monthlyGift, setMonthlyGift] = useState(false);
   const [stripeReady, setStripeReady] = useState(false);
 
   const currencyInfo = CURRENCIES[currency as keyof typeof CURRENCIES] ?? CURRENCIES.GBP;
@@ -173,16 +177,19 @@ function DonationCheckoutContent() {
   function goBackFromPayment() {
     setFlowStep("details");
     setPendingDonationId(null);
+    setPendingRecurringDonationId(null);
     setPaymentError("");
     paymentPrepareAttempted.current = false;
   }
+
+  const checkoutFrequency = monthlyGift ? "monthly" : "single";
 
   const redirectToThankYou = (donationId?: string) => {
     clear();
     const summaryParams = new URLSearchParams({
       amount: donationAmount.toString(),
       currency,
-      frequency: "single",
+      frequency: checkoutFrequency,
       giftAid: giftAid.toString(),
     });
     if (donationId) summaryParams.set("donationId", donationId);
@@ -246,10 +253,25 @@ function DonationCheckoutContent() {
 
       const cartSummary = items.map((i) => i.description).join("; ");
       const primary = items[0];
+      let recurringId: string | undefined;
+      if (isRecurringFrequency(checkoutFrequency)) {
+        const recurring = await createRecurringDonation({
+          donorName,
+          donorEmail,
+          amount: chargeAmount,
+          currency,
+          frequency: checkoutFrequency,
+          campaignId: primary?.campaignId,
+          paymentMethod: "stripe",
+          giftAid,
+        });
+        recurringId = recurring.id as string;
+      }
+
       const donation = await createDonation({
         amount: chargeAmount,
         currency,
-        frequency: "single",
+        frequency: checkoutFrequency,
         giftAid,
         donationType: primary?.donationType || primary?.category || "general",
         paymentMethod: "stripe",
@@ -278,6 +300,7 @@ function DonationCheckoutContent() {
       });
 
       setPendingDonationId(donation.id as string);
+      setPendingRecurringDonationId(recurringId ?? null);
 
       void createRamadanSchedules().catch((scheduleErr) => {
         console.error("[checkout] Ramadan schedule could not be created:", scheduleErr);
@@ -307,6 +330,8 @@ function DonationCheckoutContent() {
     items,
     selectedUpsellIds,
     showDedication,
+    checkoutFrequency,
+    monthlyGift,
     pendingDonationId,
     stripeReady,
   ]);
@@ -560,6 +585,22 @@ function DonationCheckoutContent() {
                 </div>
               )}
 
+              <label className="flex items-start gap-3 rounded-2xl border border-border bg-secondary/30 px-4 py-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={monthlyGift}
+                  onChange={(e) => setMonthlyGift(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 accent-accent rounded shrink-0"
+                />
+                <span className="text-sm">
+                  <span className="font-semibold text-primary">Make this a monthly gift</span>
+                  <span className="block text-xs text-muted-foreground mt-0.5">
+                    Sandbox test — charges {currencyInfo.symbol}
+                    {chargeAmount.toFixed(2)} every month until cancelled.
+                  </span>
+                </span>
+              </label>
+
               <div className="flex flex-wrap items-center justify-center gap-3">
                 {showGiftAidStep && (
                   <Button
@@ -663,6 +704,9 @@ function DonationCheckoutContent() {
                     amount={chargeAmount}
                     currencySymbol={currencyInfo.symbol}
                     currencyCode={currency}
+                    frequency={checkoutFrequency}
+                    recurringDonationId={pendingRecurringDonationId ?? undefined}
+                    campaignId={items[0]?.campaignId}
                     onSuccess={() => redirectToThankYou(pendingDonationId)}
                     onError={(msg) => setPaymentError(msg)}
                   />

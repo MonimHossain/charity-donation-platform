@@ -33,11 +33,13 @@ import { CURRENCIES, type CurrencyCode, formatCurrency } from "@/lib/currency";
 import {
   fetchCampaigns,
   createDonation,
+  createRecurringDonation,
   fetchPaymentsConfig,
   fetchCampaignPaymentsConfig,
   initTelrPayment,
   initPayTabsPayment,
 } from "@/lib/api";
+import { isRecurringFrequency, normalizeRecurringFrequency } from "@/lib/stripe-recurring";
 import { StripeCheckoutForm } from "@/components/payments/StripeCheckoutForm";
 import { PayPalCheckoutButton } from "@/components/payments/PayPalCheckoutButton";
 import {
@@ -168,6 +170,7 @@ function DonatePageApi() {
   const [submitting, setSubmitting] = useState(false);
   const [paymentError, setPaymentError] = useState("");
   const [pendingDonationId, setPendingDonationId] = useState<string | null>(null);
+  const [pendingRecurringDonationId, setPendingRecurringDonationId] = useState<string | null>(null);
   const [showPayPal, setShowPayPal] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [attributeSelections, setAttributeSelections] = useState<Record<string, string>>({});
@@ -240,6 +243,7 @@ function DonatePageApi() {
       setActiveCampaign(null);
     }
     setPendingDonationId(null);
+    setPendingRecurringDonationId(null);
     setShowPayPal(false);
     setPaymentError("");
   }, [selectedCampaign, campaigns]);
@@ -397,7 +401,22 @@ function DonatePageApi() {
       }
 
       if (selectedGateway === "stripe") {
+        let recurringId: string | undefined;
+        if (isRecurringFrequency(frequency)) {
+          const recurring = await createRecurringDonation({
+            donorName,
+            donorEmail,
+            amount: chargeAmount,
+            currency,
+            frequency: normalizeRecurringFrequency(frequency),
+            campaignId: selectedCampaign || undefined,
+            paymentMethod: "stripe",
+            giftAid,
+          });
+          recurringId = recurring.id as string;
+        }
         setPendingDonationId(donationId);
+        setPendingRecurringDonationId(recurringId ?? null);
         setSubmitting(false);
         return;
       }
@@ -980,6 +999,9 @@ function DonatePageApi() {
                 amount={giftAid ? totalWithGiftAid : finalAmount}
                 currencySymbol={currencyInfo.symbol}
                 currencyCode={currency}
+                frequency={frequency}
+                recurringDonationId={pendingRecurringDonationId ?? undefined}
+                campaignId={selectedCampaign || undefined}
                 onSuccess={() => redirectToThankYou(pendingDonationId)}
                 onError={(msg) => setPaymentError(msg)}
               />
