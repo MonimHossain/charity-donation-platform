@@ -8,7 +8,8 @@
     "build": "shx rm -rf dist && pnpm exec tsc -p tsconfig.json && pnpm exec cpy \"src/**\" \"!src/**/*.ts\" \"!src/**/*.tsx\" dist --parents",
     "start": "bun dist/index.js",
     "check-types": "tsc -p tsconfig.json --noEmit",
-    "lint": "eslint \"src/**/*.{ts,tsx}\""
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "stripe:listen": "stripe listen --forward-to localhost:4000/api/v1/payments/stripe/webhook"
   },
   "dependencies": {
     "@repo/shared-types": "workspace:*",

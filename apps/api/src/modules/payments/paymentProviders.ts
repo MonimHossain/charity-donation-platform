@@ -89,10 +89,9 @@ export async function getProviderStatuses(): Promise<ProviderStatus[]> {
   });
 }
 
-/** Globally available providers (admin enabled + env configured). */
+/** Platform uses Stripe only (cards, Apple Pay, Google Pay). */
 export async function getGloballyAvailableProviders(): Promise<PaymentProviderId[]> {
-  const statuses = await getProviderStatuses();
-  return statuses.filter((p) => p.enabled).map((p) => p.id);
+  return isProviderConfigured("stripe") ? ["stripe"] : [];
 }
 
 export function intersectGateways(

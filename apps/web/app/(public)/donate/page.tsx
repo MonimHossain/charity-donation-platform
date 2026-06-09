@@ -35,7 +35,6 @@ import {
   createDonation,
   fetchPaymentsConfig,
   fetchCampaignPaymentsConfig,
-  createStripePaymentIntent,
   initTelrPayment,
   initPayTabsPayment,
 } from "@/lib/api";
@@ -169,7 +168,6 @@ function DonatePageApi() {
   const [submitting, setSubmitting] = useState(false);
   const [paymentError, setPaymentError] = useState("");
   const [pendingDonationId, setPendingDonationId] = useState<string | null>(null);
-  const [stripeClientSecret, setStripeClientSecret] = useState<string | null>(null);
   const [showPayPal, setShowPayPal] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [attributeSelections, setAttributeSelections] = useState<Record<string, string>>({});
@@ -242,7 +240,6 @@ function DonatePageApi() {
       setActiveCampaign(null);
     }
     setPendingDonationId(null);
-    setStripeClientSecret(null);
     setShowPayPal(false);
     setPaymentError("");
   }, [selectedCampaign, campaigns]);
@@ -360,7 +357,7 @@ function DonatePageApi() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (stripeClientSecret) return;
+    if (pendingDonationId && selectedGateway === "stripe") return;
 
     setSubmitting(true);
     setPaymentError("");
@@ -400,13 +397,7 @@ function DonatePageApi() {
       }
 
       if (selectedGateway === "stripe") {
-        const { clientSecret } = await createStripePaymentIntent({
-          amount: chargeAmount,
-          currency,
-          donationId,
-        });
         setPendingDonationId(donationId);
-        setStripeClientSecret(clientSecret);
         setSubmitting(false);
         return;
       }
@@ -958,11 +949,10 @@ function DonatePageApi() {
                     type="button"
                     onClick={() => {
                       setSelectedGateway(gw);
-                      setStripeClientSecret(null);
                       setShowPayPal(false);
                       setPendingDonationId(null);
                     }}
-                    disabled={!!stripeClientSecret || showPayPal}
+                    disabled={(!!pendingDonationId && selectedGateway === "stripe") || showPayPal}
                     className={cn(
                       "h-14 rounded-2xl font-semibold text-base flex items-center justify-center gap-2 transition-all border-2 capitalize",
                       selectedGateway === gw
@@ -981,11 +971,15 @@ function DonatePageApi() {
               <p className="text-sm text-destructive">{paymentError}</p>
             )}
 
-            {stripeClientSecret && stripePublishableKey && pendingDonationId && (
+            {stripePublishableKey && pendingDonationId && selectedGateway === "stripe" && (
               <StripeCheckoutForm
                 publishableKey={stripePublishableKey}
-                clientSecret={stripeClientSecret}
                 donationId={pendingDonationId}
+                donorName={donorName}
+                donorEmail={donorEmail}
+                amount={giftAid ? totalWithGiftAid : finalAmount}
+                currencySymbol={currencyInfo.symbol}
+                currencyCode={currency}
                 onSuccess={() => redirectToThankYou(pendingDonationId)}
                 onError={(msg) => setPaymentError(msg)}
               />
@@ -1032,7 +1026,7 @@ function DonatePageApi() {
                 !donorName ||
                 !donorEmail ||
                 availableGateways.length === 0 ||
-                !!stripeClientSecret ||
+                (!!pendingDonationId && selectedGateway === "stripe") ||
                 showPayPal
               }
               size="lg"

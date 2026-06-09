@@ -79,6 +79,18 @@ api.interceptors.response.use(
   }
 );
 
+export function getApiErrorMessage(err: unknown, fallback = "Something went wrong"): string {
+  if (axios.isAxiosError(err)) {
+    const data = err.response?.data;
+    if (data && typeof data === "object" && "message" in data && typeof data.message === "string") {
+      return data.message;
+    }
+    return err.message || fallback;
+  }
+  if (err instanceof Error) return err.message;
+  return fallback;
+}
+
 // ═══════════════════════════════════
 // PUBLIC - CAMPAIGNS
 // ═══════════════════════════════════
@@ -270,7 +282,12 @@ export async function createRecurringBillingPortal(id: string) {
 // ═══════════════════════════════════
 export async function createStripePaymentIntent(payload: { amount: number; currency: string; donationId?: string }) {
   const { data } = await api.post("/payments/stripe/create-intent", payload);
-  return data;
+  return data as { clientSecret: string; paymentIntentId: string };
+}
+
+export async function confirmStripePayment(payload: { paymentIntentId: string; donationId?: string }) {
+  const { data } = await api.post("/payments/stripe/confirm", payload);
+  return data as { status: string; donationId?: string; paymentIntentId?: string };
 }
 
 export async function createStripeSubscription(payload: Record<string, unknown>) {

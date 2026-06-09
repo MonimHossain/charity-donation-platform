@@ -235,3 +235,28 @@
   display: inline-block;
   vertical-align: middle;
 }
+
+/* Stripe Express Checkout — side-by-side wallet buttons */
+.stripe-express-checkout {
+  width: 100%;
+  min-height: 48px;
+}
+.stripe-express-checkout > div,
+.stripe-express-checkout .StripeElement {
+  width: 100% !important;
+  min-height: 48px;
+}
+.stripe-express-checkout iframe {
+  width: 100% !important;
+  min-height: 48px;
+  border-radius: 12px;
+}
+.stripe-payment-request .StripeElement,
+.stripe-payment-request iframe {
+  width: 100% !important;
+  min-height: 48px;
+  border-radius: 12px;
+}
+.stripe-payment-fields .p-TabList {
+  display: none;
+}

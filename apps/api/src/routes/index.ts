@@ -224,6 +224,10 @@ router.post("/payments/stripe/create-intent", async (req, res) => {
   const { createPaymentIntent } = await import("../modules/payments/stripe.controller.js");
   return createPaymentIntent(req, res);
 });
+router.post("/payments/stripe/confirm", async (req, res) => {
+  const { confirmStripePayment } = await import("../modules/payments/stripe.controller.js");
+  return confirmStripePayment(req, res);
+});
 router.post("/payments/stripe/create-subscription", async (req, res) => {
   const { createSubscription } = await import("../modules/payments/stripe.controller.js");
   return createSubscription(req, res);

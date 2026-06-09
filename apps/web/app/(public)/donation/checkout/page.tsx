@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -8,9 +8,7 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
-  CreditCard,
   Gift,
-  Heart,
   Loader2,
   Lock,
   MessageSquare,
@@ -25,13 +23,10 @@ import { CURRENCIES } from "@/lib/currency";
 import {
   createAutomatedSchedule,
   createDonation,
-  createStripePaymentIntent,
   fetchPaymentsConfig,
-  initPayTabsPayment,
-  initTelrPayment,
+  getApiErrorMessage,
 } from "@/lib/api";
 import { StripeCheckoutForm } from "@/components/payments/StripeCheckoutForm";
-import { PayPalCheckoutButton } from "@/components/payments/PayPalCheckoutButton";
 import { clearDonationCart, useDonationCart } from "@/lib/stores/donationCartStore";
 import CheckoutGiftAidStep from "@/components/donation/CheckoutGiftAidStep";
 import CheckoutStepIndicator, { type CheckoutFlowStep } from "@/components/donation/CheckoutStepIndicator";
@@ -42,15 +37,6 @@ import {
   resolveCheckoutCampaignConfig,
   type CheckoutCampaignConfig,
 } from "@/lib/checkout-campaign-config";
-
-type GatewayId = "stripe" | "paypal" | "telr" | "paytabs";
-
-const GATEWAY_LABELS: Record<GatewayId, string> = {
-  stripe: "Card",
-  paypal: "PayPal",
-  telr: "Telr",
-  paytabs: "PayTabs",
-};
 
 const DEDICATION_TYPES = [
   "In honour of",
@@ -78,14 +64,13 @@ function DonationCheckoutContent() {
   const [dedicationName, setDedicationName] = useState("");
   const [dedicationEmail, setDedicationEmail] = useState("");
   const [dedicationMessage, setDedicationMessage] = useState("");
-  const [availableGateways, setAvailableGateways] = useState<GatewayId[]>(["stripe"]);
-  const [selectedGateway, setSelectedGateway] = useState<GatewayId>("stripe");
-  const [paymentPublicKeys, setPaymentPublicKeys] = useState<Record<string, string>>({});
+  const [stripePublishableKey, setStripePublishableKey] = useState(
+    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || ""
+  );
   const [submitting, setSubmitting] = useState(false);
   const [paymentError, setPaymentError] = useState("");
   const [pendingDonationId, setPendingDonationId] = useState<string | null>(null);
-  const [stripeClientSecret, setStripeClientSecret] = useState<string | null>(null);
-  const [showPayPal, setShowPayPal] = useState(false);
+  const [stripeReady, setStripeReady] = useState(false);
 
   const currencyInfo = CURRENCIES[currency as keyof typeof CURRENCIES] ?? CURRENCIES.GBP;
   const { checkoutSettings, upsells } = campaignConfig;
@@ -154,22 +139,14 @@ function DonationCheckoutContent() {
   useEffect(() => {
     fetchPaymentsConfig()
       .then((cfg) => {
-        const ids = (cfg.availableProviders || ["stripe"]) as GatewayId[];
-        setAvailableGateways(ids.length ? ids : ["stripe"]);
-        setSelectedGateway(ids[0] || "stripe");
-        const keys: Record<string, string> = {};
-        cfg.providers?.forEach((p: { id: string; publicKey?: string }) => {
-          if (p.publicKey) keys[p.id] = p.publicKey;
-        });
-        setPaymentPublicKeys(keys);
+        const stripeProvider = cfg.providers?.find((p) => p.id === "stripe");
+        if (stripeProvider?.publicKey) {
+          setStripePublishableKey(stripeProvider.publicKey);
+        }
+        setStripeReady(Boolean(stripeProvider?.configured && stripeProvider?.enabled));
       })
-      .catch(() => setAvailableGateways(["stripe"]));
+      .catch(() => setStripeReady(Boolean(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)));
   }, []);
-
-  const stripePublishableKey =
-    paymentPublicKeys.stripe || process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "";
-  const paypalClientId =
-    paymentPublicKeys.paypal || process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
 
   function toggleUpsell(id: string) {
     setSelectedUpsellIds((prev) => {
@@ -195,10 +172,9 @@ function DonationCheckoutContent() {
 
   function goBackFromPayment() {
     setFlowStep("details");
-    setStripeClientSecret(null);
-    setShowPayPal(false);
     setPendingDonationId(null);
     setPaymentError("");
+    paymentPrepareAttempted.current = false;
   }
 
   const redirectToThankYou = (donationId?: string) => {
@@ -213,45 +189,56 @@ function DonationCheckoutContent() {
     router.push(`/thank-you?${summaryParams.toString()}`);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!items.length || stripeClientSecret) return;
+  const paymentPrepareAttempted = useRef(false);
 
+  const createRamadanSchedules = useCallback(async () => {
+    for (const line of items) {
+      if (line.kind !== "ramadan_split" || !line.ramadan) continue;
+      const r = line.ramadan;
+      const startDate =
+        r.ramadanStartDate ?? r.startDate ?? r.selectedDates?.[0] ?? new Date().toISOString().slice(0, 10);
+      const installments =
+        r.recurringPlan?.installments ??
+        (r.selectedDates ?? []).map((date, i) => ({
+          id: `inst-${date}`,
+          scheduledDate: date,
+          amount: r.dailyBreakdown[i] ?? 0,
+          weight: r.weights[i] ?? 1,
+          currency: line.currency,
+          status: "pending",
+        }));
+
+      await createAutomatedSchedule({
+        donorName,
+        donorEmail,
+        donorPhone: donorPhone || undefined,
+        campaignId: r.campaignId || line.campaignId,
+        totalAmount: line.amount,
+        startDate,
+        dailyBreakdown: r.dailyBreakdown,
+        installments,
+        recurringPlanId: r.recurringPlan?.id,
+        currency: line.currency,
+        notes: r.notes || `Ramadan split (${r.nights} nights)`,
+      });
+    }
+  }, [donorEmail, donorName, donorPhone, items]);
+
+  const formatPaymentError = (message: string) => {
+    if (message.toLowerCase().includes("ip address")) {
+      return `${message} Open Stripe Dashboard → Developers → API keys and remove IP restrictions on your test secret key.`;
+    }
+    return message;
+  };
+
+  const preparePayment = useCallback(async () => {
+    if (!items.length || pendingDonationId || paymentPrepareAttempted.current) return;
+    if (!donorName.trim() || !donorEmail.trim() || !stripeReady) return;
+
+    paymentPrepareAttempted.current = true;
     setSubmitting(true);
     setPaymentError("");
     try {
-      for (const line of items) {
-        if (line.kind === "ramadan_split" && line.ramadan) {
-          const r = line.ramadan;
-          const startDate =
-            r.ramadanStartDate ?? r.startDate ?? r.selectedDates?.[0] ?? new Date().toISOString().slice(0, 10);
-          const installments =
-            r.recurringPlan?.installments ??
-            (r.selectedDates ?? []).map((date, i) => ({
-              id: `inst-${date}`,
-              scheduledDate: date,
-              amount: r.dailyBreakdown[i] ?? 0,
-              weight: r.weights[i] ?? 1,
-              currency: line.currency,
-              status: "pending",
-            }));
-
-          await createAutomatedSchedule({
-            donorName,
-            donorEmail,
-            donorPhone: donorPhone || undefined,
-            campaignId: r.campaignId || line.campaignId,
-            totalAmount: line.amount,
-            startDate,
-            dailyBreakdown: r.dailyBreakdown,
-            installments,
-            recurringPlanId: r.recurringPlan?.id,
-            currency: line.currency,
-            notes: r.notes || `Ramadan split (${r.nights} nights)`,
-          });
-        }
-      }
-
       const upsellSummary = activeUpsells
         .filter((u) => selectedUpsellIds.has(u.id))
         .map((u) => `${u.label} (${currencyInfo.symbol}${u.amount})`)
@@ -265,7 +252,7 @@ function DonationCheckoutContent() {
         frequency: "single",
         giftAid,
         donationType: primary?.donationType || primary?.category || "general",
-        paymentMethod: selectedGateway,
+        paymentMethod: "stripe",
         donorName,
         donorEmail,
         donorPhone: donorPhone || undefined,
@@ -290,51 +277,47 @@ function DonationCheckoutContent() {
             : undefined,
       });
 
-      const donationId = donation.id as string;
+      setPendingDonationId(donation.id as string);
 
-      if (selectedGateway === "telr") {
-        const { redirectUrl } = await initTelrPayment({
-          donationId,
-          amount: chargeAmount,
-          currency,
-        });
-        window.location.href = redirectUrl;
-        return;
-      }
-
-      if (selectedGateway === "paytabs") {
-        const { redirectUrl } = await initPayTabsPayment({
-          donationId,
-          amount: chargeAmount,
-          currency,
-        });
-        window.location.href = redirectUrl;
-        return;
-      }
-
-      if (selectedGateway === "stripe") {
-        const { clientSecret } = await createStripePaymentIntent({
-          amount: chargeAmount,
-          currency,
-          donationId,
-        });
-        setPendingDonationId(donationId);
-        setStripeClientSecret(clientSecret);
-        setSubmitting(false);
-        return;
-      }
-
-      if (selectedGateway === "paypal") {
-        setPendingDonationId(donationId);
-        setShowPayPal(true);
-        setSubmitting(false);
-        return;
-      }
+      void createRamadanSchedules().catch((scheduleErr) => {
+        console.error("[checkout] Ramadan schedule could not be created:", scheduleErr);
+      });
     } catch (err: unknown) {
-      setPaymentError(err instanceof Error ? err.message : "Payment could not be started");
+      paymentPrepareAttempted.current = false;
+      setPaymentError(formatPaymentError(getApiErrorMessage(err, "Payment could not be started")));
+    } finally {
       setSubmitting(false);
     }
-  };
+  }, [
+    activeUpsells,
+    chargeAmount,
+    checkoutSettings.enableDedication,
+    createRamadanSchedules,
+    currency,
+    currencyInfo.symbol,
+    dedicationEmail,
+    dedicationMessage,
+    dedicationName,
+    dedicationType,
+    donorComment,
+    donorEmail,
+    donorName,
+    donorPhone,
+    giftAid,
+    items,
+    selectedUpsellIds,
+    showDedication,
+    pendingDonationId,
+    stripeReady,
+  ]);
+
+  useEffect(() => {
+    if (flowStep !== "payment") return;
+    void preparePayment();
+  }, [flowStep, preparePayment, stripeReady]);
+
+  const effectivePublishableKey =
+    stripePublishableKey || process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "";
 
   if (!items.length) {
     return (
@@ -603,101 +586,101 @@ function DonationCheckoutContent() {
           )}
 
           {flowStep === "payment" && (
-            <form onSubmit={handleSubmit} className="rounded-3xl bg-card border border-border p-6 lg:p-8 shadow-soft space-y-6 max-w-xl mx-auto lg:mx-0">
-              <div className="space-y-1">
-                <h1 className="font-serif text-2xl md:text-3xl text-primary">Complete your donation</h1>
-                <p className="text-sm text-muted-foreground">Choose a payment method and confirm.</p>
-              </div>
-
-              <div className="space-y-3">
-                <p className="text-xs uppercase tracking-widest text-accent-deep font-bold">Payment method</p>
-                <div className="grid sm:grid-cols-2 gap-3">
-                  {availableGateways.map((gw) => (
-                    <button
-                      key={gw}
+            <div className="max-w-xl mx-auto lg:mx-0 space-y-6">
+              {!stripeReady && (
+                <div className="rounded-3xl bg-card border border-border p-6 lg:p-8 shadow-soft space-y-4">
+                  <p className="text-sm text-destructive">
+                    Stripe is not configured. Add STRIPE_SECRET_KEY and NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY to
+                    your environment, then restart the API and web app.
+                  </p>
+                  <div className="flex justify-center">
+                    <Button
                       type="button"
-                      onClick={() => {
-                        setSelectedGateway(gw);
-                        setStripeClientSecret(null);
-                        setShowPayPal(false);
-                        setPendingDonationId(null);
-                      }}
-                      disabled={!!stripeClientSecret || showPayPal}
-                      className={cn(
-                        "h-14 rounded-2xl font-semibold text-base flex items-center justify-center gap-2 transition-all border-2 capitalize",
-                        selectedGateway === gw
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "border-border hover:border-primary/50"
-                      )}
+                      variant="outline"
+                      onClick={goBackFromPayment}
+                      className="rounded-full min-w-[120px] border-accent text-accent hover:bg-accent/10"
                     >
-                      {gw === "stripe" && <CreditCard className="w-5 h-5" />}
-                      {GATEWAY_LABELS[gw]}
-                    </button>
-                  ))}
+                      Previous
+                    </Button>
+                  </div>
+                  <CheckoutStepIndicator steps={flowSteps} current="payment" />
                 </div>
-              </div>
-
-              {paymentError && <p className="text-sm text-destructive">{paymentError}</p>}
-
-              {stripeClientSecret && stripePublishableKey && pendingDonationId && (
-                <StripeCheckoutForm
-                  publishableKey={stripePublishableKey}
-                  clientSecret={stripeClientSecret}
-                  donationId={pendingDonationId}
-                  onSuccess={() => redirectToThankYou(pendingDonationId)}
-                  onError={(msg) => setPaymentError(msg)}
-                />
               )}
 
-              {showPayPal && paypalClientId && pendingDonationId && (
-                <PayPalCheckoutButton
-                  clientId={paypalClientId}
-                  amount={chargeAmount}
-                  currency={currency}
-                  donationId={pendingDonationId}
-                  onSuccess={() => redirectToThankYou(pendingDonationId)}
-                  onError={(msg) => setPaymentError(msg)}
-                />
-              )}
-
-              <div className="flex flex-wrap items-center justify-center gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={goBackFromPayment}
-                  disabled={submitting || !!stripeClientSecret || showPayPal}
-                  className="rounded-full min-w-[120px] border-accent text-accent hover:bg-accent/10"
-                >
-                  Previous
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={
-                    submitting ||
-                    !donorName ||
-                    !donorEmail ||
-                    availableGateways.length === 0 ||
-                    !!stripeClientSecret ||
-                    showPayPal
-                  }
-                  size="lg"
-                  className="rounded-full min-w-[160px] bg-accent text-accent-foreground hover:bg-accent/90 h-12"
-                >
-                  {submitting ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" /> Processing…
-                    </>
+              {stripeReady && !pendingDonationId && (
+                <div className="rounded-3xl bg-card border border-border p-6 lg:p-8 shadow-soft space-y-6">
+                  {paymentError ? (
+                    <div className="space-y-4 py-4">
+                      <p className="text-sm text-destructive text-center leading-relaxed">{paymentError}</p>
+                      <div className="flex flex-wrap items-center justify-center gap-3">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={goBackFromPayment}
+                          className="rounded-full min-w-[120px] border-accent text-accent hover:bg-accent/10"
+                        >
+                          Previous
+                        </Button>
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            paymentPrepareAttempted.current = false;
+                            void preparePayment();
+                          }}
+                          disabled={submitting}
+                          className="rounded-full min-w-[120px] bg-accent text-accent-foreground hover:bg-accent/90"
+                        >
+                          {submitting ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" /> Retrying…
+                            </>
+                          ) : (
+                            "Try again"
+                          )}
+                        </Button>
+                      </div>
+                    </div>
                   ) : (
-                    <>
-                      <Heart className="w-5 h-5" /> Donate {currencyInfo.symbol}
-                      {chargeAmount.toFixed(2)}
-                    </>
+                    <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
+                      <Loader2 className="h-8 w-8 animate-spin text-accent-deep" />
+                      <p className="text-sm text-muted-foreground">Loading secure checkout…</p>
+                    </div>
                   )}
-                </Button>
-              </div>
+                  <CheckoutStepIndicator steps={flowSteps} current="payment" />
+                </div>
+              )}
 
-              <CheckoutStepIndicator steps={flowSteps} current="payment" />
-            </form>
+              {effectivePublishableKey && pendingDonationId && (
+                <>
+                  {paymentError && (
+                    <p className="text-sm text-destructive text-center">{paymentError}</p>
+                  )}
+                  <StripeCheckoutForm
+                    publishableKey={effectivePublishableKey}
+                    donationId={pendingDonationId}
+                    donorName={donorName}
+                    donorEmail={donorEmail}
+                    amount={chargeAmount}
+                    currencySymbol={currencyInfo.symbol}
+                    currencyCode={currency}
+                    onSuccess={() => redirectToThankYou(pendingDonationId)}
+                    onError={(msg) => setPaymentError(msg)}
+                  />
+                  <div className="flex justify-center">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={goBackFromPayment}
+                      disabled={submitting}
+                      className="rounded-full min-w-[120px] border-accent text-accent hover:bg-accent/10"
+                    >
+                      Previous
+                    </Button>
+                  </div>
+                  <CheckoutStepIndicator steps={flowSteps} current="payment" />
+                </>
+              )}
+            </div>
           )}
         </div>
 
