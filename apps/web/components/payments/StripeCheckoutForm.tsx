@@ -259,8 +259,8 @@ function CheckoutForm({
         return_url: returnUrl,
         payment_method_data: {
           billing_details: {
-            name: donorName.trim() || undefined,
-            email: donorEmail.trim() || undefined,
+            name: donorName.trim(),
+            email: donorEmail.trim(),
           },
         },
       },
@@ -429,8 +429,8 @@ function CheckoutForm({
               billingDetails: {
                 name: "never",
                 email: "never",
-                address: "never",
-                phone: "never",
+                address: "auto",
+                phone: "auto",
               },
             },
           }}

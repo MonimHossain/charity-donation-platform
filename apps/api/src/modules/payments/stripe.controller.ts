@@ -25,7 +25,7 @@ export async function createPaymentIntent(req: Request, res: Response) {
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100),
       currency: (currency || "gbp").toLowerCase(),
-      automatic_payment_methods: { enabled: true, allow_redirects: "never" },
+      payment_method_types: ["card"],
       metadata: {
         donationId: donationId || "",
         ...metadata,
