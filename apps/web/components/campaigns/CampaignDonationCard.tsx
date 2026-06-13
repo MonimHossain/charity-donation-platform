@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Lock, Minus, Plus, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,12 +10,18 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import {
   formatRecurrenceLabel,
+  DEFAULT_RECURRENCE,
   scheduleToFrequencyParam,
+  scheduleToStripeParams,
   type DonorScheduleChoice,
   type PresetAmount,
   type RecurrenceIntervalUnit,
 } from "@/lib/campaign-payment-config";
 import { recurringIntervalLabel } from "@/lib/stripe-recurring";
+import {
+  addDonationCartItem,
+  clearDonationCart,
+} from "@/lib/stores/donationCartStore";
 import type { CampaignAttribute, CampaignData } from "./campaign-detail-types";
 
 const DONOR_PRESET_INTERVALS = [
@@ -114,6 +120,7 @@ export function CampaignDonationCard({
   onToggleUpsell,
   onSetCustomFieldValue,
 }: CampaignDonationCardProps) {
+  const router = useRouter();
   const cs = campaign.checkoutSettings;
   const total = finalAmount + upsellTotal;
 
@@ -152,19 +159,33 @@ export function CampaignDonationCard({
     return recurringIntervalLabel(frequencyParam);
   }, [isRegular, donorSchedule, adminRecurrence, frequencyParam]);
 
-  const cancelAtParam =
-    isRegular &&
-    donorSchedule.mode === "admin" &&
-    adminRecurrence?.durationType === "end_date" &&
-    adminRecurrence.endDate
-      ? Math.floor(new Date(adminRecurrence.endDate).getTime() / 1000)
-      : undefined;
+  const recurringStripeParams = isRegular
+    ? scheduleToStripeParams(donorSchedule, adminRecurrence ?? DEFAULT_RECURRENCE)
+    : null;
 
-  const donateUrl = `/donate?amount=${total}&cause=${campaign.slug}&campaignId=${campaign.id}&type=${paymentType}${
-    isRegular ? `&freq=${encodeURIComponent(frequencyParam)}` : ""
-  }${cancelAtParam ? `&cancelAt=${cancelAtParam}` : ""}${
-    selectedAttr?.enableQuantity && quantity > 1 ? `&qty=${quantity}` : ""
-  }`;
+  function handleProceedToCheckout() {
+    clearDonationCart();
+    addDonationCartItem({
+      kind: "standard",
+      donationPageId: campaign.id,
+      donationPageSlug: campaign.slug,
+      title: campaign.title,
+      amount: total,
+      currency: campaign.currency,
+      description: `${selectedAttr?.name || campaign.title} — ${sym}${total.toFixed(2)}`,
+      campaignId: campaign.id,
+      donationType: selectedAttr?.name || campaign.category,
+      quantity: selectedAttr?.enableQuantity && quantity > 1 ? quantity : undefined,
+      recurringFrequency: isRegular ? frequencyParam : undefined,
+      recurringInterval: recurringStripeParams?.interval,
+      recurringIntervalCount: recurringStripeParams?.intervalCount,
+      recurringCancelAt: recurringStripeParams?.cancelAt,
+      selectedUpsellIds: Array.from(selectedUpsells),
+      checkoutSettings: campaign.checkoutSettings,
+      checkoutUpsells: campaign.upsells.filter((u) => u.isActive !== false),
+    });
+    router.push("/donation/checkout");
+  }
 
   const impactLine =
     selectedPresetDescription.trim() ||
@@ -559,14 +580,13 @@ export function CampaignDonationCard({
       )}
 
       <Button
-        asChild
+        type="button"
+        onClick={handleProceedToCheckout}
         className="w-full rounded-full text-base font-bold h-14 bg-accent text-accent-foreground hover:bg-accent-deep hover:text-primary-foreground shadow-soft hover:shadow-glow px-10"
       >
-        <Link href={donateUrl}>
-          Donate {sym}
-          {total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          {isRegular && intervalLabel ? `/${intervalLabel}` : ""}
-        </Link>
+        Donate {sym}
+        {total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        {isRegular && intervalLabel ? `/${intervalLabel}` : ""}
       </Button>
 
       <div className="flex items-center justify-center gap-3 text-[11px] text-muted-foreground flex-wrap">

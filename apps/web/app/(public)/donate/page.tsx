@@ -203,6 +203,13 @@ function DonatePageApi() {
       const freq = params.get("freq") || params.get("interval") || undefined;
       const qty = params.get("qty");
       const cancelAt = params.get("cancelAt");
+      const upsellsParam = params.get("upsells");
+      const intervalParam = params.get("interval");
+      const intervalCountParam = params.get("intervalCount");
+      const parsedIntervalCount = intervalCountParam ? Number(intervalCountParam) : undefined;
+      const selectedUpsellIds = upsellsParam
+        ? upsellsParam.split(",").map((id) => id.trim()).filter(Boolean)
+        : undefined;
       addDonationCartItem({
         kind: "standard",
         donationPageId: "legacy-url",
@@ -216,7 +223,19 @@ function DonatePageApi() {
         quantity: qty ? Number(qty) : undefined,
         recurringFrequency:
           paymentType === "regular" && freq && freq !== "single" ? freq : undefined,
+        recurringInterval:
+          intervalParam === "day" ||
+          intervalParam === "week" ||
+          intervalParam === "month" ||
+          intervalParam === "year"
+            ? intervalParam
+            : undefined,
+        recurringIntervalCount:
+          Number.isFinite(parsedIntervalCount) && parsedIntervalCount! > 0
+            ? parsedIntervalCount
+            : undefined,
         recurringCancelAt: cancelAt ? Number(cancelAt) : undefined,
+        selectedUpsellIds,
       });
       router.replace("/donation/checkout");
       return;

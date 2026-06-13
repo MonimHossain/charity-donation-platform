@@ -27,7 +27,7 @@ import {
   fetchPaymentsConfig,
   getApiErrorMessage,
 } from "@/lib/api";
-import { isRecurringFrequency, parseStripeRecurringParams } from "@/lib/stripe-recurring";
+import { isRecurringFrequency, parseStripeRecurringParams, stripeRecurringParamsLabel } from "@/lib/stripe-recurring";
 import { StripeCheckoutForm } from "@/components/payments/StripeCheckoutForm";
 import { clearDonationCart, useDonationCart } from "@/lib/stores/donationCartStore";
 import CheckoutGiftAidStep from "@/components/donation/CheckoutGiftAidStep";
@@ -85,12 +85,30 @@ function DonationCheckoutContent() {
     [checkoutSettings.enableUpsell, upsells]
   );
 
+  const cartSelectedUpsellIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const item of items) {
+      item.selectedUpsellIds?.forEach((id) => ids.add(id));
+    }
+    return ids;
+  }, [items]);
+
+  const checkoutUpsellOptions = useMemo(
+    () => activeUpsells.filter((u) => !cartSelectedUpsellIds.has(u.id)),
+    [activeUpsells, cartSelectedUpsellIds]
+  );
+
+  const cartSelectedUpsells = useMemo(
+    () => activeUpsells.filter((u) => cartSelectedUpsellIds.has(u.id)),
+    [activeUpsells, cartSelectedUpsellIds]
+  );
+
   const upsellTotal = useMemo(
     () =>
-      activeUpsells
+      checkoutUpsellOptions
         .filter((u) => selectedUpsellIds.has(u.id))
         .reduce((sum, u) => sum + Number(u.amount || 0), 0),
-    [activeUpsells, selectedUpsellIds]
+    [checkoutUpsellOptions, selectedUpsellIds]
   );
 
   const donationAmount = subtotal + upsellTotal;
@@ -184,19 +202,46 @@ function DonationCheckoutContent() {
   }
 
   const checkoutRecurringParams = useMemo(() => {
-    const line = items.find((i) => i.recurringFrequency);
-    const params = parseStripeRecurringParams(line?.recurringFrequency ?? "single");
-    if (line?.recurringCancelAt) {
+    const line = items.find((i) => i.recurringFrequency || i.recurringInterval);
+    if (!line) return parseStripeRecurringParams("single");
+
+    if (line.recurringInterval) {
+      return {
+        interval: line.recurringInterval,
+        intervalCount: Math.max(1, Number(line.recurringIntervalCount ?? 1)),
+        ...(line.recurringCancelAt ? { cancelAt: line.recurringCancelAt } : {}),
+      };
+    }
+
+    const params = parseStripeRecurringParams(line.recurringFrequency ?? "single");
+    if (line.recurringCancelAt) {
       params.cancelAt = line.recurringCancelAt;
     }
     return params;
   }, [items]);
 
   const checkoutFrequency = useMemo(() => {
-    const lineFreq = items.find((i) => i.recurringFrequency)?.recurringFrequency;
-    if (lineFreq) return lineFreq;
+    const line = items.find((i) => i.recurringFrequency || i.recurringInterval);
+    if (line?.recurringFrequency) return line.recurringFrequency;
+    if (line?.recurringInterval) {
+      const count = Math.max(1, Number(line.recurringIntervalCount ?? 1));
+      if (count === 1) {
+        if (line.recurringInterval === "day") return "daily";
+        if (line.recurringInterval === "week") return "weekly";
+        if (line.recurringInterval === "year") return "yearly";
+        return "monthly";
+      }
+      return `custom:${count}:${line.recurringInterval}`;
+    }
     return monthlyGift ? "monthly" : "single";
   }, [items, monthlyGift]);
+
+  const checkoutRecurrenceLabel = useMemo(
+    () => stripeRecurringParamsLabel(checkoutRecurringParams),
+    [checkoutRecurringParams]
+  );
+
+  const isCartRecurring = isRecurringFrequency(checkoutFrequency);
 
   const redirectToThankYou = (donationId?: string) => {
     clear();
@@ -260,13 +305,18 @@ function DonationCheckoutContent() {
     setSubmitting(true);
     setPaymentError("");
     try {
-      const upsellSummary = activeUpsells
-        .filter((u) => selectedUpsellIds.has(u.id))
-        .map(
+      const upsellSummary = [
+        ...cartSelectedUpsells.map(
           (u) =>
             `${u.name || u.label || "Upsell"} (${currencyInfo.symbol}${Number(u.amount || 0).toFixed(2)})`
-        )
-        .join(", ");
+        ),
+        ...checkoutUpsellOptions
+          .filter((u) => selectedUpsellIds.has(u.id))
+          .map(
+            (u) =>
+              `${u.name || u.label || "Upsell"} (${currencyInfo.symbol}${Number(u.amount || 0).toFixed(2)})`
+          ),
+      ].join(", ");
 
       const cartSummary = items.map((i) => i.description).join("; ");
       const primary = items[0];
@@ -329,9 +379,11 @@ function DonationCheckoutContent() {
       setSubmitting(false);
     }
   }, [
-    activeUpsells,
+    cartSelectedUpsells,
     chargeAmount,
     checkoutSettings.enableDedication,
+    checkoutFrequency,
+    checkoutUpsellOptions,
     createRamadanSchedules,
     currency,
     currencyInfo.symbol,
@@ -347,8 +399,6 @@ function DonationCheckoutContent() {
     items,
     selectedUpsellIds,
     showDedication,
-    checkoutFrequency,
-    monthlyGift,
     pendingDonationId,
     stripeReady,
   ]);
@@ -412,8 +462,8 @@ function DonationCheckoutContent() {
               donationAmount={donationAmount}
               giftAid={giftAid}
               onGiftAidChange={setGiftAid}
-              showUpsells={checkoutSettings.enableUpsell}
-              upsells={activeUpsells}
+              showUpsells={checkoutSettings.enableUpsell && checkoutUpsellOptions.length > 0}
+              upsells={checkoutUpsellOptions}
               selectedUpsellIds={selectedUpsellIds}
               onToggleUpsell={toggleUpsell}
               onNext={goToDetails}
@@ -490,11 +540,11 @@ function DonationCheckoutContent() {
                 </div>
               )}
 
-              {!showGiftAidStep && checkoutSettings.enableUpsell && activeUpsells.length > 0 && (
+              {!showGiftAidStep && checkoutSettings.enableUpsell && checkoutUpsellOptions.length > 0 && (
                 <div className="rounded-2xl bg-secondary/50 border border-border p-5 space-y-4">
                   <p className="text-sm font-semibold text-foreground">Please support us further</p>
                   <CheckoutUpsellList
-                    upsells={activeUpsells}
+                    upsells={checkoutUpsellOptions}
                     selectedUpsellIds={selectedUpsellIds}
                     currencySymbol={currencyInfo.symbol}
                     onToggleUpsell={toggleUpsell}
@@ -577,21 +627,23 @@ function DonationCheckoutContent() {
                 </div>
               )}
 
-              <label className="flex items-start gap-3 rounded-2xl border border-border bg-secondary/30 px-4 py-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={monthlyGift}
-                  onChange={(e) => setMonthlyGift(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 accent-accent rounded shrink-0"
-                />
-                <span className="text-sm">
-                  <span className="font-semibold text-primary">Make this a monthly gift</span>
-                  <span className="block text-xs text-muted-foreground mt-0.5">
-                    Sandbox test — charges {currencyInfo.symbol}
-                    {chargeAmount.toFixed(2)} every month until cancelled.
+              {!isCartRecurring && (
+                <label className="flex items-start gap-3 rounded-2xl border border-border bg-secondary/30 px-4 py-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={monthlyGift}
+                    onChange={(e) => setMonthlyGift(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 accent-accent rounded shrink-0"
+                  />
+                  <span className="text-sm">
+                    <span className="font-semibold text-primary">Make this a monthly gift</span>
+                    <span className="block text-xs text-muted-foreground mt-0.5">
+                      Sandbox test — charges {currencyInfo.symbol}
+                      {chargeAmount.toFixed(2)} every month until cancelled.
+                    </span>
                   </span>
-                </span>
-              </label>
+                </label>
+              )}
 
               <div className="flex flex-wrap items-center justify-center gap-3">
                 {showGiftAidStep && (
@@ -751,9 +803,8 @@ function DonationCheckoutContent() {
                 </li>
               ))}
             </ul>
-            {activeUpsells
-              .filter((u) => selectedUpsellIds.has(u.id))
-              .map((u) => (
+            {[...cartSelectedUpsells, ...checkoutUpsellOptions.filter((u) => selectedUpsellIds.has(u.id))].map(
+              (u) => (
                 <div
                   key={u.id}
                   className="flex items-center justify-between rounded-xl border border-border px-4 py-3 text-sm gap-3"
@@ -769,7 +820,8 @@ function DonationCheckoutContent() {
                     {Number(u.amount || 0).toFixed(2)}
                   </span>
                 </div>
-              ))}
+              )
+            )}
           </div>
 
           {checkoutSettings.enableDedication && showDedication && dedicationName.trim() && (
@@ -792,6 +844,11 @@ function DonationCheckoutContent() {
                 Charity receives {currencyInfo.symbol}
                 {charityValue.toFixed(2)} with Gift Aid (+{currencyInfo.symbol}
                 {giftAidBoost.toFixed(2)} at no extra cost)
+              </p>
+            )}
+            {isCartRecurring && (
+              <p className="text-sm text-primary-foreground/85">
+                Recurring every {checkoutRecurrenceLabel}
               </p>
             )}
             <div className="mt-6 space-y-2 text-sm">

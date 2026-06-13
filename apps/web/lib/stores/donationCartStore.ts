@@ -25,8 +25,13 @@ export type DonationCartItem = {
   donationType?: string;
   /** Recurring checkout frequency (e.g. monthly, custom:28:day). */
   recurringFrequency?: string;
+  /** Explicit Stripe interval captured when the item was added. */
+  recurringInterval?: "day" | "week" | "month" | "year";
+  recurringIntervalCount?: number;
   /** Stripe cancel_at unix timestamp when admin set subscription end date. */
   recurringCancelAt?: number;
+  /** Upsell catalog IDs already chosen on the campaign/donation page. */
+  selectedUpsellIds?: string[];
   /** Snapshot of campaign checkout toggles when the item was added. */
   checkoutSettings?: CheckoutSettings;
   /** Snapshot of active campaign upsells when the item was added. */

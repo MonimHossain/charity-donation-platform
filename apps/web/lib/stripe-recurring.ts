@@ -68,11 +68,7 @@ export function stripeRecurringToPriceRecurring(
   };
 }
 
-export function recurringIntervalLabel(freq: string, intervalCount?: number): string {
-  const params = parseStripeRecurringParams(freq, {
-    intervalCount: intervalCount ?? undefined,
-  } as Partial<StripeRecurringParams>);
-
+export function stripeRecurringParamsLabel(params: StripeRecurringParams): string {
   if (params.interval === "day") {
     return params.intervalCount === 1 ? "day" : `${params.intervalCount} days`;
   }
@@ -84,4 +80,12 @@ export function recurringIntervalLabel(freq: string, intervalCount?: number): st
   }
   if (params.intervalCount === 3) return "quarter";
   return params.intervalCount === 1 ? "month" : `${params.intervalCount} months`;
+}
+
+export function recurringIntervalLabel(freq: string, intervalCount?: number): string {
+  const params = parseStripeRecurringParams(freq, {
+    intervalCount: intervalCount ?? undefined,
+  } as Partial<StripeRecurringParams>);
+
+  return stripeRecurringParamsLabel(params);
 }

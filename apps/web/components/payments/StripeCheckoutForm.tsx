@@ -27,6 +27,7 @@ import {
   normalizeRecurringFrequency,
   parseStripeRecurringParams,
   recurringIntervalLabel,
+  stripeRecurringParamsLabel,
   type DonationFrequencyOption,
 } from "@/lib/stripe-recurring";
 
@@ -246,6 +247,16 @@ function CheckoutForm({
     [amount, currencySymbol]
   );
 
+  const intervalLabel = useMemo(() => {
+    if (recurringInterval && recurringIntervalCount) {
+      return stripeRecurringParamsLabel({
+        interval: recurringInterval as "day" | "week" | "month" | "year",
+        intervalCount: recurringIntervalCount,
+      });
+    }
+    return recurringIntervalLabel(frequency);
+  }, [frequency, recurringInterval, recurringIntervalCount]);
+
   const returnUrl = useMemo(
     () =>
       `${window.location.origin}/donate/complete?provider=stripe&donationId=${donationId}`,
@@ -384,7 +395,7 @@ function CheckoutForm({
     expressReady && !expressWalletsAvailable && !fallbackWalletAvailable;
 
   const payLabel = isRecurring
-    ? `Donate ${formattedAmount}/${recurringIntervalLabel(frequency)} now`
+    ? `Donate ${formattedAmount}/${intervalLabel} now`
     : `Donate ${formattedAmount} now`;
 
   return (
@@ -392,7 +403,7 @@ function CheckoutForm({
       {isRecurring && (
         <p className="text-xs text-center text-accent-deep font-medium rounded-xl bg-secondary/60 px-3 py-2">
           Recurring gift — your card will be charged {formattedAmount} every{" "}
-          {recurringIntervalLabel(frequency)} (sandbox test mode).
+          {intervalLabel} (sandbox test mode).
         </p>
       )}
       {!isRecurring && (
