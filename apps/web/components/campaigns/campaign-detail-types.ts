@@ -52,10 +52,13 @@ export function normalizeCampaignAttribute(attr: CampaignAttribute): CampaignAtt
 
 export interface CampaignUpsell {
   id: string;
-  label: string;
+  name: string;
   amount: number;
-  description: string;
-  isActive: boolean;
+  description?: string;
+  image?: string;
+  isActive?: boolean;
+  /** @deprecated legacy inline upsell */
+  label?: string;
 }
 
 export interface FundraiserSettings {

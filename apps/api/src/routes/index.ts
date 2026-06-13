@@ -326,6 +326,26 @@ router.put("/admin/campaigns/:id", requireAdmin, updateCampaign);
 router.delete("/admin/campaigns/:id", requireAdmin, deleteCampaign);
 
 // ═══════════════════════════════════
+// ADMIN UPSELLS
+// ═══════════════════════════════════
+router.get("/admin/upsells", requireAdmin, async (req, res) => {
+  const { getAdminUpsells } = await import("../modules/upsells/upsells.controller.js");
+  return getAdminUpsells(req, res);
+});
+router.post("/admin/upsells", requireAdmin, async (req, res) => {
+  const { createUpsell } = await import("../modules/upsells/upsells.controller.js");
+  return createUpsell(req, res);
+});
+router.put("/admin/upsells/:id", requireAdmin, async (req, res) => {
+  const { updateUpsell } = await import("../modules/upsells/upsells.controller.js");
+  return updateUpsell(req, res);
+});
+router.delete("/admin/upsells/:id", requireAdmin, async (req, res) => {
+  const { deleteUpsell } = await import("../modules/upsells/upsells.controller.js");
+  return deleteUpsell(req, res);
+});
+
+// ═══════════════════════════════════
 // ADMIN DONATIONS
 // ═══════════════════════════════════
 router.get("/admin/donations", requireAdmin, getDonations);

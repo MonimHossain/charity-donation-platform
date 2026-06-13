@@ -4,6 +4,7 @@ import { Campaign } from "../../components/campaign/campaign.entity.js";
 import { ILike } from "typeorm";
 import { logAudit } from "../../helper/auditLog.js";
 import { archiveExpiredCampaigns } from "./archiveExpiredCampaigns.js";
+import { withResolvedUpsells } from "../upsells/resolveCampaignUpsells.js";
 
 const repo = () => AppDataSource.getRepository(Campaign);
 
@@ -74,7 +75,7 @@ export async function getCampaignBySlug(req: Request, res: Response) {
     if (!campaign || campaign.status !== "published") {
       return res.status(404).json({ message: "Campaign not found" });
     }
-    return res.json(campaign);
+    return res.json(await withResolvedUpsells(campaign));
   } catch (error) {
     return res.status(500).json({ message: "Internal server error" });
   }
@@ -84,7 +85,7 @@ export async function getCampaignById(req: Request, res: Response) {
   try {
     const campaign = await repo().findOne({ where: { id: req.params.id } });
     if (!campaign) return res.status(404).json({ message: "Campaign not found" });
-    return res.json(campaign);
+    return res.json(await withResolvedUpsells(campaign));
   } catch (error) {
     return res.status(500).json({ message: "Internal server error" });
   }
@@ -112,7 +113,7 @@ export async function createCampaign(req: Request, res: Response) {
       entityId: campaign.id,
       details: { title: campaign.title },
     });
-    return res.status(201).json(campaign);
+    return res.status(201).json(await withResolvedUpsells(campaign));
   } catch (error) {
     console.error("createCampaign error:", error);
     return res.status(500).json({ message: "Internal server error" });
@@ -132,7 +133,7 @@ export async function updateCampaign(req: Request, res: Response) {
       entityId: campaign.id,
       details: { title: campaign.title },
     });
-    return res.json(campaign);
+    return res.json(await withResolvedUpsells(campaign));
   } catch (error) {
     console.error("updateCampaign error:", error);
     return res.status(500).json({ message: "Internal server error" });

@@ -222,6 +222,11 @@ export class Campaign {
   @Column({ type: "json", default: [] })
   attributes!: CampaignAttribute[];
 
+  /** Selected global upsell IDs shown at checkout when enableUpsell is on. */
+  @Column({ type: "json", default: [] })
+  upsellIds!: string[];
+
+  /** @deprecated Inline upsells — use upsellIds + global Upsell records. */
   @Column({ type: "json", default: [] })
   upsells!: CampaignUpsell[];
 

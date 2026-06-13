@@ -512,12 +512,12 @@ export function CampaignDonationCard({
         </div>
       )}
 
-      {cs?.enableUpsell && campaign.upsells.filter((u) => u.isActive).length > 0 && (
+      {cs?.enableUpsell && campaign.upsells.filter((u) => u.isActive !== false).length > 0 && (
         <div className="space-y-2">
           <Separator />
           <p className="text-xs font-medium text-muted-foreground">Add to your donation</p>
           {campaign.upsells
-            .filter((u) => u.isActive)
+            .filter((u) => u.isActive !== false)
             .map((u) => (
               <label
                 key={u.id}
@@ -532,15 +532,20 @@ export function CampaignDonationCard({
                   onChange={() => onToggleUpsell(u.id)}
                   className="h-4 w-4 rounded accent-primary"
                 />
+                {u.image ? (
+                  <img src={u.image} alt="" className="h-12 w-12 rounded-lg object-cover shrink-0 bg-muted" />
+                ) : (
+                  <div className="h-12 w-12 rounded-lg bg-muted shrink-0" />
+                )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">{u.label}</p>
+                  <p className="text-sm font-medium">{u.name || u.label}</p>
                   {u.description && (
                     <p className="text-xs text-muted-foreground">{u.description}</p>
                   )}
                 </div>
-                <span className="text-sm font-semibold text-primary">
+                <span className="text-sm font-semibold text-primary shrink-0">
                   {sym}
-                  {u.amount}
+                  {Number(u.amount || 0).toFixed(2)}
                 </span>
               </label>
             ))}

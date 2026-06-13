@@ -501,6 +501,29 @@ export async function adminDeleteCampaign(id: string) {
 }
 
 // ═══════════════════════════════════
+// ADMIN UPSELLS
+// ═══════════════════════════════════
+export async function fetchAdminUpsells() {
+  const { data } = await api.get("/admin/upsells");
+  return data as { items: Array<Record<string, unknown>> };
+}
+
+export async function adminCreateUpsell(payload: Record<string, unknown>) {
+  const { data } = await api.post("/admin/upsells", payload);
+  return data;
+}
+
+export async function adminUpdateUpsell(id: string, payload: Record<string, unknown>) {
+  const { data } = await api.put(`/admin/upsells/${id}`, payload);
+  return data;
+}
+
+export async function adminDeleteUpsell(id: string) {
+  const { data } = await api.delete(`/admin/upsells/${id}`);
+  return data;
+}
+
+// ═══════════════════════════════════
 // ADMIN CMS
 // ═══════════════════════════════════
 export async function adminCreateHeroSlide(payload: Record<string, unknown>) {

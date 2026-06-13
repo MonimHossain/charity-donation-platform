@@ -31,6 +31,7 @@ import { isRecurringFrequency, parseStripeRecurringParams } from "@/lib/stripe-r
 import { StripeCheckoutForm } from "@/components/payments/StripeCheckoutForm";
 import { clearDonationCart, useDonationCart } from "@/lib/stores/donationCartStore";
 import CheckoutGiftAidStep from "@/components/donation/CheckoutGiftAidStep";
+import CheckoutUpsellList from "@/components/donation/CheckoutUpsellList";
 import CheckoutStepIndicator, { type CheckoutFlowStep } from "@/components/donation/CheckoutStepIndicator";
 import {
   DEFAULT_CAMPAIGN_CONFIG,
@@ -261,7 +262,10 @@ function DonationCheckoutContent() {
     try {
       const upsellSummary = activeUpsells
         .filter((u) => selectedUpsellIds.has(u.id))
-        .map((u) => `${u.label} (${currencyInfo.symbol}${u.amount})`)
+        .map(
+          (u) =>
+            `${u.name || u.label || "Upsell"} (${currencyInfo.symbol}${Number(u.amount || 0).toFixed(2)})`
+        )
         .join(", ");
 
       const cartSummary = items.map((i) => i.description).join("; ");
@@ -489,37 +493,12 @@ function DonationCheckoutContent() {
               {!showGiftAidStep && checkoutSettings.enableUpsell && activeUpsells.length > 0 && (
                 <div className="rounded-2xl bg-secondary/50 border border-border p-5 space-y-4">
                   <p className="text-sm font-semibold text-foreground">Please support us further</p>
-                  <div className="grid sm:grid-cols-2 gap-3">
-                    {activeUpsells.map((upsell) => {
-                      const selected = selectedUpsellIds.has(upsell.id);
-                      return (
-                        <label
-                          key={upsell.id}
-                          className={cn(
-                            "flex items-start gap-3 cursor-pointer rounded-xl border bg-card px-4 py-3.5 transition-colors",
-                            selected ? "border-accent ring-1 ring-accent/30" : "border-border"
-                          )}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selected}
-                            onChange={() => toggleUpsell(upsell.id)}
-                            className="mt-0.5 h-4 w-4 accent-accent rounded shrink-0"
-                          />
-                          <span className="text-sm font-medium">
-                            {upsell.label}
-                            {upsell.amount > 0 && (
-                              <span className="text-muted-foreground">
-                                {" "}
-                                — {currencyInfo.symbol}
-                                {Number(upsell.amount).toFixed(0)}
-                              </span>
-                            )}
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
+                  <CheckoutUpsellList
+                    upsells={activeUpsells}
+                    selectedUpsellIds={selectedUpsellIds}
+                    currencySymbol={currencyInfo.symbol}
+                    onToggleUpsell={toggleUpsell}
+                  />
                 </div>
               )}
 
@@ -777,12 +756,17 @@ function DonationCheckoutContent() {
               .map((u) => (
                 <div
                   key={u.id}
-                  className="flex items-center justify-between text-sm rounded-xl border border-border px-4 py-3"
+                  className="flex items-center justify-between rounded-xl border border-border px-4 py-3 text-sm gap-3"
                 >
-                  <span className="text-muted-foreground">{u.label}</span>
-                  <span className="font-semibold tabular-nums">
+                  <div className="min-w-0">
+                    <p className="font-medium">{u.name || u.label}</p>
+                    {u.description?.trim() && (
+                      <p className="text-xs text-muted-foreground line-clamp-2">{u.description}</p>
+                    )}
+                  </div>
+                  <span className="font-semibold tabular-nums shrink-0">
                     {currencyInfo.symbol}
-                    {Number(u.amount).toFixed(2)}
+                    {Number(u.amount || 0).toFixed(2)}
                   </span>
                 </div>
               ))}

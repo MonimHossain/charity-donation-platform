@@ -40,6 +40,7 @@ import {
   adminCreateCampaign,
   adminUpdateCampaign,
   adminDeleteCampaign,
+  fetchAdminUpsells,
 } from "@/lib/api";
 import {
   CAMPAIGN_MODE_LABELS,
@@ -95,12 +96,12 @@ interface CampaignAttribute {
   customFields: CustomField[];
 }
 
-interface CampaignUpsell {
+interface CatalogUpsell {
   id: string;
-  label: string;
-  amount: number;
+  name: string;
   description: string;
-  sortOrder: number;
+  image?: string;
+  amount: number;
   isActive: boolean;
 }
 
@@ -164,7 +165,7 @@ interface CampaignForm {
   currency: string;
   experienceConfig: FidyaKaffarahConfig | RamadanSplitConfig | Record<string, never>;
   attributes: CampaignAttribute[];
-  upsells: CampaignUpsell[];
+  upsellIds: string[];
   fundraiserSettings: FundraiserSettings;
   checkoutSettings: CheckoutSettings;
   visibilitySettings: VisibilitySettings;
@@ -177,6 +178,7 @@ interface Campaign extends CampaignForm {
   donorCount?: number;
   sortOrder?: number;
   createdAt?: string;
+  upsells?: Array<{ id?: string; label?: string; name?: string }>;
 }
 
 // ── Defaults ──
@@ -251,9 +253,6 @@ function newCustomField(): CustomField {
   };
 }
 
-function newUpsell(): CampaignUpsell {
-  return { id: uid(), label: "", amount: 0, description: "", sortOrder: 0, isActive: true };
-}
 
 const defaultForm: CampaignForm = {
   title: "",
@@ -273,7 +272,7 @@ const defaultForm: CampaignForm = {
   currency: "GBP",
   experienceConfig: {},
   attributes: [],
-  upsells: [],
+  upsellIds: [],
   fundraiserSettings: {
     targetAmount: 0,
     raisedAmount: 0,
@@ -451,6 +450,20 @@ export default function CampaignsPage() {
   const [statusUpdating, setStatusUpdating] = useState<string | null>(null);
   const [statusMenuOpenId, setStatusMenuOpenId] = useState<string | null>(null);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [catalogUpsells, setCatalogUpsells] = useState<CatalogUpsell[]>([]);
+
+  const loadCatalogUpsells = useCallback(async () => {
+    try {
+      const data = await fetchAdminUpsells();
+      setCatalogUpsells((data.items || []) as unknown as CatalogUpsell[]);
+    } catch {
+      setCatalogUpsells([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (showEditor) loadCatalogUpsells();
+  }, [showEditor, loadCatalogUpsells]);
 
   const loadCampaigns = useCallback(async () => {
     try {
@@ -492,7 +505,7 @@ export default function CampaignsPage() {
   }
 
   function openCreate() {
-    setForm({ ...defaultForm, attributes: [], upsells: [] });
+    setForm({ ...defaultForm, attributes: [], upsellIds: [] });
     setEditingId(null);
     setCurrentStepIndex(0);
     setShowEditor(true);
@@ -538,7 +551,9 @@ export default function CampaignsPage() {
           })),
         };
       }),
-      upsells: (c.upsells || []).map((upsell) => ({ ...upsell })),
+      upsellIds: Array.isArray((c as Campaign & { upsellIds?: string[] }).upsellIds)
+        ? [...((c as Campaign & { upsellIds?: string[] }).upsellIds || [])]
+        : (c.upsells || []).map((u: { id?: string }) => u.id).filter(Boolean) as string[],
       fundraiserSettings: { ...defaultForm.fundraiserSettings, ...(c.fundraiserSettings || {}) },
       checkoutSettings: { ...defaultForm.checkoutSettings, ...(c.checkoutSettings || {}) },
       visibilitySettings: { ...defaultForm.visibilitySettings, ...(c.visibilitySettings || {}) },
@@ -555,7 +570,6 @@ export default function CampaignsPage() {
         id: uid(),
         customFields: attr.customFields.map((field) => ({ ...field, id: uid() })),
       })),
-      upsells: formData.upsells.map((upsell) => ({ ...upsell, id: uid() })),
     };
   }
 
@@ -1563,80 +1577,80 @@ export default function CampaignsPage() {
 
         {currentStepId === "upsells" && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-serif font-semibold text-lg">Checkout Upsells</h3>
-                <p className="text-sm text-muted-foreground">Add optional items donors can include at checkout.</p>
-              </div>
-              <Button size="sm" onClick={() => setForm((p) => ({ ...p, upsells: [...p.upsells, newUpsell()] }))}>
-                <Plus className="h-4 w-4" /> Add Upsell
-              </Button>
+            <div>
+              <h3 className="font-serif font-semibold text-lg">Checkout upsells</h3>
+              <p className="text-sm text-muted-foreground">
+                Choose upsells from your catalog to show when &ldquo;Enable upsell&rdquo; is on in checkout
+                settings. Manage upsells in{" "}
+                <a href="/admin/upsells" className="text-primary underline underline-offset-2">
+                  Admin → Upsells
+                </a>
+                .
+              </p>
             </div>
-            {form.upsells.map((u, i) => (
-              <div key={u.id} className="flex items-start gap-3 p-4 rounded-xl border bg-muted/20">
-                <div className="flex-1 grid gap-3 sm:grid-cols-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Label</Label>
-                    <Input
-                      value={u.label}
-                      onChange={(e) =>
-                        setForm((p) => ({
-                          ...p,
-                          upsells: p.upsells.map((x, xi) => (xi === i ? { ...x, label: e.target.value } : x)),
-                        }))
-                      }
-                      placeholder="e.g. Cover admin fee"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Amount</Label>
-                    <Input
-                      type="number"
-                      value={u.amount}
-                      onChange={(e) =>
-                        setForm((p) => ({
-                          ...p,
-                          upsells: p.upsells.map((x, xi) => (xi === i ? { ...x, amount: Number(e.target.value) } : x)),
-                        }))
-                      }
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Description</Label>
-                    <Input
-                      value={u.description}
-                      onChange={(e) =>
-                        setForm((p) => ({
-                          ...p,
-                          upsells: p.upsells.map((x, xi) => (xi === i ? { ...x, description: e.target.value } : x)),
-                        }))
-                      }
-                    />
-                  </div>
-                </div>
-                <div className="flex items-center gap-1 pt-5">
-                  <Switch
-                    checked={u.isActive}
-                    onCheckedChange={(v) =>
-                      setForm((p) => ({
-                        ...p,
-                        upsells: p.upsells.map((x, xi) => (xi === i ? { ...x, isActive: v } : x)),
-                      }))
-                    }
-                  />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-destructive"
-                    onClick={() => setForm((p) => ({ ...p, upsells: p.upsells.filter((_, xi) => xi !== i) }))}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
+            {catalogUpsells.length === 0 ? (
+              <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
+                No upsells in the catalog yet. Create some in Admin → Upsells first.
               </div>
-            ))}
-            {form.upsells.length === 0 && (
-              <p className="text-center py-6 text-muted-foreground text-sm">No upsells added yet.</p>
+            ) : (
+              <div className="grid gap-3 md:grid-cols-2">
+                {catalogUpsells.map((item) => {
+                  const selected = form.upsellIds.includes(item.id);
+                  return (
+                    <label
+                      key={item.id}
+                      className={cn(
+                        "flex items-start gap-3 rounded-xl border p-4 cursor-pointer transition-colors",
+                        selected ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={() =>
+                          setForm((p) => ({
+                            ...p,
+                            upsellIds: selected
+                              ? p.upsellIds.filter((id) => id !== item.id)
+                              : [...p.upsellIds, item.id],
+                          }))
+                        }
+                        className="mt-1 h-4 w-4 accent-primary rounded"
+                      />
+                      {item.image ? (
+                        <img
+                          src={item.image}
+                          alt=""
+                          className="h-14 w-14 rounded-lg object-cover shrink-0 bg-muted"
+                        />
+                      ) : (
+                        <div className="h-14 w-14 rounded-lg bg-muted shrink-0" />
+                      )}
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-semibold">{item.name}</span>
+                        <span className="block text-sm font-bold text-accent tabular-nums mt-0.5">
+                          £{Number(item.amount || 0).toFixed(2)}
+                        </span>
+                        {item.description?.trim() && (
+                          <span className="mt-1 block text-xs text-muted-foreground line-clamp-2">
+                            {item.description}
+                          </span>
+                        )}
+                        {!item.isActive && (
+                          <span className="mt-1 inline-block text-[10px] uppercase text-amber-700">
+                            Hidden in catalog
+                          </span>
+                        )}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+            {form.upsellIds.length === 0 && catalogUpsells.length > 0 && (
+              <p className="text-center py-2 text-muted-foreground text-sm">
+                No upsells selected for this campaign.
+              </p>
             )}
           </div>
         )}

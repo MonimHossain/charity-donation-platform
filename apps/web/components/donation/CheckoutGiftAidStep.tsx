@@ -1,10 +1,11 @@
 "use client";
 
+import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import type { CampaignUpsell } from "@/lib/checkout-campaign-config";
 import CheckoutStepIndicator, { type CheckoutFlowStep } from "./CheckoutStepIndicator";
+import CheckoutUpsellList from "./CheckoutUpsellList";
 
 type Props = {
   currencySymbol: string;
@@ -41,12 +42,13 @@ export default function CheckoutGiftAidStep({
         <h2 className="text-xl md:text-2xl font-semibold text-foreground leading-snug">
           Increase your donation, at no extra cost!
         </h2>
-        <p
-          className="text-3xl md:text-4xl text-accent font-bold"
-          style={{ fontFamily: "cursive, 'Brush Script MT', 'Segoe Script', sans-serif" }}
-        >
-          giftaid it
-        </p>
+        <Image
+          src="/images/giftaid-it.png"
+          alt="Gift Aid it"
+          width={220}
+          height={64}
+          className="mx-auto h-12 md:h-14 w-auto"
+        />
         <p className="text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
           If you are a UK taxpayer the value of your gift can increase by{" "}
           <strong className="text-foreground">25% at no extra cost to you!</strong>
@@ -96,37 +98,12 @@ export default function CheckoutGiftAidStep({
       {showUpsells && upsells.length > 0 && (
         <div className="rounded-2xl bg-secondary/50 border border-border p-5 space-y-4">
           <p className="text-sm font-semibold text-foreground text-center">Please support us further</p>
-          <div className="grid sm:grid-cols-2 gap-3">
-            {upsells.map((upsell) => {
-              const selected = selectedUpsellIds.has(upsell.id);
-              return (
-                <label
-                  key={upsell.id}
-                  className={cn(
-                    "flex items-start gap-3 cursor-pointer rounded-xl border bg-card px-4 py-3.5 transition-colors",
-                    selected ? "border-accent ring-1 ring-accent/30" : "border-border hover:border-accent/40"
-                  )}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selected}
-                    onChange={() => onToggleUpsell(upsell.id)}
-                    className="mt-0.5 h-4 w-4 accent-accent rounded shrink-0"
-                  />
-                  <span className="text-sm font-medium text-foreground leading-snug">
-                    {upsell.label}
-                    {upsell.amount > 0 && (
-                      <span className="text-muted-foreground">
-                        {" "}
-                        — {currencySymbol}
-                        {Number(upsell.amount).toFixed(0)}
-                      </span>
-                    )}
-                  </span>
-                </label>
-              );
-            })}
-          </div>
+          <CheckoutUpsellList
+            upsells={upsells}
+            selectedUpsellIds={selectedUpsellIds}
+            currencySymbol={currencySymbol}
+            onToggleUpsell={onToggleUpsell}
+          />
         </div>
       )}
 

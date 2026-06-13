@@ -4,10 +4,13 @@ import type { DonationCartItem } from "@/lib/stores/donationCartStore";
 
 export type CampaignUpsell = {
   id: string;
-  label: string;
+  name: string;
   amount: number;
   description?: string;
+  image?: string;
   isActive?: boolean;
+  /** @deprecated legacy inline upsell */
+  label?: string;
 };
 
 export type CheckoutCampaignConfig = {
@@ -92,7 +95,13 @@ export async function fetchCheckoutCampaignConfig(
     const campaign = await fetchCampaignBySlug(slug);
     return {
       checkoutSettings: normalizeCheckoutSettings(campaign?.checkoutSettings),
-      upsells: (campaign?.upsells ?? []).filter((u: CampaignUpsell) => u.isActive !== false),
+      upsells: (campaign?.upsells ?? [])
+        .filter((u: CampaignUpsell) => u.isActive !== false)
+        .map((u: CampaignUpsell) => ({
+          ...u,
+          name: u.name || u.label || "",
+          amount: Number(u.amount ?? 0),
+        })),
     };
   } catch {
     if (campaignId && slug !== campaignId) {
@@ -100,7 +109,13 @@ export async function fetchCheckoutCampaignConfig(
         const campaign = await fetchCampaignBySlug(campaignId);
         return {
           checkoutSettings: normalizeCheckoutSettings(campaign?.checkoutSettings),
-          upsells: (campaign?.upsells ?? []).filter((u: CampaignUpsell) => u.isActive !== false),
+          upsells: (campaign?.upsells ?? [])
+        .filter((u: CampaignUpsell) => u.isActive !== false)
+        .map((u: CampaignUpsell) => ({
+          ...u,
+          name: u.name || u.label || "",
+          amount: Number(u.amount ?? 0),
+        })),
         };
       } catch {
         /* fall through */
