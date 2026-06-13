@@ -89,3 +89,31 @@ export function recurringIntervalLabel(freq: string, intervalCount?: number): st
 
   return stripeRecurringParamsLabel(params);
 }
+
+/** Normalise a recurring charge to an estimated monthly equivalent (MRR). */
+export function recurringAmountToMonthlyEquivalent(amount: number, frequency: string): number {
+  const charge = Number(amount) || 0;
+  if (!charge || !isRecurringFrequency(frequency)) return 0;
+
+  const { interval, intervalCount } = parseStripeRecurringParams(frequency);
+  let paymentsPerYear: number;
+
+  switch (interval) {
+    case "day":
+      paymentsPerYear = 365 / intervalCount;
+      break;
+    case "week":
+      paymentsPerYear = 52 / intervalCount;
+      break;
+    case "month":
+      paymentsPerYear = 12 / intervalCount;
+      break;
+    case "year":
+      paymentsPerYear = 1 / intervalCount;
+      break;
+    default:
+      paymentsPerYear = 12;
+  }
+
+  return (charge * paymentsPerYear) / 12;
+}

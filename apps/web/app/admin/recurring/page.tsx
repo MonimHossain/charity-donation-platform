@@ -13,6 +13,10 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
+import {
+  recurringAmountToMonthlyEquivalent,
+  recurringIntervalLabel,
+} from "@/lib/stripe-recurring";
 
 interface RecurringDonation {
   id: string;
@@ -83,7 +87,9 @@ export default function RecurringPage() {
   });
 
   const totalActive = donations.filter((d) => d.status === "active").length;
-  const totalMonthly = donations.filter((d) => d.status === "active").reduce((sum, d) => sum + d.amount, 0);
+  const estimatedMonthlyRecurring = donations
+    .filter((d) => d.status === "active")
+    .reduce((sum, d) => sum + recurringAmountToMonthlyEquivalent(Number(d.amount), d.frequency), 0);
 
   return (
     <div className="space-y-6">
@@ -104,8 +110,17 @@ export default function RecurringPage() {
           <p className="text-sm text-muted-foreground">Active Subscriptions</p>
         </div>
         <div className="rounded-2xl border bg-card p-5 shadow-soft">
-          <p className="text-2xl font-bold">£{totalMonthly.toLocaleString("en-GB")}</p>
-          <p className="text-sm text-muted-foreground">Active Monthly Value</p>
+          <p className="text-2xl font-bold">
+            £
+            {estimatedMonthlyRecurring.toLocaleString("en-GB", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+          </p>
+          <p className="text-sm text-muted-foreground">Est. monthly recurring</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Active subscriptions normalised to a monthly equivalent
+          </p>
         </div>
       </div>
 
@@ -167,7 +182,9 @@ export default function RecurringPage() {
                     <td className="px-5 py-3 font-semibold">
                       {d.currency === "USD" ? "$" : "£"}{Number(d.amount).toLocaleString("en-GB", { minimumFractionDigits: 2 })}
                     </td>
-                    <td className="px-5 py-3 text-muted-foreground capitalize">{d.frequency}</td>
+                    <td className="px-5 py-3 text-muted-foreground capitalize">
+                      {recurringIntervalLabel(d.frequency)}
+                    </td>
                     <td className="px-5 py-3 text-muted-foreground">{d.campaignTitle || "—"}</td>
                     <td className="px-5 py-3">
                       <span className={cn("inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize", statusStyles[d.status] || "bg-slate-100 text-slate-600")}>
