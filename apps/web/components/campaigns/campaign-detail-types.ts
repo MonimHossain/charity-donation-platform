@@ -1,26 +1,15 @@
-export interface SinglePaymentConfig {
-  priceType: "preset" | "custom" | "both";
-  presetAmounts: number[];
-  minAmount: number;
-  maxAmount: number;
-}
+import type {
+  PresetAmount,
+  RecurrenceConfig,
+  RegularPaymentConfig,
+  SinglePaymentConfig,
+} from "@/lib/campaign-payment-config";
+import {
+  normalizeRegularPaymentConfig,
+  normalizeSinglePaymentConfig,
+} from "@/lib/campaign-payment-config";
 
-export interface RegularPresetAmount {
-  amount: number;
-  cause: string;
-  defaultDuration?: number;
-}
-
-export interface RegularPaymentConfig {
-  allowedIntervals: string[];
-  durationType: "never_ends" | "fixed_duration";
-  fixedDurationValue?: number;
-  fixedDurationType?: string;
-  presetAmounts: RegularPresetAmount[];
-  allowCustomAmount: boolean;
-  customMinAmount: number;
-  customMaxAmount: number;
-}
+export type { PresetAmount, RecurrenceConfig, RegularPaymentConfig, SinglePaymentConfig };
 
 export interface QuantityConfig {
   quantityLabel: string;
@@ -50,6 +39,15 @@ export interface CampaignAttribute {
   regularPaymentConfig: RegularPaymentConfig;
   quantityConfig: QuantityConfig;
   customFields: CustomField[];
+}
+
+/** Normalize attribute payment configs loaded from the API (handles legacy JSON). */
+export function normalizeCampaignAttribute(attr: CampaignAttribute): CampaignAttribute {
+  return {
+    ...attr,
+    singlePaymentConfig: normalizeSinglePaymentConfig(attr.singlePaymentConfig),
+    regularPaymentConfig: normalizeRegularPaymentConfig(attr.regularPaymentConfig),
+  };
 }
 
 export interface CampaignUpsell {

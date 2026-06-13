@@ -25,6 +25,7 @@ import {
 import {
   isRecurringFrequency,
   normalizeRecurringFrequency,
+  parseStripeRecurringParams,
   recurringIntervalLabel,
   type DonationFrequencyOption,
 } from "@/lib/stripe-recurring";
@@ -202,6 +203,9 @@ function CheckoutForm({
   currencySymbol,
   currencyCode,
   frequency = "single",
+  recurringInterval,
+  recurringIntervalCount,
+  recurringCancelAt,
   recurringDonationId,
   campaignId,
   onSuccess,
@@ -214,6 +218,9 @@ function CheckoutForm({
   currencySymbol: string;
   currencyCode: string;
   frequency?: DonationFrequencyOption;
+  recurringInterval?: string;
+  recurringIntervalCount?: number;
+  recurringCancelAt?: number;
   recurringDonationId?: string;
   campaignId?: string;
   onSuccess: () => void;
@@ -272,10 +279,18 @@ function CheckoutForm({
     let subscriptionId: string | undefined;
 
     if (isRecurring) {
+      const parsed = parseStripeRecurringParams(frequency, {
+        interval: recurringInterval as "day" | "week" | "month" | "year" | undefined,
+        intervalCount: recurringIntervalCount,
+        cancelAt: recurringCancelAt,
+      });
       const checkout = await createStripeSubscriptionCheckout({
         amount,
         currency: currencyCode,
         frequency: normalizeRecurringFrequency(frequency),
+        interval: parsed.interval,
+        intervalCount: parsed.intervalCount,
+        cancelAt: parsed.cancelAt,
         donorEmail: donorEmail.trim(),
         donorName: donorName.trim(),
         recurringDonationId,
@@ -328,7 +343,10 @@ function CheckoutForm({
     finalizePayment,
     frequency,
     isRecurring,
+    recurringCancelAt,
     recurringDonationId,
+    recurringInterval,
+    recurringIntervalCount,
     returnUrl,
     stripe,
   ]);
@@ -530,6 +548,9 @@ export function StripeCheckoutForm({
   currencySymbol,
   currencyCode,
   frequency = "single",
+  recurringInterval,
+  recurringIntervalCount,
+  recurringCancelAt,
   recurringDonationId,
   campaignId,
   onSuccess,
@@ -543,6 +564,9 @@ export function StripeCheckoutForm({
   currencySymbol: string;
   currencyCode: string;
   frequency?: DonationFrequencyOption;
+  recurringInterval?: string;
+  recurringIntervalCount?: number;
+  recurringCancelAt?: number;
   recurringDonationId?: string;
   campaignId?: string;
   onSuccess: () => void;
@@ -594,6 +618,9 @@ export function StripeCheckoutForm({
         currencySymbol={currencySymbol}
         currencyCode={currencyCode}
         frequency={frequency}
+        recurringInterval={recurringInterval}
+        recurringIntervalCount={recurringIntervalCount}
+        recurringCancelAt={recurringCancelAt}
         recurringDonationId={recurringDonationId}
         campaignId={campaignId}
         onSuccess={onSuccess}

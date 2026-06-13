@@ -1,17 +1,29 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo, useState } from "react";
 import { Lock, Minus, Plus, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import {
+  formatRecurrenceLabel,
+  scheduleToFrequencyParam,
+  type DonorScheduleChoice,
+  type PresetAmount,
+  type RecurrenceIntervalUnit,
+} from "@/lib/campaign-payment-config";
+import { recurringIntervalLabel } from "@/lib/stripe-recurring";
 import type { CampaignAttribute, CampaignData } from "./campaign-detail-types";
 
-const DONOR_REGULAR_INTERVALS = ["daily", "weekly", "monthly", "yearly"] as const;
-const DONOR_REGULAR_MIN_AMOUNT = 5;
-const DONOR_REGULAR_MAX_AMOUNT = 5000;
+const DONOR_PRESET_INTERVALS = [
+  { value: "daily" as const, label: "Daily" },
+  { value: "weekly" as const, label: "Weekly" },
+  { value: "monthly" as const, label: "Monthly" },
+  { value: "yearly" as const, label: "Annually" },
+];
 
 export interface CampaignDonationCardProps {
   campaign: CampaignData;
@@ -21,20 +33,60 @@ export interface CampaignDonationCardProps {
   paymentType: "single" | "regular";
   selectedAmount: number;
   customAmount: string;
-  selectedInterval: string;
+  selectedPresetDescription: string;
+  donorSchedule: DonorScheduleChoice;
+  showCustomSchedule: boolean;
   quantity: number;
   selectedUpsells: Set<string>;
   customFieldValues: Record<string, string>;
   finalAmount: number;
   upsellTotal: number;
   onSelectAttribute: (idx: number) => void;
-  onSetPaymentType: (t: "single" | "regular") => void;
-  onSetSelectedAmount: (a: number) => void;
+  onSetSelectedAmount: (a: number, description?: string) => void;
   onSetCustomAmount: (a: string) => void;
-  onSetSelectedInterval: (i: string) => void;
+  onSetDonorSchedule: (schedule: DonorScheduleChoice) => void;
+  onSetShowCustomSchedule: (show: boolean) => void;
   onSetQuantity: (q: number) => void;
   onToggleUpsell: (id: string) => void;
   onSetCustomFieldValue: (id: string, val: string) => void;
+}
+
+function PresetAmountButtons({
+  sym,
+  presets,
+  selectedAmount,
+  customAmount,
+  onSelect,
+}: {
+  sym: string;
+  presets: PresetAmount[];
+  selectedAmount: number;
+  customAmount: string;
+  onSelect: (amount: number, description?: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2.5">
+      {presets.map((preset) => {
+        const selected = selectedAmount === preset.amount && !customAmount;
+        return (
+          <button
+            key={`${preset.amount}-${preset.description ?? ""}`}
+            type="button"
+            onClick={() => onSelect(preset.amount, preset.description)}
+            className={cn(
+              "px-5 py-2.5 rounded-full border-2 text-sm font-bold transition-all",
+              selected
+                ? "bg-accent text-accent-foreground border-accent shadow-sm"
+                : "bg-background border-accent/40 text-foreground hover:border-accent hover:bg-accent/5"
+            )}
+          >
+            {sym}
+            {preset.amount.toFixed(2)}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 export function CampaignDonationCard({
@@ -45,17 +97,19 @@ export function CampaignDonationCard({
   paymentType,
   selectedAmount,
   customAmount,
-  selectedInterval,
+  selectedPresetDescription,
+  donorSchedule,
+  showCustomSchedule,
   quantity,
   selectedUpsells,
   customFieldValues,
   finalAmount,
   upsellTotal,
   onSelectAttribute,
-  onSetPaymentType,
   onSetSelectedAmount,
   onSetCustomAmount,
-  onSetSelectedInterval,
+  onSetDonorSchedule,
+  onSetShowCustomSchedule,
   onSetQuantity,
   onToggleUpsell,
   onSetCustomFieldValue,
@@ -63,22 +117,67 @@ export function CampaignDonationCard({
   const cs = campaign.checkoutSettings;
   const total = finalAmount + upsellTotal;
 
-  const donateUrl = `/donate?amount=${total}&cause=${campaign.slug}&campaignId=${campaign.id}&type=${paymentType}${
-    paymentType === "regular" ? `&interval=${selectedInterval}` : ""
-  }`;
+  const isRegular = paymentType === "regular" && selectedAttr?.enableRegularPayment;
+  const isSingle = paymentType === "single" && selectedAttr?.enableSinglePayment;
 
-  const presetAmounts =
-    paymentType === "single" && selectedAttr?.enableSinglePayment
-      ? selectedAttr.singlePaymentConfig.presetAmounts
-      : [];
+  const paymentConfig = isRegular
+    ? selectedAttr!.regularPaymentConfig
+    : isSingle
+      ? selectedAttr!.singlePaymentConfig
+      : null;
+
+  const presetAmounts = paymentConfig?.presetAmounts ?? [];
 
   const showOtherAmount =
-    paymentType === "single" &&
-    selectedAttr?.enableSinglePayment &&
-    (selectedAttr.singlePaymentConfig.priceType === "custom" ||
-      selectedAttr.singlePaymentConfig.priceType === "both");
+    paymentConfig &&
+    (paymentConfig.priceType === "custom" || paymentConfig.priceType === "both");
 
-  const impactLine = selectedAttr?.description?.trim();
+  const showPresets =
+    paymentConfig &&
+    (paymentConfig.priceType === "preset" || paymentConfig.priceType === "both") &&
+    presetAmounts.length > 0;
+
+  const adminRecurrence = selectedAttr?.regularPaymentConfig.recurrence;
+  const adminScheduleLabel = adminRecurrence ? formatRecurrenceLabel(adminRecurrence) : "Monthly";
+
+  const frequencyParam = isRegular
+    ? scheduleToFrequencyParam(donorSchedule, adminRecurrence)
+    : "single";
+
+  const intervalLabel = useMemo(() => {
+    if (!isRegular) return "";
+    if (donorSchedule.mode === "admin" && adminRecurrence) {
+      return formatRecurrenceLabel(adminRecurrence).replace(/^Every /i, "").toLowerCase();
+    }
+    return recurringIntervalLabel(frequencyParam);
+  }, [isRegular, donorSchedule, adminRecurrence, frequencyParam]);
+
+  const cancelAtParam =
+    isRegular &&
+    donorSchedule.mode === "admin" &&
+    adminRecurrence?.durationType === "end_date" &&
+    adminRecurrence.endDate
+      ? Math.floor(new Date(adminRecurrence.endDate).getTime() / 1000)
+      : undefined;
+
+  const donateUrl = `/donate?amount=${total}&cause=${campaign.slug}&campaignId=${campaign.id}&type=${paymentType}${
+    isRegular ? `&freq=${encodeURIComponent(frequencyParam)}` : ""
+  }${cancelAtParam ? `&cancelAt=${cancelAtParam}` : ""}${
+    selectedAttr?.enableQuantity && quantity > 1 ? `&qty=${quantity}` : ""
+  }`;
+
+  const impactLine =
+    selectedPresetDescription.trim() ||
+    (selectedAmount > 0 && !customAmount
+      ? presetAmounts.find((p) => p.amount === selectedAmount)?.description?.trim()
+      : "");
+
+  const [customIntervalCount, setCustomIntervalCount] = useState(
+    adminRecurrence?.intervalCount ?? 1
+  );
+  const [customIntervalUnit, setCustomIntervalUnit] = useState<RecurrenceIntervalUnit>(
+    adminRecurrence?.intervalUnit ?? "month"
+  );
 
   return (
     <div className="rounded-3xl bg-card border border-border p-6 lg:p-7 shadow-lift space-y-5">
@@ -112,192 +211,211 @@ export function CampaignDonationCard({
         </div>
       )}
 
-      {selectedAttr && selectedAttr.enableSinglePayment && selectedAttr.enableRegularPayment && (
-        <div
-          className="rounded-full border border-border p-1 grid"
-          style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}
-        >
-          <button
-            type="button"
-            onClick={() => {
-              onSetPaymentType("single");
-              if (selectedAttr.singlePaymentConfig?.presetAmounts?.length > 0) {
-                onSetSelectedAmount(selectedAttr.singlePaymentConfig.presetAmounts[0] ?? 0);
-              }
-              onSetCustomAmount("");
-            }}
-            className={cn(
-              "py-2.5 px-3 rounded-full text-sm font-semibold capitalize transition-all",
-              paymentType === "single"
-                ? "bg-accent text-accent-foreground shadow-sm"
-                : "text-foreground/70 hover:text-foreground"
-            )}
-          >
-            One-time gift
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              onSetPaymentType("regular");
-              onSetSelectedAmount(0);
-              onSetCustomAmount("");
-            }}
-            className={cn(
-              "py-2.5 px-3 rounded-full text-sm font-semibold capitalize transition-all",
-              paymentType === "regular"
-                ? "bg-accent text-accent-foreground shadow-sm"
-                : "text-foreground/70 hover:text-foreground"
-            )}
-          >
-            Monthly support
-          </button>
-        </div>
-      )}
-
       <p className="text-sm text-muted-foreground">
-        A single donation goes directly to the field.
+        {isRegular
+          ? "Set up a recurring gift — change the schedule below if you prefer a different frequency."
+          : "A single donation goes directly to the field."}
       </p>
 
-      {selectedAttr && paymentType === "single" && selectedAttr.enableSinglePayment && (
-        <div>
-          <div className="flex flex-wrap gap-2.5">
-            {presetAmounts.map((amt) => (
-              <button
-                key={amt}
+      {isRegular && adminRecurrence && (
+        <div className="rounded-2xl border border-border bg-secondary/40 px-4 py-3 space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Recurring schedule</p>
+          {!showCustomSchedule ? (
+            <>
+              <p className="text-sm font-semibold">{adminScheduleLabel}</p>
+              {adminRecurrence.durationType === "end_date" && adminRecurrence.endDate && (
+                <p className="text-xs text-muted-foreground">
+                  Ends{" "}
+                  {new Date(adminRecurrence.endDate).toLocaleDateString(undefined, {
+                    dateStyle: "medium",
+                  })}
+                </p>
+              )}
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 rounded-full text-xs"
                 onClick={() => {
-                  onSetSelectedAmount(amt);
-                  onSetCustomAmount("");
+                  onSetShowCustomSchedule(true);
+                  onSetDonorSchedule({ mode: "preset", frequency: "monthly" });
                 }}
-                className={cn(
-                  "px-5 py-2.5 rounded-full border-2 text-sm font-bold transition-all",
-                  selectedAmount === amt && !customAmount
-                    ? "bg-accent text-accent-foreground border-accent shadow-sm"
-                    : "bg-background border-accent/40 text-foreground hover:border-accent hover:bg-accent/5"
-                )}
               >
-                {sym}
-                {amt.toFixed(2)}
-              </button>
-            ))}
-            {showOtherAmount && (
-              <button
+                Choose your own schedule
+              </Button>
+            </>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-2">
+                {DONOR_PRESET_INTERVALS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => onSetDonorSchedule({ mode: "preset", frequency: opt.value })}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-xs border transition-all",
+                      donorSchedule.mode === "preset" && donorSchedule.frequency === opt.value
+                        ? "bg-accent text-accent-foreground border-accent"
+                        : "bg-background border-border hover:border-primary/40"
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() =>
+                    onSetDonorSchedule({
+                      mode: "custom",
+                      intervalCount: customIntervalCount,
+                      intervalUnit: customIntervalUnit,
+                    })
+                  }
+                  className={cn(
+                    "px-3 py-1.5 rounded-full text-xs border transition-all",
+                    donorSchedule.mode === "custom"
+                      ? "bg-accent text-accent-foreground border-accent"
+                      : "bg-background border-border hover:border-primary/40"
+                  )}
+                >
+                  Custom
+                </button>
+              </div>
+              {donorSchedule.mode === "custom" && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Every</span>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={customIntervalCount}
+                    onChange={(e) => {
+                      const count = Math.max(1, Number(e.target.value));
+                      setCustomIntervalCount(count);
+                      onSetDonorSchedule({
+                        mode: "custom",
+                        intervalCount: count,
+                        intervalUnit: customIntervalUnit,
+                      });
+                    }}
+                    className="h-8 w-16 text-xs"
+                  />
+                  <select
+                    value={customIntervalUnit}
+                    onChange={(e) => {
+                      const unit = e.target.value as RecurrenceIntervalUnit;
+                      setCustomIntervalUnit(unit);
+                      onSetDonorSchedule({
+                        mode: "custom",
+                        intervalCount: customIntervalCount,
+                        intervalUnit: unit,
+                      });
+                    }}
+                    className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                  >
+                    <option value="day">day(s)</option>
+                    <option value="week">week(s)</option>
+                    <option value="month">month(s)</option>
+                    <option value="year">year(s)</option>
+                  </select>
+                </div>
+              )}
+              <Button
                 type="button"
-                onClick={() => onSetSelectedAmount(0)}
-                className={cn(
-                  "px-5 py-2.5 rounded-full border-2 text-sm font-bold transition-all",
-                  Boolean(customAmount)
-                    ? "bg-accent text-accent-foreground border-accent shadow-sm"
-                    : "bg-background border-accent/40 text-foreground hover:border-accent hover:bg-accent/5"
-                )}
-              >
-                Other
-              </button>
-            )}
-          </div>
-          {showOtherAmount && (
-            <div className="mt-3 relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">
-                {sym}
-              </span>
-              <Input
-                type="number"
-                placeholder="Enter amount"
-                value={customAmount}
-                onChange={(e) => {
-                  onSetCustomAmount(e.target.value);
-                  onSetSelectedAmount(0);
+                variant="ghost"
+                size="sm"
+                className="h-8 px-0 text-xs text-muted-foreground"
+                onClick={() => {
+                  onSetShowCustomSchedule(false);
+                  onSetDonorSchedule({ mode: "admin" });
                 }}
-                className="pl-7 h-10 rounded-xl"
-                min={selectedAttr.singlePaymentConfig.minAmount}
-                max={selectedAttr.singlePaymentConfig.maxAmount}
-              />
+              >
+                Use recommended schedule ({adminScheduleLabel})
+              </Button>
             </div>
           )}
         </div>
       )}
 
-      {selectedAttr && paymentType === "regular" && selectedAttr.enableRegularPayment && (
+      {selectedAttr && paymentConfig && (
         <div className="space-y-3">
-          <div>
-            <Label className="text-xs mb-1.5 block">How often?</Label>
-            <div className="flex flex-wrap gap-2">
-              {DONOR_REGULAR_INTERVALS.map((interval) => (
+          {showPresets && (
+            <PresetAmountButtons
+              sym={sym}
+              presets={presetAmounts}
+              selectedAmount={selectedAmount}
+              customAmount={customAmount}
+              onSelect={(amount, description) => {
+                onSetSelectedAmount(amount, description);
+                onSetCustomAmount("");
+              }}
+            />
+          )}
+          {showOtherAmount && (
+            <>
+              {showPresets && (
                 <button
-                  key={interval}
                   type="button"
-                  onClick={() => onSetSelectedInterval(interval)}
+                  onClick={() => onSetSelectedAmount(0)}
                   className={cn(
-                    "px-3 py-1.5 rounded-full text-xs border capitalize transition-all",
-                    selectedInterval === interval
-                      ? "bg-accent text-accent-foreground border-accent"
-                      : "bg-background border-border hover:border-primary/40"
+                    "px-5 py-2.5 rounded-full border-2 text-sm font-bold transition-all",
+                    Boolean(customAmount)
+                      ? "bg-accent text-accent-foreground border-accent shadow-sm"
+                      : "bg-background border-accent/40 text-foreground hover:border-accent hover:bg-accent/5"
                   )}
                 >
-                  {interval}
+                  Other amount
                 </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <Label className="text-xs mb-1.5 block">Amount per payment</Label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">
-                {sym}
-              </span>
-              <Input
-                type="number"
-                placeholder="Enter amount"
-                value={customAmount}
-                onChange={(e) => {
-                  onSetCustomAmount(e.target.value);
-                  onSetSelectedAmount(0);
-                }}
-                className="pl-7 h-10 rounded-xl"
-                min={DONOR_REGULAR_MIN_AMOUNT}
-                max={DONOR_REGULAR_MAX_AMOUNT}
-              />
-            </div>
-          </div>
+              )}
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">
+                  {sym}
+                </span>
+                <Input
+                  type="number"
+                  placeholder="Enter amount"
+                  value={customAmount}
+                  onChange={(e) => {
+                    onSetCustomAmount(e.target.value);
+                    onSetSelectedAmount(0);
+                  }}
+                  className="pl-7 h-10 rounded-xl"
+                  min={paymentConfig.minAmount}
+                  max={paymentConfig.maxAmount}
+                />
+              </div>
+            </>
+          )}
         </div>
       )}
 
-      {selectedAttr?.enableRegularPayment &&
-        paymentType === "regular" &&
-        selectedAttr.enableQuantity && (
-          <div>
-            <Label className="text-xs mb-1.5 block">
-              {selectedAttr.quantityConfig.quantityLabel || "Quantity"}
-            </Label>
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-9 w-9 rounded-full"
-                onClick={() =>
-                  onSetQuantity(Math.max(selectedAttr.quantityConfig.minQuantity, quantity - 1))
-                }
-              >
-                <Minus className="h-4 w-4" />
-              </Button>
-              <span className="text-lg font-bold w-12 text-center">{quantity}</span>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-9 w-9 rounded-full"
-                onClick={() =>
-                  onSetQuantity(Math.min(selectedAttr.quantityConfig.maxQuantity, quantity + 1))
-                }
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
+      {selectedAttr?.enableQuantity && (
+        <div>
+          <Label className="text-xs mb-1.5 block">
+            {selectedAttr.quantityConfig.quantityLabel || "Quantity"}
+          </Label>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-9 w-9 rounded-full"
+              onClick={() =>
+                onSetQuantity(Math.max(selectedAttr.quantityConfig.minQuantity, quantity - 1))
+              }
+            >
+              <Minus className="h-4 w-4" />
+            </Button>
+            <span className="text-lg font-bold w-12 text-center">{quantity}</span>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-9 w-9 rounded-full"
+              onClick={() =>
+                onSetQuantity(Math.min(selectedAttr.quantityConfig.maxQuantity, quantity + 1))
+              }
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
           </div>
-        )}
-
-      {impactLine && (
-        <div className="rounded-2xl bg-secondary/60 px-5 py-4 text-center">
-          <p className="text-sm font-medium text-foreground/85 leading-relaxed">{impactLine}</p>
         </div>
       )}
 
@@ -429,6 +547,12 @@ export function CampaignDonationCard({
         </div>
       )}
 
+      {impactLine && (
+        <div className="rounded-2xl bg-secondary/60 px-5 py-4 text-center">
+          <p className="text-sm font-medium text-foreground/85 leading-relaxed">{impactLine}</p>
+        </div>
+      )}
+
       <Button
         asChild
         className="w-full rounded-full text-base font-bold h-14 bg-accent text-accent-foreground hover:bg-accent-deep hover:text-primary-foreground shadow-soft hover:shadow-glow px-10"
@@ -436,7 +560,7 @@ export function CampaignDonationCard({
         <Link href={donateUrl}>
           Donate {sym}
           {total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          {paymentType === "regular" ? `/${selectedInterval}` : ""}
+          {isRegular && intervalLabel ? `/${intervalLabel}` : ""}
         </Link>
       </Button>
 

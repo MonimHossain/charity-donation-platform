@@ -8,13 +8,26 @@ import {
 
 // ── JSON column type definitions ──
 
+export interface PresetAmount {
+  amount: number;
+  description?: string;
+}
+
+export interface RecurrenceConfig {
+  intervalCount: number;
+  intervalUnit: "day" | "week" | "month" | "year";
+  durationType: "never_ends" | "end_date";
+  endDate?: string;
+}
+
 export interface SinglePaymentConfig {
   priceType: "preset" | "custom" | "both";
-  presetAmounts: number[];
+  presetAmounts: PresetAmount[];
   minAmount: number;
   maxAmount: number;
 }
 
+/** @deprecated Legacy shape — migrated on read in the web app. */
 export interface RegularPresetAmount {
   amount: number;
   cause: string;
@@ -22,15 +35,24 @@ export interface RegularPresetAmount {
 }
 
 export interface RegularPaymentConfig {
-  allowedIntervals: string[];
-  durationType: "never_ends" | "fixed_duration";
+  priceType: "preset" | "custom" | "both";
+  presetAmounts: PresetAmount[];
+  minAmount: number;
+  maxAmount: number;
+  recurrence: RecurrenceConfig;
+  /** @deprecated */
+  allowedIntervals?: string[];
+  /** @deprecated */
+  durationType?: "never_ends" | "fixed_duration";
   fixedDurationValue?: number;
   fixedDurationType?: "months" | "payments" | "date";
   endDate?: string;
-  presetAmounts: RegularPresetAmount[];
-  allowCustomAmount: boolean;
-  customMinAmount: number;
-  customMaxAmount: number;
+  /** @deprecated */
+  allowCustomAmount?: boolean;
+  /** @deprecated */
+  customMinAmount?: number;
+  /** @deprecated */
+  customMaxAmount?: number;
 }
 
 export interface QuantityConfig {

@@ -199,6 +199,10 @@ function DonatePageApi() {
       routedToCheckout.current = true;
       const cause = params.get("cause") || params.get("type") || "donation";
       const campaignId = params.get("campaign") || params.get("campaignId") || undefined;
+      const paymentType = params.get("type") || "single";
+      const freq = params.get("freq") || params.get("interval") || undefined;
+      const qty = params.get("qty");
+      const cancelAt = params.get("cancelAt");
       addDonationCartItem({
         kind: "standard",
         donationPageId: "legacy-url",
@@ -209,6 +213,10 @@ function DonatePageApi() {
         description: `Donation — £${parsed.toFixed(2)}`,
         campaignId: campaignId || undefined,
         donationType: cause,
+        quantity: qty ? Number(qty) : undefined,
+        recurringFrequency:
+          paymentType === "regular" && freq && freq !== "single" ? freq : undefined,
+        recurringCancelAt: cancelAt ? Number(cancelAt) : undefined,
       });
       router.replace("/donation/checkout");
       return;
@@ -375,8 +383,8 @@ function DonatePageApi() {
         donation_id: donationId,
         value: chargeAmount,
         currency,
-        frequency: paymentType,
-        campaign_id: selectedCampaignId || undefined,
+        frequency,
+        campaign_id: selectedCampaign || undefined,
         gift_aid: giftAid,
       });
 

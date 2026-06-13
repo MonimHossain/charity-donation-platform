@@ -14,10 +14,12 @@ import { CampaignDetailLayout } from "@/components/campaigns/CampaignDetailLayou
 import { isExperienceCampaignMode } from "@/lib/campaign-experience";
 import {
   CURRENCY_SYMBOLS,
+  normalizeCampaignAttribute,
   type CampaignData,
   type RecentDonation,
   type RelatedCampaign,
 } from "@/components/campaigns/campaign-detail-types";
+import type { DonorScheduleChoice } from "@/lib/campaign-payment-config";
 
 export default function CampaignDetailPage() {
   const params = useParams<{ slug: string }>();
@@ -39,28 +41,57 @@ function CampaignDetailApi({ slug: slugProp }: { slug: string }) {
   const [selectedAttrIdx, setSelectedAttrIdx] = useState(0);
   const [paymentType, setPaymentType] = useState<"single" | "regular">("single");
   const [selectedAmount, setSelectedAmount] = useState(0);
+  const [selectedPresetDescription, setSelectedPresetDescription] = useState("");
   const [customAmount, setCustomAmount] = useState("");
-  const [selectedInterval, setSelectedInterval] = useState("monthly");
+  const [donorSchedule, setDonorSchedule] = useState<DonorScheduleChoice>({ mode: "admin" });
+  const [showCustomSchedule, setShowCustomSchedule] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [selectedUpsells, setSelectedUpsells] = useState<Set<string>>(new Set());
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
 
+  function initAttributeState(attr: CampaignData["attributes"][0]) {
+    const normalized = normalizeCampaignAttribute(attr);
+    setCustomAmount("");
+    setSelectedPresetDescription("");
+    setDonorSchedule({ mode: "admin" });
+    setShowCustomSchedule(false);
+    setQuantity(normalized.enableQuantity ? normalized.quantityConfig.minQuantity : 1);
+    setCustomFieldValues({});
+
+    if (normalized.enableRegularPayment) {
+      setPaymentType("regular");
+      const presets = normalized.regularPaymentConfig.presetAmounts;
+      if (presets.length > 0) {
+        setSelectedAmount(presets[0]?.amount ?? 0);
+        setSelectedPresetDescription(presets[0]?.description ?? "");
+      } else {
+        setSelectedAmount(0);
+      }
+      return;
+    }
+
+    setPaymentType("single");
+    const presets = normalized.singlePaymentConfig.presetAmounts;
+    if (presets.length > 0) {
+      setSelectedAmount(presets[0]?.amount ?? 0);
+      setSelectedPresetDescription(presets[0]?.description ?? "");
+    } else {
+      setSelectedAmount(0);
+    }
+  }
+
   useEffect(() => {
     fetchCampaignBySlug(slug)
       .then((data) => {
-        setCampaign(data);
-        if (data?.attributes?.length > 0) {
-          const attr = data.attributes[0];
-          if (attr.enableSinglePayment) {
-            setPaymentType("single");
-            if (attr.singlePaymentConfig?.presetAmounts?.length > 0) {
-              setSelectedAmount(attr.singlePaymentConfig.presetAmounts[0] ?? 0);
+        const normalized = data
+          ? {
+              ...data,
+              attributes: (data.attributes || []).map(normalizeCampaignAttribute),
             }
-          } else if (attr.enableRegularPayment) {
-            setPaymentType("regular");
-            setSelectedAmount(0);
-            setCustomAmount("");
-          }
+          : null;
+        setCampaign(normalized);
+        if (normalized?.attributes?.length > 0) {
+          initAttributeState(normalized.attributes[0]);
         }
       })
       .catch(() => setCampaign(null))
@@ -103,34 +134,16 @@ function CampaignDetailApi({ slug: slugProp }: { slug: string }) {
       setSelectedAttrIdx(idx);
       const attr = campaign?.attributes?.[idx];
       if (!attr) return;
-      setCustomAmount("");
-      setSelectedAmount(0);
-      if (attr.enableSinglePayment) {
-        setPaymentType("single");
-        if (attr.singlePaymentConfig?.presetAmounts?.length > 0) {
-          setSelectedAmount(attr.singlePaymentConfig.presetAmounts[0] ?? 0);
-        }
-      } else if (attr.enableRegularPayment) {
-        setPaymentType("regular");
-        setSelectedAmount(0);
-        setCustomAmount("");
-      }
-      setQuantity(
-        attr.enableRegularPayment && attr.enableQuantity ? attr.quantityConfig.minQuantity : 1
-      );
-      setCustomFieldValues({});
+      initAttributeState(attr);
     },
     [campaign]
   );
 
   const finalAmount = useMemo(() => {
     const base = customAmount ? Number(customAmount) : selectedAmount;
-    const useQuantity =
-      selectedAttr?.enableRegularPayment &&
-      selectedAttr?.enableQuantity &&
-      paymentType === "regular";
+    const useQuantity = selectedAttr?.enableQuantity;
     return base * (useQuantity ? quantity : 1);
-  }, [selectedAmount, customAmount, quantity, selectedAttr, paymentType]);
+  }, [selectedAmount, customAmount, quantity, selectedAttr]);
 
   const upsellTotal = useMemo(() => {
     if (!campaign) return 0;
@@ -213,17 +226,22 @@ function CampaignDetailApi({ slug: slugProp }: { slug: string }) {
     paymentType,
     selectedAmount,
     customAmount,
-    selectedInterval,
+    selectedPresetDescription,
+    donorSchedule,
+    showCustomSchedule,
     quantity,
     selectedUpsells,
     customFieldValues,
     finalAmount,
     upsellTotal,
     onSelectAttribute: handleSelectAttribute,
-    onSetPaymentType: setPaymentType,
-    onSetSelectedAmount: setSelectedAmount,
+    onSetSelectedAmount: (amount: number, description?: string) => {
+      setSelectedAmount(amount);
+      setSelectedPresetDescription(description ?? "");
+    },
     onSetCustomAmount: setCustomAmount,
-    onSetSelectedInterval: setSelectedInterval,
+    onSetDonorSchedule: setDonorSchedule,
+    onSetShowCustomSchedule: setShowCustomSchedule,
     onSetQuantity: setQuantity,
     onToggleUpsell: toggleUpsell,
     onSetCustomFieldValue: (id: string, val: string) =>

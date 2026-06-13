@@ -58,8 +58,25 @@ export async function createPaymentIntent(req: Request, res: Response) {
   }
 }
 
-function stripeRecurringFromFrequency(frequency: string): Stripe.PriceCreateParams.Recurring {
+function stripeRecurringFromFrequency(
+  frequency: string,
+  options?: { interval?: string; intervalCount?: number; cancelAt?: number }
+): Stripe.PriceCreateParams.Recurring {
+  if (options?.interval) {
+    const interval = options.interval as Stripe.PriceCreateParams.Recurring["interval"];
+    const intervalCount = Math.max(1, Number(options.intervalCount ?? 1));
+    return intervalCount > 1 ? { interval, interval_count: intervalCount } : { interval };
+  }
+
+  const customMatch = /^custom:(\d+):(day|week|month|year)$/.exec(frequency);
+  if (customMatch) {
+    const interval = customMatch[2] as Stripe.PriceCreateParams.Recurring["interval"];
+    const intervalCount = Number(customMatch[1]);
+    return intervalCount > 1 ? { interval, interval_count: intervalCount } : { interval };
+  }
+
   const f = frequency === "annually" ? "yearly" : frequency;
+  if (f === "daily") return { interval: "day" };
   if (f === "weekly") return { interval: "week" };
   if (f === "yearly") return { interval: "year" };
   if (f === "quarterly") return { interval: "month", interval_count: 3 };
@@ -73,6 +90,9 @@ export async function createSubscriptionCheckout(req: Request, res: Response) {
       amount,
       currency,
       frequency,
+      interval,
+      intervalCount,
+      cancelAt,
       donorEmail,
       donorName,
       recurringDonationId,
@@ -97,11 +117,14 @@ export async function createSubscriptionCheckout(req: Request, res: Response) {
     const price = await stripe.prices.create({
       unit_amount: Math.round(Number(amount) * 100),
       currency: (currency || "gbp").toLowerCase(),
-      recurring: stripeRecurringFromFrequency(frequency || "monthly"),
+      recurring: stripeRecurringFromFrequency(frequency || "monthly", {
+        interval,
+        intervalCount,
+      }),
       product_data: { name: "Recurring Donation" },
     });
 
-    const subscription = await stripe.subscriptions.create({
+    const subscriptionParams: Stripe.SubscriptionCreateParams = {
       customer: customer.id,
       items: [{ price: price.id }],
       payment_behavior: "default_incomplete",
@@ -115,7 +138,13 @@ export async function createSubscriptionCheckout(req: Request, res: Response) {
         donationId: donationId || "",
         campaignId: campaignId || "",
       },
-    });
+    };
+
+    if (cancelAt) {
+      subscriptionParams.cancel_at = Number(cancelAt);
+    }
+
+    const subscription = await stripe.subscriptions.create(subscriptionParams);
 
     const invoice = subscription.latest_invoice as Stripe.Invoice;
     const paymentIntent = invoice.payment_intent as Stripe.PaymentIntent;

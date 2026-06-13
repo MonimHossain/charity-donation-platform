@@ -27,7 +27,7 @@ import {
   fetchPaymentsConfig,
   getApiErrorMessage,
 } from "@/lib/api";
-import { isRecurringFrequency } from "@/lib/stripe-recurring";
+import { isRecurringFrequency, parseStripeRecurringParams } from "@/lib/stripe-recurring";
 import { StripeCheckoutForm } from "@/components/payments/StripeCheckoutForm";
 import { clearDonationCart, useDonationCart } from "@/lib/stores/donationCartStore";
 import CheckoutGiftAidStep from "@/components/donation/CheckoutGiftAidStep";
@@ -182,7 +182,20 @@ function DonationCheckoutContent() {
     paymentPrepareAttempted.current = false;
   }
 
-  const checkoutFrequency = monthlyGift ? "monthly" : "single";
+  const checkoutRecurringParams = useMemo(() => {
+    const line = items.find((i) => i.recurringFrequency);
+    const params = parseStripeRecurringParams(line?.recurringFrequency ?? "single");
+    if (line?.recurringCancelAt) {
+      params.cancelAt = line.recurringCancelAt;
+    }
+    return params;
+  }, [items]);
+
+  const checkoutFrequency = useMemo(() => {
+    const lineFreq = items.find((i) => i.recurringFrequency)?.recurringFrequency;
+    if (lineFreq) return lineFreq;
+    return monthlyGift ? "monthly" : "single";
+  }, [items, monthlyGift]);
 
   const redirectToThankYou = (donationId?: string) => {
     clear();
@@ -705,6 +718,9 @@ function DonationCheckoutContent() {
                     currencySymbol={currencyInfo.symbol}
                     currencyCode={currency}
                     frequency={checkoutFrequency}
+                    recurringInterval={checkoutRecurringParams.interval}
+                    recurringIntervalCount={checkoutRecurringParams.intervalCount}
+                    recurringCancelAt={checkoutRecurringParams.cancelAt}
                     recurringDonationId={pendingRecurringDonationId ?? undefined}
                     campaignId={items[0]?.campaignId}
                     onSuccess={() => redirectToThankYou(pendingDonationId)}

@@ -98,7 +98,20 @@ export default function SiteHeader() {
   }, [pathname]);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40);
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        setScrolled((prev) => {
+          const y = window.scrollY;
+          if (!prev && y > 72) return true;
+          if (prev && y < 24) return false;
+          return prev;
+        });
+        ticking = false;
+      });
+    };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -115,14 +128,9 @@ export default function SiteHeader() {
   }, []);
 
   return (
-    <header className="sticky top-0 z-50">
-      {/* Row 1 — full header, collapses smoothly on scroll */}
-      <div
-        aria-hidden={scrolled}
-        className={`bg-background border-b border-border/40 overflow-hidden transition-[height,opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[height,opacity,transform] ${
-          scrolled ? "h-0 opacity-0 -translate-y-1 pointer-events-none" : "h-16 opacity-100 translate-y-0"
-        }`}
-      >
+    <>
+      {/* Top bar — scrolls away naturally (avoids sticky height collapse jitter) */}
+      <div className="bg-background border-b border-border/40">
         <div className="container-wide flex items-center justify-between gap-4 h-16">
           {/* Logo + Achievements */}
           <div className="flex items-center gap-4">
@@ -181,11 +189,12 @@ export default function SiteHeader() {
         </div>
       </div>
 
-      {/* Row 2 — sticky nav */}
+      <header className="sticky top-0 z-50">
+      {/* Sticky nav — fixed height, no collapse animation */}
       <div
-        className={`transition-[background-color,box-shadow,backdrop-filter,border-color] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] border-b ${
+        className={`transition-[background-color,box-shadow,backdrop-filter,border-color] duration-300 ease-out border-b ${
           scrolled
-            ? "bg-background/85 backdrop-blur-xl shadow-[0_1px_0_0_hsl(var(--border)/0.4)] border-border/30"
+            ? "bg-background/90 backdrop-blur-xl shadow-[0_1px_0_0_hsl(var(--border)/0.4)] border-border/30"
             : "bg-background border-border/40"
         }`}
       >
@@ -350,5 +359,6 @@ export default function SiteHeader() {
         </div>
       </div>
     </header>
+    </>
   );
 }

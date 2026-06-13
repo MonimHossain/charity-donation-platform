@@ -23,6 +23,10 @@ export type DonationCartItem = {
   description: string;
   campaignId?: string;
   donationType?: string;
+  /** Recurring checkout frequency (e.g. monthly, custom:28:day). */
+  recurringFrequency?: string;
+  /** Stripe cancel_at unix timestamp when admin set subscription end date. */
+  recurringCancelAt?: number;
   /** Snapshot of campaign checkout toggles when the item was added. */
   checkoutSettings?: CheckoutSettings;
   /** Snapshot of active campaign upsells when the item was added. */

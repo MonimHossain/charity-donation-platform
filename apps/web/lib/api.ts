@@ -305,6 +305,9 @@ export async function createStripeSubscriptionCheckout(payload: {
   amount: number;
   currency: string;
   frequency: string;
+  interval?: string;
+  intervalCount?: number;
+  cancelAt?: number;
   donorEmail: string;
   donorName: string;
   recurringDonationId?: string;

@@ -49,33 +49,18 @@ import {
   type FidyaKaffarahConfig,
   type RamadanSplitConfig,
 } from "@/lib/campaign-experience";
+import {
+  DEFAULT_REGULAR_PAYMENT_CONFIG,
+  DEFAULT_SINGLE_PAYMENT_CONFIG,
+  type PresetAmount,
+  type RecurrenceConfig,
+  type RegularPaymentConfig,
+  type SinglePaymentConfig,
+  normalizeRegularPaymentConfig,
+  normalizeSinglePaymentConfig,
+} from "@/lib/campaign-payment-config";
 
 // ── Types ──
-
-interface SinglePaymentConfig {
-  priceType: "preset" | "custom" | "both";
-  presetAmounts: number[];
-  minAmount: number;
-  maxAmount: number;
-}
-
-interface RegularPresetAmount {
-  amount: number;
-  cause: string;
-  defaultDuration?: number;
-}
-
-interface RegularPaymentConfig {
-  allowedIntervals: string[];
-  durationType: "never_ends" | "fixed_duration";
-  fixedDurationValue?: number;
-  fixedDurationType?: "months" | "payments" | "date";
-  endDate?: string;
-  presetAmounts: RegularPresetAmount[];
-  allowCustomAmount: boolean;
-  customMinAmount: number;
-  customMaxAmount: number;
-}
 
 interface QuantityConfig {
   quantityLabel: string;
@@ -214,19 +199,14 @@ function fromDatetimeLocalValue(value: string) {
 }
 
 const defaultSinglePaymentConfig: SinglePaymentConfig = {
-  priceType: "both",
-  presetAmounts: [10, 25, 50, 100],
-  minAmount: 1,
-  maxAmount: 10000,
+  ...DEFAULT_SINGLE_PAYMENT_CONFIG,
+  presetAmounts: DEFAULT_SINGLE_PAYMENT_CONFIG.presetAmounts.map((p) => ({ ...p })),
 };
 
 const defaultRegularPaymentConfig: RegularPaymentConfig = {
-  allowedIntervals: ["monthly"],
-  durationType: "never_ends",
-  presetAmounts: [],
-  allowCustomAmount: true,
-  customMinAmount: 5,
-  customMaxAmount: 5000,
+  ...DEFAULT_REGULAR_PAYMENT_CONFIG,
+  presetAmounts: DEFAULT_REGULAR_PAYMENT_CONFIG.presetAmounts.map((p) => ({ ...p })),
+  recurrence: { ...DEFAULT_REGULAR_PAYMENT_CONFIG.recurrence },
 };
 
 const defaultQuantityConfig: QuantityConfig = {
@@ -245,8 +225,14 @@ function newAttribute(): CampaignAttribute {
     enableSinglePayment: true,
     enableRegularPayment: false,
     enableQuantity: false,
-    singlePaymentConfig: { ...defaultSinglePaymentConfig, presetAmounts: [10, 25, 50, 100] },
-    regularPaymentConfig: { ...defaultRegularPaymentConfig, presetAmounts: [] },
+    singlePaymentConfig: {
+      ...defaultSinglePaymentConfig,
+      presetAmounts: defaultSinglePaymentConfig.presetAmounts.map((p) => ({ ...p })),
+    },
+    regularPaymentConfig: {
+      ...defaultRegularPaymentConfig,
+      presetAmounts: defaultRegularPaymentConfig.presetAmounts.map((p) => ({ ...p })),
+    },
     quantityConfig: { ...defaultQuantityConfig },
     customFields: [],
   };
@@ -426,10 +412,25 @@ function buildWizardSteps(form: CampaignForm): WizardStep[] {
 }
 
 function normalizeAttributePayment(attr: CampaignAttribute): CampaignAttribute {
-  if (attr.enableQuantity && !attr.enableRegularPayment) {
-    return { ...attr, enableQuantity: false };
+  const singlePaymentConfig = normalizeSinglePaymentConfig(attr.singlePaymentConfig);
+  const regularPaymentConfig = normalizeRegularPaymentConfig(attr.regularPaymentConfig);
+
+  let enableSinglePayment = attr.enableSinglePayment;
+  let enableRegularPayment = attr.enableRegularPayment;
+  if (enableSinglePayment && enableRegularPayment) {
+    enableRegularPayment = false;
   }
-  return attr;
+  if (!enableSinglePayment && !enableRegularPayment) {
+    enableSinglePayment = true;
+  }
+
+  return {
+    ...attr,
+    enableSinglePayment,
+    enableRegularPayment,
+    singlePaymentConfig,
+    regularPaymentConfig,
+  };
 }
 
 function normalizeCampaignAttributes(attributes: CampaignAttribute[]) {
@@ -517,19 +518,26 @@ export default function CampaignsPage() {
       experienceConfig: (c as Campaign & { experienceConfig?: CampaignForm["experienceConfig"] }).experienceConfig
         ? { ...(c as Campaign & { experienceConfig?: CampaignForm["experienceConfig"] }).experienceConfig! }
         : {},
-      attributes: (c.attributes || []).map((attr) => ({
-        ...attr,
-        singlePaymentConfig: {
-          ...attr.singlePaymentConfig,
-          presetAmounts: [...attr.singlePaymentConfig.presetAmounts],
-        },
-        regularPaymentConfig: {
-          ...attr.regularPaymentConfig,
-          presetAmounts: [...attr.regularPaymentConfig.presetAmounts],
-        },
-        quantityConfig: { ...attr.quantityConfig },
-        customFields: (attr.customFields || []).map((field) => ({ ...field, options: [...field.options] })),
-      })),
+      attributes: (c.attributes || []).map((attr) => {
+        const normalized = normalizeAttributePayment(attr as CampaignAttribute);
+        return {
+          ...normalized,
+          singlePaymentConfig: {
+            ...normalized.singlePaymentConfig,
+            presetAmounts: normalized.singlePaymentConfig.presetAmounts.map((p) => ({ ...p })),
+          },
+          regularPaymentConfig: {
+            ...normalized.regularPaymentConfig,
+            presetAmounts: normalized.regularPaymentConfig.presetAmounts.map((p) => ({ ...p })),
+            recurrence: { ...normalized.regularPaymentConfig.recurrence },
+          },
+          quantityConfig: { ...normalized.quantityConfig },
+          customFields: (normalized.customFields || []).map((field) => ({
+            ...field,
+            options: [...field.options],
+          })),
+        };
+      }),
       upsells: (c.upsells || []).map((upsell) => ({ ...upsell })),
       fundraiserSettings: { ...defaultForm.fundraiserSettings, ...(c.fundraiserSettings || {}) },
       checkoutSettings: { ...defaultForm.checkoutSettings, ...(c.checkoutSettings || {}) },
@@ -1825,13 +1833,151 @@ function AttributeEditor({
     onChange({ ...attribute, [key]: value });
   }
 
-  function setRegularPaymentEnabled(enabled: boolean) {
+  function setPaymentType(type: "single" | "regular") {
     onChange({
       ...attribute,
-      enableRegularPayment: enabled,
-      enableQuantity: enabled ? attribute.enableQuantity : false,
+      enableSinglePayment: type === "single",
+      enableRegularPayment: type === "regular",
     });
   }
+
+  function updatePresetAmounts(
+    configKey: "singlePaymentConfig" | "regularPaymentConfig",
+    presetAmounts: PresetAmount[]
+  ) {
+    update(configKey, { ...attribute[configKey], presetAmounts });
+  }
+
+  function renderPresetAmountEditor(
+    configKey: "singlePaymentConfig" | "regularPaymentConfig",
+    config: SinglePaymentConfig | RegularPaymentConfig
+  ) {
+    return (
+      <div className="space-y-2">
+        <Label className="text-xs">Preset Amounts</Label>
+        <p className="text-[11px] text-muted-foreground">
+          Optional descriptions appear on the donation page under each amount (e.g. &ldquo;Cooked meals for a
+          family&rdquo;).
+        </p>
+        <div className="space-y-2">
+          {config.presetAmounts.map((preset, pi) => (
+            <div key={pi} className="flex flex-wrap items-start gap-2 rounded-lg border px-2 py-2 bg-muted/30">
+              <Input
+                type="number"
+                value={preset.amount}
+                onChange={(e) => {
+                  const arr = [...config.presetAmounts];
+                  arr[pi] = { ...arr[pi], amount: Number(e.target.value) };
+                  updatePresetAmounts(configKey, arr);
+                }}
+                className="h-8 w-24 text-xs"
+                placeholder="Amount"
+              />
+              <Input
+                value={preset.description ?? ""}
+                onChange={(e) => {
+                  const arr = [...config.presetAmounts];
+                  arr[pi] = {
+                    amount: arr[pi]?.amount ?? 0,
+                    description: e.target.value || undefined,
+                  };
+                  updatePresetAmounts(configKey, arr);
+                }}
+                className="h-8 flex-1 min-w-[160px] text-xs"
+                placeholder="Description (optional)"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  updatePresetAmounts(
+                    configKey,
+                    config.presetAmounts.filter((_, i) => i !== pi)
+                  );
+                }}
+                className="text-destructive hover:text-destructive/80 p-1"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8"
+          onClick={() =>
+            updatePresetAmounts(configKey, [...config.presetAmounts, { amount: 0 }])
+          }
+        >
+          <Plus className="h-3 w-3 mr-1" /> Add amount
+        </Button>
+      </div>
+    );
+  }
+
+  function renderPriceTypeConfig(
+    configKey: "singlePaymentConfig" | "regularPaymentConfig",
+    config: SinglePaymentConfig | RegularPaymentConfig,
+    title: string
+  ) {
+    return (
+      <div className="p-4 rounded-xl border space-y-3">
+        <h4 className="text-sm font-semibold">{title}</h4>
+        <div className="space-y-2">
+          <Label className="text-xs">Price Type</Label>
+          <select
+            value={config.priceType}
+            onChange={(e) =>
+              update(configKey, {
+                ...config,
+                priceType: e.target.value as SinglePaymentConfig["priceType"],
+              })
+            }
+            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+          >
+            <option value="preset">Preset Only</option>
+            <option value="custom">Custom Only</option>
+            <option value="both">Both (Preset + Custom)</option>
+          </select>
+        </div>
+        {(config.priceType === "preset" || config.priceType === "both") &&
+          renderPresetAmountEditor(configKey, config)}
+        {(config.priceType === "custom" || config.priceType === "both") && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label className="text-xs">Min Amount</Label>
+              <Input
+                type="number"
+                value={config.minAmount}
+                onChange={(e) =>
+                  update(configKey, { ...config, minAmount: Number(e.target.value) })
+                }
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Max Amount</Label>
+              <Input
+                type="number"
+                value={config.maxAmount}
+                onChange={(e) =>
+                  update(configKey, { ...config, maxAmount: Number(e.target.value) })
+                }
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function updateRecurrence(patch: Partial<RecurrenceConfig>) {
+    update("regularPaymentConfig", {
+      ...attribute.regularPaymentConfig,
+      recurrence: { ...attribute.regularPaymentConfig.recurrence, ...patch },
+    });
+  }
+
+  const paymentType = attribute.enableRegularPayment ? "regular" : "single";
 
   return (
     <div className="rounded-xl border bg-background">
@@ -1845,7 +1991,7 @@ function AttributeEditor({
             {[
               attribute.enableSinglePayment && "Single",
               attribute.enableRegularPayment && "Regular",
-              attribute.enableRegularPayment && attribute.enableQuantity && "Qty",
+              attribute.enableQuantity && "Qty",
             ]
               .filter(Boolean)
               .join(" · ") || "No payment types"}
@@ -1891,130 +2037,141 @@ function AttributeEditor({
             <FilePicker value={attribute.image} onChange={(url) => update("image", url)} accept="image" />
           </div>
 
-          {/* Payment type toggles */}
+          {/* Payment type — single or regular (mutually exclusive) */}
           <div className="space-y-3 p-3 rounded-lg bg-muted/30">
+            <Label className="text-xs font-medium">Payment type</Label>
             <div className="flex flex-wrap gap-6">
-              <label className="flex items-center gap-2 text-sm">
-                <Switch
-                  checked={attribute.enableSinglePayment}
-                  onCheckedChange={(v) => update("enableSinglePayment", v)}
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="radio"
+                  name={`payment-type-${attribute.id}`}
+                  checked={paymentType === "single"}
+                  onChange={() => setPaymentType("single")}
+                  className="h-4 w-4 accent-primary"
                 />
-                Single Payment
+                Single payment
               </label>
-              <label className="flex items-center gap-2 text-sm">
-                <Switch checked={attribute.enableRegularPayment} onCheckedChange={setRegularPaymentEnabled} />
-                Regular Payment
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="radio"
+                  name={`payment-type-${attribute.id}`}
+                  checked={paymentType === "regular"}
+                  onChange={() => setPaymentType("regular")}
+                  className="h-4 w-4 accent-primary"
+                />
+                Regular payment
               </label>
             </div>
-            {attribute.enableRegularPayment && (
-              <>
-                <p className="text-xs text-muted-foreground">
-                  Donors choose the recurring frequency and amount on the campaign page — no admin setup needed.
-                </p>
-                <label className="flex items-center gap-2 text-sm cursor-pointer pt-2 border-t border-border/60">
-                  <input
-                    type="checkbox"
-                    checked={attribute.enableQuantity}
-                    onChange={(e) => update("enableQuantity", e.target.checked)}
-                    className="h-3.5 w-3.5 rounded accent-primary"
-                  />
-                  Enable quantity selector
-                </label>
-              </>
-            )}
+            <label className="flex items-center gap-2 text-sm cursor-pointer pt-2 border-t border-border/60">
+              <input
+                type="checkbox"
+                checked={attribute.enableQuantity}
+                onChange={(e) => update("enableQuantity", e.target.checked)}
+                className="h-3.5 w-3.5 rounded accent-primary"
+              />
+              Enable quantity selector
+            </label>
           </div>
 
-          {/* Single payment config */}
-          {attribute.enableSinglePayment && (
-            <div className="p-4 rounded-xl border space-y-3">
-              <h4 className="text-sm font-semibold">Single Payment Configuration</h4>
-              <div className="space-y-2">
-                <Label className="text-xs">Price Type</Label>
-                <select
-                  value={attribute.singlePaymentConfig.priceType}
-                  onChange={(e) =>
-                    update("singlePaymentConfig", { ...attribute.singlePaymentConfig, priceType: e.target.value as any })
-                  }
-                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                >
-                  <option value="preset">Preset Only</option>
-                  <option value="custom">Custom Only</option>
-                  <option value="both">Both (Preset + Custom)</option>
-                </select>
-              </div>
-              {(attribute.singlePaymentConfig.priceType === "preset" || attribute.singlePaymentConfig.priceType === "both") && (
+          {paymentType === "single" &&
+            renderPriceTypeConfig(
+              "singlePaymentConfig",
+              attribute.singlePaymentConfig,
+              "Single Payment Configuration"
+            )}
+
+          {paymentType === "regular" && (
+            <>
+              {renderPriceTypeConfig(
+                "regularPaymentConfig",
+                attribute.regularPaymentConfig,
+                "Regular Payment Configuration"
+              )}
+
+              <div className="p-4 rounded-xl border space-y-4">
+                <h4 className="text-sm font-semibold">Recurring schedule</h4>
                 <div className="space-y-2">
-                  <Label className="text-xs">Preset Amounts</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {attribute.singlePaymentConfig.presetAmounts.map((amt, pi) => (
-                      <div key={pi} className="flex items-center gap-1 rounded-lg border px-2 py-1 bg-muted/30">
-                        <Input
-                          type="number"
-                          value={amt}
-                          onChange={(e) => {
-                            const arr = [...attribute.singlePaymentConfig.presetAmounts];
-                            arr[pi] = Number(e.target.value);
-                            update("singlePaymentConfig", { ...attribute.singlePaymentConfig, presetAmounts: arr });
-                          }}
-                          className="h-7 w-20 text-xs"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const arr = attribute.singlePaymentConfig.presetAmounts.filter((_, i) => i !== pi);
-                            update("singlePaymentConfig", { ...attribute.singlePaymentConfig, presetAmounts: arr });
-                          }}
-                          className="text-destructive hover:text-destructive/80"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ))}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-9"
-                      onClick={() =>
-                        update("singlePaymentConfig", {
-                          ...attribute.singlePaymentConfig,
-                          presetAmounts: [...attribute.singlePaymentConfig.presetAmounts, 0],
+                  <Label className="text-xs">Users will pay every</Label>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Input
+                      type="number"
+                      min={1}
+                      value={attribute.regularPaymentConfig.recurrence.intervalCount}
+                      onChange={(e) =>
+                        updateRecurrence({ intervalCount: Math.max(1, Number(e.target.value)) })
+                      }
+                      className="h-9 w-20"
+                    />
+                    <select
+                      value={attribute.regularPaymentConfig.recurrence.intervalUnit}
+                      onChange={(e) =>
+                        updateRecurrence({
+                          intervalUnit: e.target.value as RecurrenceConfig["intervalUnit"],
                         })
                       }
+                      className="h-9 rounded-md border border-input bg-background px-3 text-sm"
                     >
-                      <Plus className="h-3 w-3" />
-                    </Button>
+                      <option value="day">day(s)</option>
+                      <option value="week">week(s)</option>
+                      <option value="month">month(s)</option>
+                      <option value="year">year(s)</option>
+                    </select>
                   </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Set the length of each recurring subscription period to daily, weekly, monthly or
+                    annually.
+                  </p>
                 </div>
-              )}
-              {(attribute.singlePaymentConfig.priceType === "custom" || attribute.singlePaymentConfig.priceType === "both") && (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Min Amount</Label>
-                    <Input
-                      type="number"
-                      value={attribute.singlePaymentConfig.minAmount}
-                      onChange={(e) =>
-                        update("singlePaymentConfig", { ...attribute.singlePaymentConfig, minAmount: Number(e.target.value) })
-                      }
-                    />
+
+                <div className="space-y-2">
+                  <Label className="text-xs">Subscription ends</Label>
+                  <div className="flex flex-wrap gap-4">
+                    <label className="flex items-center gap-2 text-sm cursor-pointer">
+                      <input
+                        type="radio"
+                        name={`sub-end-${attribute.id}`}
+                        checked={
+                          attribute.regularPaymentConfig.recurrence.durationType === "never_ends"
+                        }
+                        onChange={() => updateRecurrence({ durationType: "never_ends", endDate: undefined })}
+                        className="h-4 w-4 accent-primary"
+                      />
+                      Never
+                    </label>
+                    <label className="flex items-center gap-2 text-sm cursor-pointer">
+                      <input
+                        type="radio"
+                        name={`sub-end-${attribute.id}`}
+                        checked={
+                          attribute.regularPaymentConfig.recurrence.durationType === "end_date"
+                        }
+                        onChange={() => updateRecurrence({ durationType: "end_date" })}
+                        className="h-4 w-4 accent-primary"
+                      />
+                      Set an end time
+                    </label>
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Max Amount</Label>
+                  {attribute.regularPaymentConfig.recurrence.durationType === "end_date" && (
                     <Input
-                      type="number"
-                      value={attribute.singlePaymentConfig.maxAmount}
+                      type="datetime-local"
+                      value={toDatetimeLocalValue(
+                        attribute.regularPaymentConfig.recurrence.endDate ?? ""
+                      )}
                       onChange={(e) =>
-                        update("singlePaymentConfig", { ...attribute.singlePaymentConfig, maxAmount: Number(e.target.value) })
+                        updateRecurrence({ endDate: fromDatetimeLocalValue(e.target.value) })
                       }
+                      className="h-9 max-w-xs"
                     />
-                  </div>
+                  )}
+                  <p className="text-[11px] text-muted-foreground">
+                    Choose if the subscription has an end time or not.
+                  </p>
                 </div>
-              )}
-            </div>
+              </div>
+            </>
           )}
 
-          {/* Quantity config — regular payment only */}
-          {attribute.enableRegularPayment && attribute.enableQuantity && (
+          {attribute.enableQuantity && (
             <div className="p-4 rounded-xl border space-y-3">
               <h4 className="text-sm font-semibold">Quantity Configuration</h4>
               <div className="grid gap-3 sm:grid-cols-3">
