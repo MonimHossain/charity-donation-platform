@@ -460,6 +460,14 @@ export async function fetchAdminProfile() {
   return data;
 }
 
+export async function adminChangePassword(currentPassword: string, newPassword: string) {
+  const { data } = await api.put("/admin/profile/password", {
+    currentPassword,
+    newPassword,
+  });
+  return data;
+}
+
 // ═══════════════════════════════════
 // ADMIN DONATIONS
 // ═══════════════════════════════════

@@ -7,7 +7,6 @@ import { Mail, Lock, LogIn, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { adminLogin } from "@/lib/api";
 import { USE_MOCK_DATA } from "@/lib/config";
 import {
@@ -111,7 +110,7 @@ export default function AdminLoginPage() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="admin@charityplatform.org"
+                  placeholder="you@example.org"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10"
@@ -148,12 +147,6 @@ export default function AdminLoginPage() {
               )}
             </Button>
           </form>
-
-          <Separator className="my-6" />
-
-          <p className="text-center text-xs text-muted-foreground">
-            Demo credentials: <span className="font-medium">admin@charityplatform.org</span> / <span className="font-medium">Admin123!</span>
-          </p>
         </div>
       </div>
     </div>

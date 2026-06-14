@@ -1,6 +1,11 @@
 import { Router } from "express";
 import multer from "multer";
-import { loginAdmin, getAdminProfile, logoutAdmin } from "../modules/admin-auth/adminAuth.controller.js";
+import {
+  loginAdmin,
+  getAdminProfile,
+  logoutAdmin,
+  changeAdminPassword,
+} from "../modules/admin-auth/adminAuth.controller.js";
 import { requireAdmin } from "../modules/admin-auth/adminAuth.middleware.js";
 
 const upload = multer({
@@ -341,6 +346,7 @@ router.get("/blog/categories", async (req, res) => {
 router.post("/admin/login", loginAdmin);
 router.post("/admin/logout", requireAdmin, logoutAdmin);
 router.get("/admin/profile", requireAdmin, getAdminProfile);
+router.put("/admin/profile/password", requireAdmin, changeAdminPassword);
 
 // ═══════════════════════════════════
 // ADMIN CAMPAIGNS

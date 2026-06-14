@@ -90,6 +90,47 @@ export async function getAdminProfile(req: Request, res: Response) {
   }
 }
 
+export async function changeAdminPassword(req: Request, res: Response) {
+  try {
+    if (!requireDatabase(res)) return;
+    const adminId = (req as any).admin?.id;
+    if (!adminId) return res.status(401).json({ message: "Unauthorized" });
+
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res
+        .status(400)
+        .json({ message: "Current password and new password are required" });
+    }
+    if (String(newPassword).length < 8) {
+      return res.status(400).json({ message: "New password must be at least 8 characters" });
+    }
+
+    const repo = AppDataSource.getRepository(Admin);
+    const admin = await repo.findOne({ where: { id: adminId } });
+    if (!admin) return res.status(404).json({ message: "Admin not found" });
+
+    const valid = await bcrypt.compare(currentPassword, admin.passwordHash);
+    if (!valid) {
+      return res.status(401).json({ message: "Current password is incorrect" });
+    }
+
+    admin.passwordHash = await bcrypt.hash(newPassword, 12);
+    await repo.save(admin);
+
+    await logAudit(req, {
+      action: "change_password",
+      entityType: "admin",
+      entityId: admin.id,
+    });
+
+    return res.json({ message: "Password changed successfully" });
+  } catch (error) {
+    console.error("changeAdminPassword error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
 export async function logoutAdmin(req: Request, res: Response) {
   await logAudit(req, { action: "logout", entityType: "admin", entityId: (req as any).admin?.id });
   res.clearCookie("admin_token");

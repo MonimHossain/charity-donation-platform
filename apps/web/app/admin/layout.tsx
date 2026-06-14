@@ -21,7 +21,6 @@ import {
   X,
   ChevronDown,
   Heart,
-  User,
   BarChart3,
   Users,
   Repeat,
@@ -49,6 +48,7 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { fetchAdminProfile, adminLogout } from "@/lib/api";
 import { AdminSessionProvider } from "@/components/admin/AdminSessionProvider";
+import { AdminAccountMenu } from "@/components/admin/AdminAccountMenu";
 import {
   DEFAULT_DEMO_ADMIN_PROFILE,
   isMockAdminSession,
@@ -393,19 +393,10 @@ export default function AdminLayout({
 
           <div className="flex-1" />
 
-          <div className="flex items-center gap-3">
-            <div className="text-right hidden sm:block">
-              <p className="text-sm font-medium leading-tight">
-                {admin?.name || (admin as any)?.fullName || "Admin"}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {admin?.email || ""}
-              </p>
-            </div>
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <User className="h-4 w-4" />
-            </div>
-          </div>
+          <AdminAccountMenu
+            name={admin?.name || (admin as { fullName?: string })?.fullName}
+            email={admin?.email}
+          />
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">
