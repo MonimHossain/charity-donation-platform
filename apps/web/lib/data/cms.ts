@@ -15,6 +15,7 @@ import {
   fetchFaqs,
   fetchSiteSettings,
   fetchPublicStats,
+  fetchBanners,
 } from "@/lib/api";
 import { queryKeys } from "./query-keys";
 
@@ -84,6 +85,34 @@ export function useImpactStats() {
         /* fall through */
       }
       return [];
+    },
+  });
+}
+
+export interface EmergencyBannerData {
+  id: string;
+  title: string;
+  content: string;
+  type: string;
+  ctaText?: string;
+  ctaUrl?: string;
+  backgroundColor?: string;
+  textColor?: string;
+  endDate?: string;
+  dismissible?: boolean;
+}
+
+export function useEmergencyBanner() {
+  return useQuery({
+    queryKey: ["cms", "emergency-banner"],
+    queryFn: async (): Promise<EmergencyBannerData[]> => {
+      if (USE_MOCK_DATA) return [];
+      try {
+        const data = await fetchBanners("emergency_appeal");
+        return Array.isArray(data) ? data : [];
+      } catch {
+        return [];
+      }
     },
   });
 }

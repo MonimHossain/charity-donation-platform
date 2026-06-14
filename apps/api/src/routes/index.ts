@@ -316,8 +316,8 @@ router.get("/cms/navigation", async (req, res) => {
   return getNavigationMenus(req, res);
 });
 router.get("/cms/banners", async (req, res) => {
-  const { getBanners } = await import("../modules/cms/cmsExtended.controller.js");
-  return getBanners(req, res);
+  const { getPublicBanners } = await import("../modules/cms/cmsExtended.controller.js");
+  return getPublicBanners(req, res);
 });
 router.get("/cms/faqs", async (req, res) => {
   const { getFaqs } = await import("../modules/cms/cmsExtended.controller.js");
@@ -416,6 +416,10 @@ router.delete("/admin/cms/navigation/:id", requireAdmin, async (req, res) => {
 router.post("/admin/cms/navigation/reorder", requireAdmin, async (req, res) => {
   const { reorderNavigationMenus } = await import("../modules/cms/cmsExtended.controller.js");
   return reorderNavigationMenus(req, res);
+});
+router.get("/admin/cms/banners", requireAdmin, async (req, res) => {
+  const { getBanners } = await import("../modules/cms/cmsExtended.controller.js");
+  return getBanners(req, res);
 });
 router.post("/admin/cms/banners", requireAdmin, async (req, res) => {
   const { createBanner } = await import("../modules/cms/cmsExtended.controller.js");

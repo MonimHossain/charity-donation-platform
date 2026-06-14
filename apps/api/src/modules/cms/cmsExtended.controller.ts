@@ -88,6 +88,26 @@ export async function getBanners(req: Request, res: Response) {
   }
 }
 
+function isBannerWithinSchedule(banner: Banner, now = new Date()) {
+  if (banner.startDate && new Date(banner.startDate) > now) return false;
+  if (banner.endDate && new Date(banner.endDate) < now) return false;
+  return true;
+}
+
+export async function getPublicBanners(req: Request, res: Response) {
+  try {
+    const repo = AppDataSource.getRepository(Banner);
+    const where: Record<string, any> = { isActive: true };
+    if (req.query.type) where.type = req.query.type;
+    const banners = await repo.find({ where, order: { sortOrder: "ASC" } });
+    const now = new Date();
+    const active = banners.filter((b) => isBannerWithinSchedule(b, now));
+    return res.json(active);
+  } catch (error) {
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
 export async function createBanner(req: Request, res: Response) {
   try {
     const repo = AppDataSource.getRepository(Banner);

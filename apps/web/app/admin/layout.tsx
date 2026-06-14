@@ -36,12 +36,6 @@ import {
   Activity,
   Clock,
   Calculator,
-  ClipboardList,
-  AlertTriangle,
-  MessageSquare,
-  Inbox,
-  History,
-  Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -74,16 +68,6 @@ const navItems: NavItem[] = [
   { label: "Automated", href: "/admin/automated", icon: Clock },
   { label: "Users", href: "/admin/users", icon: Users },
   {
-    label: "Submissions",
-    href: "/admin/applications",
-    icon: ClipboardList,
-    children: [
-      { label: "Applications", href: "/admin/applications", icon: ClipboardList },
-      { label: "Concerns", href: "/admin/concerns", icon: AlertTriangle },
-      { label: "Contact Messages", href: "/admin/contact-messages", icon: MessageSquare },
-    ],
-  },
-  {
     label: "Blog",
     href: "/admin/blog",
     icon: FileText,
@@ -112,18 +96,7 @@ const navItems: NavItem[] = [
     ],
   },
   { label: "Newsletter", href: "/admin/newsletter", icon: Mail },
-  {
-    label: "Admin",
-    href: "/admin/roles",
-    icon: Lock,
-    children: [
-      { label: "Roles", href: "/admin/roles", icon: Lock },
-      { label: "Admin Users", href: "/admin/admin-users", icon: Users },
-      { label: "History", href: "/admin/history", icon: History },
-    ],
-  },
   { label: "Activity Log", href: "/admin/activity", icon: Activity },
-  { label: "Demo logs", href: "/admin/logs", icon: History },
   { label: "Settings", href: "/admin/settings", icon: Settings },
 ];
 

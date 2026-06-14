@@ -30,11 +30,14 @@ interface Banner {
   ctaUrl: string;
   backgroundColor: string;
   textColor: string;
-  imageUrl: string;
+  backgroundImage?: string;
+  imageUrl?: string;
   isActive: boolean;
   startDate: string;
   endDate: string;
   sortOrder: number;
+  dismissible?: boolean;
+  position?: string;
 }
 
 type BannerType = "all" | "banner" | "popup" | "emergency_appeal" | "announcement";
@@ -44,6 +47,13 @@ const typeStyles: Record<string, string> = {
   popup: "bg-violet-100 text-violet-700",
   emergency_appeal: "bg-red-100 text-red-700",
   announcement: "bg-amber-100 text-amber-700",
+};
+
+const typeDefaults: Record<string, { backgroundColor: string; textColor: string; position: string }> = {
+  emergency_appeal: { backgroundColor: "#dc2626", textColor: "#ffffff", position: "top_bar" },
+  announcement: { backgroundColor: "#d97706", textColor: "#ffffff", position: "top_bar" },
+  banner: { backgroundColor: "#1e40af", textColor: "#ffffff", position: "inline" },
+  popup: { backgroundColor: "#6d28d9", textColor: "#ffffff", position: "popup" },
 };
 
 const emptyForm = {
@@ -58,7 +68,27 @@ const emptyForm = {
   isActive: true,
   startDate: "",
   endDate: "",
+  dismissible: true,
+  position: "inline",
 };
+
+function toFormPayload(form: typeof emptyForm) {
+  return {
+    title: form.title,
+    content: form.content,
+    type: form.type,
+    ctaText: form.ctaText || null,
+    ctaUrl: form.ctaUrl || null,
+    backgroundColor: form.backgroundColor,
+    textColor: form.textColor,
+    backgroundImage: form.imageUrl || null,
+    isActive: form.isActive,
+    startDate: form.startDate || null,
+    endDate: form.endDate || null,
+    dismissible: form.dismissible,
+    position: form.position || typeDefaults[form.type]?.position || "inline",
+  };
+}
 
 export default function BannersPage() {
   const [banners, setBanners] = useState<Banner[]>([]);
@@ -89,7 +119,7 @@ export default function BannersPage() {
   const filtered = banners.filter((b) => typeFilter === "all" || b.type === typeFilter);
 
   function openCreate() {
-    setForm(emptyForm);
+    setForm({ ...emptyForm, type: "emergency_appeal", ...typeDefaults.emergency_appeal, ctaText: "Donate now", ctaUrl: "/donate" });
     setEditingId(null);
     setShowModal(true);
   }
@@ -103,10 +133,12 @@ export default function BannersPage() {
       ctaUrl: b.ctaUrl || "",
       backgroundColor: b.backgroundColor || "#1e40af",
       textColor: b.textColor || "#ffffff",
-      imageUrl: b.imageUrl || "",
+      imageUrl: b.backgroundImage || b.imageUrl || "",
       isActive: b.isActive,
       startDate: b.startDate ? b.startDate.split("T")[0] : "",
       endDate: b.endDate ? b.endDate.split("T")[0] : "",
+      dismissible: b.dismissible ?? true,
+      position: b.position || typeDefaults[b.type]?.position || "inline",
     });
     setEditingId(b.id);
     setShowModal(true);
@@ -119,11 +151,12 @@ export default function BannersPage() {
     }
     setSaving(true);
     try {
+      const payload = toFormPayload(form);
       if (editingId) {
-        await api.put(`/admin/cms/banners/${editingId}`, form);
+        await api.put(`/admin/cms/banners/${editingId}`, payload);
         toast.success("Banner updated");
       } else {
-        await api.post("/admin/cms/banners", form);
+        await api.post("/admin/cms/banners", payload);
         toast.success("Banner created");
       }
       setShowModal(false);
@@ -180,7 +213,12 @@ export default function BannersPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold font-serif tracking-tight">Banners &amp; Popups</h1>
-          <p className="text-muted-foreground mt-1">Manage site banners, popups and announcements</p>
+          <p className="text-muted-foreground mt-1">
+            Manage site banners, popups and announcements.{" "}
+            <span className="text-foreground/80">
+              The red top bar on the public site is controlled by an active <strong>Emergency Appeal</strong> banner.
+            </span>
+          </p>
         </div>
         <Button onClick={openCreate}>
           <Plus className="h-4 w-4" /> Create Banner
@@ -294,12 +332,31 @@ export default function BannersPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Type</Label>
-                  <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                  <select
+                    value={form.type}
+                    onChange={(e) => {
+                      const type = e.target.value;
+                      const defaults = typeDefaults[type];
+                      setForm((prev) => ({
+                        ...prev,
+                        type,
+                        ...(defaults
+                          ? { backgroundColor: defaults.backgroundColor, textColor: defaults.textColor, position: defaults.position }
+                          : {}),
+                      }));
+                    }}
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
                     <option value="banner">Banner</option>
                     <option value="popup">Popup</option>
                     <option value="emergency_appeal">Emergency Appeal</option>
                     <option value="announcement">Announcement</option>
                   </select>
+                  {form.type === "emergency_appeal" && (
+                    <p className="text-xs text-muted-foreground">
+                      Shown as the red header bar site-wide. Set an end date to enable the countdown timer.
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="space-y-2">
@@ -349,6 +406,10 @@ export default function BannersPage() {
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} className="h-4 w-4 rounded border-input accent-primary" />
                 Active
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={form.dismissible} onChange={(e) => setForm({ ...form, dismissible: e.target.checked })} className="h-4 w-4 rounded border-input accent-primary" />
+                Visitors can dismiss
               </label>
               <Separator />
               <div className="flex justify-end gap-2">
