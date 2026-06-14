@@ -10,6 +10,7 @@ import CurrencySwitcher from "./CurrencySwitcher";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { USE_MOCK_DATA } from "@/lib/config";
 import { useHeaderNavCampaigns } from "@/lib/data/campaigns";
+import { usePrayerTimes } from "@/lib/hooks/usePrayerTimes";
 
 const mockNav = [
   { href: "/causes/food", label: "Food Aid" },
@@ -31,54 +32,13 @@ const aboutItems = [
   { href: "/contact", label: "Contact" },
 ];
 
-function useIslamicDate() {
-  const [date, setDate] = useState("");
-  useEffect(() => {
-    const d = new Date();
-    try {
-      setDate(
-        d.toLocaleDateString("en-GB", {
-          calendar: "islamic-umalqura" as never,
-          day: "numeric",
-          month: "long",
-          year: "numeric",
-        })
-      );
-    } catch {
-      setDate("");
-    }
-  }, []);
-  return date;
-}
-
-function useNextPrayer() {
-  const [prayer, setPrayer] = useState({ name: "Maghrib", time: "8:42 PM" });
-  useEffect(() => {
-    const prayers = [
-      { name: "Fajr", hour: 4, min: 15 },
-      { name: "Dhuhr", hour: 13, min: 0 },
-      { name: "Asr", hour: 16, min: 45 },
-      { name: "Maghrib", hour: 20, min: 42 },
-      { name: "Isha", hour: 22, min: 15 },
-    ];
-    const now = new Date();
-    const mins = now.getHours() * 60 + now.getMinutes();
-    const next = prayers.find((p) => p.hour * 60 + p.min > mins) || prayers[0];
-    const h = next.hour % 12 || 12;
-    const ampm = next.hour >= 12 ? "PM" : "AM";
-    setPrayer({ name: next.name, time: `${h}:${String(next.min).padStart(2, "0")} ${ampm}` });
-  }, []);
-  return prayer;
-}
-
 export default function SiteHeader() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const pathname = usePathname();
   const [isSignedIn, setIsSignedIn] = useState(false);
-  const islamicDate = useIslamicDate();
-  const nextPrayer = useNextPrayer();
+  const { islamicDate, nextPrayer, location: prayerLocation } = usePrayerTimes();
   const aboutRef = useRef<HTMLDivElement>(null);
   const { data: headerCampaigns } = useHeaderNavCampaigns();
 
@@ -158,13 +118,19 @@ export default function SiteHeader() {
                 </div>
               </div>
             )}
-            <div className="flex items-center gap-2">
-              <Timer className="w-5 h-5 text-accent-deep" />
-              <div className="leading-tight">
-                <div className="text-[11px] text-muted-foreground">Next Prayer</div>
-                <div className="font-semibold text-primary">{nextPrayer.name} at {nextPrayer.time}</div>
+            {nextPrayer && (
+              <div className="flex items-center gap-2">
+                <Timer className="w-5 h-5 text-accent-deep" />
+                <div className="leading-tight">
+                  <div className="text-[11px] text-muted-foreground">
+                    Next Prayer{prayerLocation.label ? `: ${prayerLocation.label.split(",")[0]}` : ""}
+                  </div>
+                  <div className="font-semibold text-primary">
+                    {nextPrayer.name} at {nextPrayer.time}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Right: search, language, currency, basket, account */}

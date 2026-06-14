@@ -150,6 +150,11 @@ export async function fetchQuickDonateConfig() {
   return data;
 }
 
+export async function fetchPrayerTimes(params: Record<string, string>) {
+  const { data } = await api.get("/prayer-times", { params });
+  return data;
+}
+
 export async function fetchAdminQuickDonateOptions() {
   const { data } = await api.get("/admin/quick-donate/options");
   return data;
