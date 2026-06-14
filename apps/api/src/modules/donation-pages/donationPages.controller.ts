@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { routeParam } from "../../helper/requestParams.js";
 import { AppDataSource } from "../../helper/connectDB.js";
 import { DonationPage } from "../../components/donationPage/donationPage.entity.js";
 import { logAudit } from "../../helper/auditLog.js";
@@ -27,7 +28,7 @@ export async function getAdminDonationPages(_req: Request, res: Response) {
 
 export async function getAdminDonationPageById(req: Request, res: Response) {
   try {
-    const page = await repo().findOne({ where: { id: req.params.id } });
+    const page = await repo().findOne({ where: { id: routeParam(req, 'id') } });
     if (!page) return res.status(404).json({ message: "Not found" });
     return res.json(page);
   } catch {
@@ -38,7 +39,7 @@ export async function getAdminDonationPageById(req: Request, res: Response) {
 export async function getDonationPageBySlug(req: Request, res: Response) {
   try {
     const page = await repo().findOne({
-      where: { slug: req.params.slug, status: "published" },
+      where: { slug: routeParam(req, 'slug'), status: "published" },
     });
     if (!page) return res.status(404).json({ message: "Not found" });
     return res.json(page);
@@ -106,7 +107,7 @@ export async function createAdminDonationPage(req: Request, res: Response) {
 
 export async function updateAdminDonationPage(req: Request, res: Response) {
   try {
-    const page = await repo().findOne({ where: { id: req.params.id } });
+    const page = await repo().findOne({ where: { id: routeParam(req, 'id') } });
     if (!page) return res.status(404).json({ message: "Not found" });
     Object.assign(page, req.body);
     await repo().save(page);
@@ -118,7 +119,7 @@ export async function updateAdminDonationPage(req: Request, res: Response) {
 
 export async function deleteAdminDonationPage(req: Request, res: Response) {
   try {
-    const result = await repo().delete({ id: req.params.id });
+    const result = await repo().delete({ id: routeParam(req, 'id') });
     if (!result.affected) return res.status(404).json({ message: "Not found" });
     return res.json({ message: "Deleted" });
   } catch {

@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { routeParam } from "../../helper/requestParams.js";
 import { AppDataSource } from "../../helper/connectDB.js";
 import { BlogPost } from "../../components/blog/blogPost.entity.js";
 import { ILike, Not, IsNull } from "typeorm";
@@ -88,7 +89,7 @@ export async function getPublicBlogPosts(req: Request, res: Response) {
 export async function getPublicBlogPost(req: Request, res: Response) {
   try {
     const post = await repo().findOne({
-      where: { slug: req.params.slug, status: "published" },
+      where: { slug: routeParam(req, 'slug'), status: "published" },
     });
     if (!post) return res.status(404).json({ message: "Post not found" });
     return res.json(post);
@@ -141,7 +142,7 @@ export async function getAdminBlogPosts(req: Request, res: Response) {
 
 export async function getAdminBlogPost(req: Request, res: Response) {
   try {
-    const post = await repo().findOne({ where: { id: req.params.id } });
+    const post = await repo().findOne({ where: { id: routeParam(req, 'id') } });
     if (!post) return res.status(404).json({ message: "Post not found" });
     return res.json(post);
   } catch (error) {
@@ -171,7 +172,7 @@ export async function createBlogPost(req: Request, res: Response) {
       metaTitle: metaTitle || null,
       metaDescription: metaDescription || null,
       isFeatured: isFeatured || false,
-      publishedAt: status === "published" ? new Date() : null,
+      publishedAt: status === "published" ? new Date() : undefined,
     });
 
     await repo().save(post);
@@ -190,7 +191,7 @@ export async function createBlogPost(req: Request, res: Response) {
 
 export async function updateBlogPost(req: Request, res: Response) {
   try {
-    const post = await repo().findOne({ where: { id: req.params.id } });
+    const post = await repo().findOne({ where: { id: routeParam(req, 'id') } });
     if (!post) return res.status(404).json({ message: "Post not found" });
 
     const { title, excerpt, content, featuredImage, author, tags, status, metaTitle, metaDescription, isFeatured } = req.body;
@@ -233,12 +234,12 @@ export async function updateBlogPost(req: Request, res: Response) {
 
 export async function deleteBlogPost(req: Request, res: Response) {
   try {
-    const result = await repo().delete(req.params.id);
+    const result = await repo().delete(routeParam(req, 'id'));
     if (result.affected === 0) return res.status(404).json({ message: "Post not found" });
     await logAudit(req, {
       action: "delete",
       entityType: "blog_post",
-      entityId: req.params.id,
+      entityId: routeParam(req, 'id'),
     });
     return res.json({ message: "Post deleted" });
   } catch (error) {

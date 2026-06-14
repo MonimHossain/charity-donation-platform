@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
+import { signJwt } from "../../helper/jwt.js";
 import { AppDataSource } from "../../helper/connectDB.js";
 import { Admin } from "../../components/admin/admin.entity.js";
 import { logAudit } from "../../helper/auditLog.js";
@@ -38,10 +38,10 @@ export async function loginAdmin(req: Request, res: Response) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    const token = jwt.sign(
+    const token = signJwt(
       { id: admin.id, email: admin.email, role: admin.role },
       JWT_SECRET,
-      { expiresIn: JWT_EXPIRES }
+      JWT_EXPIRES
     );
 
     res.cookie("admin_token", token, {

@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { routeParam } from "../../helper/requestParams.js";
 import { AppDataSource } from "../../helper/connectDB.js";
 import { RecurringDonation } from "../../components/recurringDonation/recurringDonation.entity.js";
 import { ensureDonorUserForDonation } from "../user-auth/userAuth.service.js";
@@ -138,7 +139,7 @@ export async function createRecurringDonation(req: Request, res: Response) {
 
 export async function pauseRecurringDonation(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = routeParam(req, 'id');
     const recurring = await repo().findOneBy({ id });
 
     if (!recurring) {
@@ -168,7 +169,7 @@ export async function pauseRecurringDonation(req: Request, res: Response) {
 
 export async function resumeRecurringDonation(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = routeParam(req, 'id');
     const recurring = await repo().findOneBy({ id });
 
     if (!recurring) {
@@ -198,7 +199,7 @@ export async function resumeRecurringDonation(req: Request, res: Response) {
 
 export async function cancelRecurringDonation(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = routeParam(req, 'id');
     const recurring = await repo().findOneBy({ id });
 
     if (!recurring) {
@@ -228,7 +229,7 @@ export async function cancelRecurringDonation(req: Request, res: Response) {
 
 export async function createRecurringBillingPortal(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = routeParam(req, 'id');
     const recurring = await repo().findOneBy({ id });
     if (!recurring) {
       return res.status(404).json({ message: "Recurring donation not found" });
@@ -252,7 +253,7 @@ export async function createRecurringBillingPortal(req: Request, res: Response) 
 
 export async function updateRecurringPaymentMethod(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = routeParam(req, 'id');
     const { paymentMethod, stripeCustomerId, stripeSubscriptionId, paypalSubscriptionId } = req.body;
 
     const recurring = await repo().findOneBy({ id });

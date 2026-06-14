@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { routeParam } from "../../helper/requestParams.js";
 import { AppDataSource } from "../../helper/connectDB.js";
 import { Donation } from "../../components/donation/donation.entity.js";
 import { Campaign } from "../../components/campaign/campaign.entity.js";
@@ -233,7 +234,7 @@ export async function getDonationStats(_req: Request, res: Response) {
 export async function getDonationStatus(req: Request, res: Response) {
   try {
     const donation = await repo().findOne({
-      where: { id: req.params.id },
+      where: { id: routeParam(req, 'id') },
       select: ["id", "status", "totalAmount", "currency", "receiptNumber"],
     });
     if (!donation) return res.status(404).json({ message: "Donation not found" });
@@ -252,7 +253,7 @@ export async function getDonationStatus(req: Request, res: Response) {
 export async function getDonationById(req: Request, res: Response) {
   try {
     const donation = await repo().findOne({
-      where: { id: req.params.id },
+      where: { id: routeParam(req, 'id') },
       relations: ["campaign"],
     });
     if (!donation) return res.status(404).json({ message: "Donation not found" });
@@ -264,7 +265,7 @@ export async function getDonationById(req: Request, res: Response) {
 
 export async function refundDonation(req: Request, res: Response) {
   try {
-    const donation = await repo().findOne({ where: { id: req.params.id } });
+    const donation = await repo().findOne({ where: { id: routeParam(req, 'id') } });
     if (!donation) return res.status(404).json({ message: "Donation not found" });
     if (donation.status === "refunded") return res.status(400).json({ message: "Already refunded" });
 
@@ -272,14 +273,13 @@ export async function refundDonation(req: Request, res: Response) {
     await repo().save(donation);
 
     if (donation.campaignId) {
-      await campaignRepo()
-        .createQueryBuilder()
-        .update(Campaign)
-        .set({
-          raisedAmount: () => `"raisedAmount" - ${donation.totalAmount}`,
-        })
-        .where("id = :id", { id: donation.campaignId })
-        .execute();
+      const campaign = await campaignRepo().findOne({ where: { id: donation.campaignId } });
+      if (campaign?.fundraiserSettings) {
+        const fs = { ...campaign.fundraiserSettings };
+        fs.raisedAmount = Math.max(0, Number(fs.raisedAmount || 0) - donation.totalAmount);
+        campaign.fundraiserSettings = fs;
+        await campaignRepo().save(campaign);
+      }
     }
 
     await logAudit(req, { action: "refund", entityType: "donation", entityId: donation.id, details: { amount: donation.totalAmount, donorEmail: donation.donorEmail } });
@@ -317,7 +317,7 @@ export async function getRecentPublicDonations(_req: Request, res: Response) {
 export async function getDonationReceipt(req: Request, res: Response) {
   try {
     const donation = await repo().findOne({
-      where: { id: req.params.id },
+      where: { id: routeParam(req, 'id') },
       relations: ["campaign"],
     });
     if (!donation) return res.status(404).json({ message: "Donation not found" });

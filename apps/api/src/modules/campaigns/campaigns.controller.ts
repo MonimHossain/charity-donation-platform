@@ -1,7 +1,9 @@
 import { Request, Response } from "express";
+import { routeParam } from "../../helper/requestParams.js";
 import { AppDataSource } from "../../helper/connectDB.js";
 import { Campaign } from "../../components/campaign/campaign.entity.js";
 import { ILike } from "typeorm";
+import { createEntity } from "../../helper/typeorm.js";
 import { logAudit } from "../../helper/auditLog.js";
 import { archiveExpiredCampaigns } from "./archiveExpiredCampaigns.js";
 import { withResolvedUpsells } from "../upsells/resolveCampaignUpsells.js";
@@ -71,7 +73,7 @@ export async function getCampaignBySlug(req: Request, res: Response) {
   try {
     await archiveExpiredCampaigns(repo());
 
-    const campaign = await repo().findOne({ where: { slug: req.params.slug } });
+    const campaign = await repo().findOne({ where: { slug: routeParam(req, 'slug') } });
     if (!campaign || campaign.status !== "published") {
       return res.status(404).json({ message: "Campaign not found" });
     }
@@ -83,7 +85,7 @@ export async function getCampaignBySlug(req: Request, res: Response) {
 
 export async function getCampaignById(req: Request, res: Response) {
   try {
-    const campaign = await repo().findOne({ where: { id: req.params.id } });
+    const campaign = await repo().findOne({ where: { id: routeParam(req, 'id') } });
     if (!campaign) return res.status(404).json({ message: "Campaign not found" });
     return res.json(await withResolvedUpsells(campaign));
   } catch (error) {
@@ -105,7 +107,7 @@ export async function createCampaign(req: Request, res: Response) {
       slug = `${slug}-${Date.now().toString(36)}`;
     }
 
-    const campaign = repo().create({ ...req.body, slug });
+    const campaign = createEntity(repo(), { ...req.body, slug });
     await repo().save(campaign);
     await logAudit(req, {
       action: "create",
@@ -122,7 +124,7 @@ export async function createCampaign(req: Request, res: Response) {
 
 export async function updateCampaign(req: Request, res: Response) {
   try {
-    const campaign = await repo().findOne({ where: { id: req.params.id } });
+    const campaign = await repo().findOne({ where: { id: routeParam(req, 'id') } });
     if (!campaign) return res.status(404).json({ message: "Campaign not found" });
 
     Object.assign(campaign, req.body);
@@ -142,9 +144,9 @@ export async function updateCampaign(req: Request, res: Response) {
 
 export async function deleteCampaign(req: Request, res: Response) {
   try {
-    const result = await repo().delete(req.params.id);
+    const result = await repo().delete(routeParam(req, 'id'));
     if (result.affected === 0) return res.status(404).json({ message: "Campaign not found" });
-    await logAudit(req, { action: "delete", entityType: "campaign", entityId: req.params.id });
+    await logAudit(req, { action: "delete", entityType: "campaign", entityId: routeParam(req, 'id') });
     return res.json({ message: "Campaign deleted" });
   } catch (error) {
     return res.status(500).json({ message: "Internal server error" });

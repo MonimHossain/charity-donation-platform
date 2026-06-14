@@ -48,7 +48,7 @@ export async function resolveCampaignUpsells(campaign: Campaign): Promise<Resolv
         isActive: row.isActive,
       };
     })
-    .filter((row): row is ResolvedCampaignUpsell => row !== null);
+    .filter((row) => row != null) as ResolvedCampaignUpsell[];
 }
 
 export async function withResolvedUpsells<T extends Campaign>(

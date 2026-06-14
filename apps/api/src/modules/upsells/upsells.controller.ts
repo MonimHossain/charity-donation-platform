@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { routeParam } from "../../helper/requestParams.js";
 import { AppDataSource } from "../../helper/connectDB.js";
 import { Upsell } from "../../components/upsell/upsell.entity.js";
 
@@ -46,7 +47,7 @@ export async function createUpsell(req: Request, res: Response) {
 
 export async function updateUpsell(req: Request, res: Response) {
   try {
-    const upsell = await repo().findOne({ where: { id: req.params.id } });
+    const upsell = await repo().findOne({ where: { id: routeParam(req, 'id') } });
     if (!upsell) return res.status(404).json({ message: "Upsell not found" });
 
     const { name, description, image, amount, sortOrder, isActive } = req.body;
@@ -73,7 +74,7 @@ export async function updateUpsell(req: Request, res: Response) {
 
 export async function deleteUpsell(req: Request, res: Response) {
   try {
-    const result = await repo().delete(req.params.id);
+    const result = await repo().delete(routeParam(req, 'id'));
     if (!result.affected) return res.status(404).json({ message: "Upsell not found" });
     return res.json({ message: "Upsell deleted" });
   } catch (error) {

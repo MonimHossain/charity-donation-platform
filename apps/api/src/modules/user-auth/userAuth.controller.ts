@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { routeParam } from "../../helper/requestParams.js";
 import bcrypt from "bcryptjs";
 import { AppDataSource } from "../../helper/connectDB.js";
 import { User } from "../../components/user/user.entity.js";
@@ -325,7 +326,7 @@ export async function getUsers(req: Request, res: Response) {
 export async function deactivateUser(req: Request, res: Response) {
   try {
     const repo = AppDataSource.getRepository(User);
-    const user = await repo.findOne({ where: { id: req.params.id } });
+    const user = await repo.findOne({ where: { id: routeParam(req, 'id') } });
     if (!user) return res.status(404).json({ message: "User not found" });
 
     user.isActive = !user.isActive;

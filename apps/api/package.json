@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon",
-    "build": "shx rm -rf dist && pnpm exec tsc -p tsconfig.json && pnpm exec cpy \"src/**\" \"!src/**/*.ts\" \"!src/**/*.tsx\" dist --parents",
+    "build": "shx rm -rf dist && pnpm exec tsc -p tsconfig.build.json && pnpm exec cpy \"src/**\" \"!src/**/*.ts\" \"!src/**/*.tsx\" dist --parents",
     "start": "bun dist/index.js",
     "check-types": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",

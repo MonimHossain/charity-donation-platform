@@ -1,6 +1,6 @@
 import type { Response } from "express";
-import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
+import { signJwt } from "../../helper/jwt.js";
 import { AppDataSource } from "../../helper/connectDB.js";
 import { User } from "../../components/user/user.entity.js";
 import { Donation } from "../../components/donation/donation.entity.js";
@@ -30,10 +30,10 @@ export function publicUser(user: User) {
 }
 
 export function createUserToken(user: User) {
-  const token = jwt.sign(
+  const token = signJwt(
     { id: user.id, email: user.email, role: user.role },
     JWT_SECRET,
-    { expiresIn: JWT_EXPIRES }
+    JWT_EXPIRES
   );
   return { token, user: publicUser(user) };
 }
