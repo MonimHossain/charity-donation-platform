@@ -1,4 +1,6 @@
 import { Request, Response } from "express";
+import { createEntity } from "../../helper/typeorm.js";
+import { routeParam } from "../../helper/requestParams.js";
 import { AppDataSource } from "../../helper/connectDB.js";
 import { NavigationMenu } from "../../components/cms/navigationMenu.entity.js";
 import { Banner } from "../../components/cms/banner.entity.js";
@@ -27,7 +29,7 @@ export async function getNavigationMenus(req: Request, res: Response) {
 export async function createNavigationMenu(req: Request, res: Response) {
   try {
     const repo = AppDataSource.getRepository(NavigationMenu);
-    const menu = repo.create(req.body);
+    const menu = createEntity(repo, req.body);
     await repo.save(menu);
     return res.status(201).json(menu);
   } catch (error) {
@@ -38,7 +40,7 @@ export async function createNavigationMenu(req: Request, res: Response) {
 export async function updateNavigationMenu(req: Request, res: Response) {
   try {
     const repo = AppDataSource.getRepository(NavigationMenu);
-    const menu = await repo.findOne({ where: { id: req.params.id } });
+    const menu = await repo.findOne({ where: { id: routeParam(req, 'id') } });
     if (!menu) return res.status(404).json({ message: "Menu item not found" });
     Object.assign(menu, req.body);
     await repo.save(menu);
@@ -50,7 +52,7 @@ export async function updateNavigationMenu(req: Request, res: Response) {
 
 export async function deleteNavigationMenu(req: Request, res: Response) {
   try {
-    const result = await AppDataSource.getRepository(NavigationMenu).delete(req.params.id);
+    const result = await AppDataSource.getRepository(NavigationMenu).delete(routeParam(req, 'id'));
     if (result.affected === 0) return res.status(404).json({ message: "Menu item not found" });
     return res.json({ message: "Menu item deleted" });
   } catch (error) {
@@ -89,7 +91,7 @@ export async function getBanners(req: Request, res: Response) {
 export async function createBanner(req: Request, res: Response) {
   try {
     const repo = AppDataSource.getRepository(Banner);
-    const banner = repo.create(req.body);
+    const banner = createEntity(repo, req.body);
     await repo.save(banner);
     return res.status(201).json(banner);
   } catch (error) {
@@ -100,7 +102,7 @@ export async function createBanner(req: Request, res: Response) {
 export async function updateBanner(req: Request, res: Response) {
   try {
     const repo = AppDataSource.getRepository(Banner);
-    const banner = await repo.findOne({ where: { id: req.params.id } });
+    const banner = await repo.findOne({ where: { id: routeParam(req, 'id') } });
     if (!banner) return res.status(404).json({ message: "Banner not found" });
     Object.assign(banner, req.body);
     await repo.save(banner);
@@ -112,7 +114,7 @@ export async function updateBanner(req: Request, res: Response) {
 
 export async function deleteBanner(req: Request, res: Response) {
   try {
-    const result = await AppDataSource.getRepository(Banner).delete(req.params.id);
+    const result = await AppDataSource.getRepository(Banner).delete(routeParam(req, 'id'));
     if (result.affected === 0) return res.status(404).json({ message: "Banner not found" });
     return res.json({ message: "Banner deleted" });
   } catch (error) {
@@ -137,7 +139,7 @@ export async function getFaqs(req: Request, res: Response) {
 export async function createFaq(req: Request, res: Response) {
   try {
     const repo = AppDataSource.getRepository(Faq);
-    const faq = repo.create(req.body);
+    const faq = createEntity(repo, req.body);
     await repo.save(faq);
     return res.status(201).json(faq);
   } catch (error) {
@@ -148,7 +150,7 @@ export async function createFaq(req: Request, res: Response) {
 export async function updateFaq(req: Request, res: Response) {
   try {
     const repo = AppDataSource.getRepository(Faq);
-    const faq = await repo.findOne({ where: { id: req.params.id } });
+    const faq = await repo.findOne({ where: { id: routeParam(req, 'id') } });
     if (!faq) return res.status(404).json({ message: "FAQ not found" });
     Object.assign(faq, req.body);
     await repo.save(faq);
@@ -160,7 +162,7 @@ export async function updateFaq(req: Request, res: Response) {
 
 export async function deleteFaq(req: Request, res: Response) {
   try {
-    const result = await AppDataSource.getRepository(Faq).delete(req.params.id);
+    const result = await AppDataSource.getRepository(Faq).delete(routeParam(req, 'id'));
     if (result.affected === 0) return res.status(404).json({ message: "FAQ not found" });
     return res.json({ message: "FAQ deleted" });
   } catch (error) {
@@ -192,7 +194,7 @@ export async function upsertSeoSettings(req: Request, res: Response) {
     if (settings) {
       Object.assign(settings, req.body);
     } else {
-      settings = repo.create(req.body);
+      settings = createEntity(repo, req.body);
     }
     await repo.save(settings);
     return res.json(settings);
@@ -219,7 +221,7 @@ export async function getPageBlocks(req: Request, res: Response) {
 export async function createPageBlock(req: Request, res: Response) {
   try {
     const repo = AppDataSource.getRepository(PageBlock);
-    const block = repo.create(req.body);
+    const block = createEntity(repo, req.body);
     await repo.save(block);
     return res.status(201).json(block);
   } catch (error) {
@@ -230,7 +232,7 @@ export async function createPageBlock(req: Request, res: Response) {
 export async function updatePageBlock(req: Request, res: Response) {
   try {
     const repo = AppDataSource.getRepository(PageBlock);
-    const block = await repo.findOne({ where: { id: req.params.id } });
+    const block = await repo.findOne({ where: { id: routeParam(req, 'id') } });
     if (!block) return res.status(404).json({ message: "Page block not found" });
     Object.assign(block, req.body);
     await repo.save(block);
@@ -242,7 +244,7 @@ export async function updatePageBlock(req: Request, res: Response) {
 
 export async function deletePageBlock(req: Request, res: Response) {
   try {
-    const result = await AppDataSource.getRepository(PageBlock).delete(req.params.id);
+    const result = await AppDataSource.getRepository(PageBlock).delete(routeParam(req, 'id'));
     if (result.affected === 0) return res.status(404).json({ message: "Page block not found" });
     return res.json({ message: "Page block deleted" });
   } catch (error) {
@@ -290,7 +292,7 @@ export async function upsertTranslation(req: Request, res: Response) {
     if (translation) {
       Object.assign(translation, req.body);
     } else {
-      translation = repo.create(req.body);
+      translation = createEntity(repo, req.body);
     }
     await repo.save(translation);
     return res.json(translation);
@@ -322,7 +324,7 @@ export async function getMediaLibrary(req: Request, res: Response) {
 
 export async function deleteMedia(req: Request, res: Response) {
   try {
-    const result = await AppDataSource.getRepository(MediaLibrary).delete(req.params.id);
+    const result = await AppDataSource.getRepository(MediaLibrary).delete(routeParam(req, 'id'));
     if (result.affected === 0) return res.status(404).json({ message: "Media not found" });
     return res.json({ message: "Media deleted" });
   } catch (error) {
@@ -347,7 +349,7 @@ export async function getBlogCategories(_req: Request, res: Response) {
 export async function createBlogCategory(req: Request, res: Response) {
   try {
     const repo = AppDataSource.getRepository(BlogCategory);
-    const category = repo.create(req.body);
+    const category = createEntity(repo, req.body);
     await repo.save(category);
     return res.status(201).json(category);
   } catch (error) {
@@ -358,7 +360,7 @@ export async function createBlogCategory(req: Request, res: Response) {
 export async function updateBlogCategory(req: Request, res: Response) {
   try {
     const repo = AppDataSource.getRepository(BlogCategory);
-    const category = await repo.findOne({ where: { id: req.params.id } });
+    const category = await repo.findOne({ where: { id: routeParam(req, 'id') } });
     if (!category) return res.status(404).json({ message: "Category not found" });
     Object.assign(category, req.body);
     await repo.save(category);
@@ -370,7 +372,7 @@ export async function updateBlogCategory(req: Request, res: Response) {
 
 export async function deleteBlogCategory(req: Request, res: Response) {
   try {
-    const result = await AppDataSource.getRepository(BlogCategory).delete(req.params.id);
+    const result = await AppDataSource.getRepository(BlogCategory).delete(routeParam(req, 'id'));
     if (result.affected === 0) return res.status(404).json({ message: "Category not found" });
     return res.json({ message: "Category deleted" });
   } catch (error) {
@@ -445,7 +447,7 @@ export async function getPages(_req: Request, res: Response) {
 export async function deletePage(req: Request, res: Response) {
   try {
     const repo = AppDataSource.getRepository(PageBlock);
-    const result = await repo.delete({ pageId: req.params.id });
+    const result = await repo.delete({ pageId: routeParam(req, 'id') });
     if (result.affected === 0) return res.status(404).json({ message: "Page not found" });
     return res.json({ message: "Page deleted" });
   } catch (error) {
@@ -456,7 +458,7 @@ export async function deletePage(req: Request, res: Response) {
 export async function addBlockToPage(req: Request, res: Response) {
   try {
     const repo = AppDataSource.getRepository(PageBlock);
-    const block = repo.create({ ...req.body, pageId: req.params.id });
+    const block = createEntity(repo, { ...req.body, pageId: routeParam(req, 'id')  });
     await repo.save(block);
     return res.status(201).json(block);
   } catch (error) {
@@ -467,7 +469,7 @@ export async function addBlockToPage(req: Request, res: Response) {
 export async function updateBlockInPage(req: Request, res: Response) {
   try {
     const repo = AppDataSource.getRepository(PageBlock);
-    const block = await repo.findOne({ where: { id: req.params.blockId } });
+    const block = await repo.findOne({ where: { id: routeParam(req, 'blockId') } });
     if (!block) return res.status(404).json({ message: "Block not found" });
     Object.assign(block, req.body);
     await repo.save(block);
@@ -479,7 +481,7 @@ export async function updateBlockInPage(req: Request, res: Response) {
 
 export async function deleteBlockFromPage(req: Request, res: Response) {
   try {
-    const result = await AppDataSource.getRepository(PageBlock).delete(req.params.blockId);
+    const result = await AppDataSource.getRepository(PageBlock).delete(routeParam(req, 'blockId'));
     if (result.affected === 0) return res.status(404).json({ message: "Block not found" });
     return res.json({ message: "Block deleted" });
   } catch (error) {

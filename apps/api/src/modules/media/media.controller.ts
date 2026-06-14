@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { routeParam } from "../../helper/requestParams.js";
 import { AppDataSource } from "../../helper/connectDB.js";
 import { MediaLibrary } from "../../components/cms/mediaLibrary.entity.js";
 import { uploadFile, deleteFile, deleteFiles, listFolders, ensureBucket } from "../../helper/storage.js";
@@ -206,7 +207,7 @@ export async function uploadMultipleFiles(req: Request, res: Response) {
 
 export async function updateMediaFile(req: Request, res: Response) {
   try {
-    const media = await repo().findOne({ where: { id: req.params.id } });
+    const media = await repo().findOne({ where: { id: routeParam(req, 'id') } });
     if (!media) return res.status(404).json({ message: "File not found" });
 
     const { name, alt, folder, tags } = req.body;
@@ -237,7 +238,7 @@ export async function updateMediaFile(req: Request, res: Response) {
 
 export async function deleteMediaFile(req: Request, res: Response) {
   try {
-    const media = await repo().findOne({ where: { id: req.params.id } });
+    const media = await repo().findOne({ where: { id: routeParam(req, 'id') } });
     if (!media) return res.status(404).json({ message: "File not found" });
 
     if (media.objectName) {

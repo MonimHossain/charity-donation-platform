@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { routeParam } from "../../helper/requestParams.js";
 import bcrypt from "bcryptjs";
 import { AppDataSource } from "../../helper/connectDB.js";
 import { Admin } from "../../components/admin/admin.entity.js";
@@ -21,7 +22,8 @@ export async function listAdminStaff(req: Request, res: Response) {
       qb.andWhere("(a.email ILIKE :s OR a.fullName ILIKE :s)", { s: `%${search}%` });
     }
     if (isActive !== undefined) {
-      qb.andWhere("a.isActive = :active", { active: isActive === "true" || isActive === true });
+      const active = String(isActive) === "true" || String(isActive) === "1";
+      qb.andWhere("a.isActive = :active", { active });
     }
 
     const total = await qb.getCount();
@@ -78,7 +80,7 @@ export async function createAdminStaff(req: Request, res: Response) {
 
 export async function updateAdminStaff(req: Request, res: Response) {
   try {
-    const admin = await repo().findOne({ where: { id: req.params.id } });
+    const admin = await repo().findOne({ where: { id: routeParam(req, 'id') } });
     if (!admin) return res.status(404).json({ message: "Not found" });
 
     const { fullName, email, isActive, roleIds, password } = req.body;
@@ -100,7 +102,7 @@ export async function updateAdminStaff(req: Request, res: Response) {
 
 export async function deleteAdminStaff(req: Request, res: Response) {
   try {
-    await repo().delete({ id: req.params.id });
+    await repo().delete({ id: routeParam(req, 'id') });
     return res.json({ message: "Deleted" });
   } catch {
     return res.status(500).json({ message: "Internal server error" });
@@ -109,7 +111,7 @@ export async function deleteAdminStaff(req: Request, res: Response) {
 
 export async function updateAdminStaffStatus(req: Request, res: Response) {
   try {
-    const admin = await repo().findOne({ where: { id: req.params.id } });
+    const admin = await repo().findOne({ where: { id: routeParam(req, 'id') } });
     if (!admin) return res.status(404).json({ message: "Not found" });
     admin.isActive = Boolean(req.body.isActive);
     await repo().save(admin);
@@ -123,7 +125,7 @@ export async function resetAdminStaffPassword(req: Request, res: Response) {
   try {
     const { password } = req.body;
     if (!password) return res.status(400).json({ message: "password required" });
-    const admin = await repo().findOne({ where: { id: req.params.id } });
+    const admin = await repo().findOne({ where: { id: routeParam(req, 'id') } });
     if (!admin) return res.status(404).json({ message: "Not found" });
     admin.passwordHash = await bcrypt.hash(password, 12);
     await repo().save(admin);

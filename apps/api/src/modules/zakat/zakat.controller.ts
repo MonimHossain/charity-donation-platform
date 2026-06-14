@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { createEntity } from "../../helper/typeorm.js";
 import { AppDataSource } from "../../helper/connectDB.js";
 import { ZakatCalculation } from "../../components/zakat/zakatCalculation.entity.js";
 
@@ -85,10 +86,9 @@ export async function calculateZakat(req: Request, res: Response) {
 export async function saveZakatCalculation(req: Request, res: Response) {
   try {
     const user = (req as any).user;
-    const calc = repo().create({
-      ...req.body,
+    const calc = createEntity(repo(), { ...req.body,
       userId: user?.id,
-    });
+     });
     await repo().save(calc);
     return res.status(201).json(calc);
   } catch (error) {

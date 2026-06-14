@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { routeParam } from "../../helper/requestParams.js";
 import { AppDataSource } from "../../helper/connectDB.js";
 import { AutomatedDonationSchedule } from "../../components/automatedDonation/automatedDonation.entity.js";
 import { logAudit } from "../../helper/auditLog.js";
@@ -74,7 +75,7 @@ export async function getMyAutomatedSchedules(req: Request, res: Response) {
 
 export async function cancelAutomatedSchedule(req: Request, res: Response) {
   try {
-    const schedule = await repo().findOne({ where: { id: req.params.id } });
+    const schedule = await repo().findOne({ where: { id: routeParam(req, 'id') } });
     if (!schedule) return res.status(404).json({ message: "Schedule not found" });
 
     schedule.status = "cancelled";

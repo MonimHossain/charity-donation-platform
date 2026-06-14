@@ -1,13 +1,15 @@
 import { Request, Response } from "express";
-import Stripe from "stripe";
+import { routeParam } from "../../helper/requestParams.js";
+import type Stripe from "stripe";
 import { AppDataSource } from "../../helper/connectDB.js";
 import { Donation } from "../../components/donation/donation.entity.js";
 import { RecurringDonation } from "../../components/recurringDonation/recurringDonation.entity.js";
 import { PaymentLog } from "../../components/paymentLog/paymentLog.entity.js";
 import { completeDonation, failDonation } from "./paymentCompletion.js";
 import { sendRecurringFailedPaymentEmail } from "../../helper/mailer.js";
+import { createStripeClient } from "../../helper/stripeClient.js";
 
-const getStripe = () => new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-04-10" });
+const getStripe = () => createStripeClient(process.env.STRIPE_SECRET_KEY!);
 
 const donationRepo = () => AppDataSource.getRepository(Donation);
 const recurringRepo = () => AppDataSource.getRepository(RecurringDonation);
@@ -264,7 +266,7 @@ export async function handleWebhook(req: Request, res: Response) {
 
 export async function getPaymentStatus(req: Request, res: Response) {
   try {
-    const { intentId } = req.params;
+    const intentId = routeParam(req, 'intentId');
     const stripe = getStripe();
     const paymentIntent = await stripe.paymentIntents.retrieve(intentId);
 

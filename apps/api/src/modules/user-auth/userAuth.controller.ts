@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
+import { routeParam } from "../../helper/requestParams.js";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
+import { signJwt } from "../../helper/jwt.js";
 import { AppDataSource } from "../../helper/connectDB.js";
 import { User } from "../../components/user/user.entity.js";
 import { Donation } from "../../components/donation/donation.entity.js";
@@ -29,10 +30,10 @@ export async function registerUser(req: Request, res: Response) {
     const user = repo.create({ email, fullName, passwordHash });
     await repo.save(user);
 
-    const token = jwt.sign(
+    const token = signJwt(
       { id: user.id, email: user.email, role: user.role },
       JWT_SECRET,
-      { expiresIn: JWT_EXPIRES }
+      JWT_EXPIRES
     );
 
     res.cookie("user_token", token, {
@@ -78,10 +79,10 @@ export async function loginUser(req: Request, res: Response) {
     user.lastLoginAt = new Date();
     await repo.save(user);
 
-    const token = jwt.sign(
+    const token = signJwt(
       { id: user.id, email: user.email, role: user.role },
       JWT_SECRET,
-      { expiresIn: JWT_EXPIRES }
+      JWT_EXPIRES
     );
 
     res.cookie("user_token", token, {
@@ -341,7 +342,7 @@ export async function getUsers(req: Request, res: Response) {
 export async function deactivateUser(req: Request, res: Response) {
   try {
     const repo = AppDataSource.getRepository(User);
-    const user = await repo.findOne({ where: { id: req.params.id } });
+    const user = await repo.findOne({ where: { id: routeParam(req, 'id') } });
     if (!user) return res.status(404).json({ message: "User not found" });
 
     user.isActive = !user.isActive;

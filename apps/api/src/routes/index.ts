@@ -51,7 +51,7 @@ import {
 } from "../modules/blog/blog.controller.js";
 import { subscribe, getSubscribers } from "../modules/newsletter/newsletter.controller.js";
 
-const router = Router();
+const router: Router = Router();
 
 // ═══════════════════════════════════
 // PUBLIC ROUTES

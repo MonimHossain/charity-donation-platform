@@ -1,4 +1,6 @@
 import { Request, Response } from "express";
+import { createEntity } from "../../helper/typeorm.js";
+import { routeParam } from "../../helper/requestParams.js";
 import { AppDataSource } from "../../helper/connectDB.js";
 import { Charity } from "../../components/charity/charity.entity.js";
 import { Certification } from "../../components/charity/certification.entity.js";
@@ -126,7 +128,7 @@ export async function getFeaturedCharities(_req: Request, res: Response) {
 export async function getPublicCharityBySlug(req: Request, res: Response) {
   try {
     const charity = await charityRepo().findOne({
-      where: { slug: req.params.slug, isPublished: true },
+      where: { slug: routeParam(req, 'slug'), isPublished: true },
       relations: ["certifications"],
     });
     if (!charity) return res.status(404).json({ message: "Charity not found" });
@@ -173,7 +175,7 @@ export async function verifyCertification(req: Request, res: Response) {
 }
 
 export async function verifyCertificationById(req: Request, res: Response) {
-  req.query.certificateId = req.params.certificateId;
+  req.query.certificateId = routeParam(req, 'certificateId');
   return verifyCertification(req, res);
 }
 
@@ -195,7 +197,7 @@ export async function submitContactMessage(req: Request, res: Response) {
 export async function submitConcern(req: Request, res: Response) {
   try {
     const repo = AppDataSource.getRepository(ConcernReport);
-    const row = repo.create(req.body);
+    const row = createEntity(repo, req.body);
     await repo.save(row);
     return res.status(201).json({ message: "Concern submitted", id: row.id });
   } catch {
@@ -206,7 +208,7 @@ export async function submitConcern(req: Request, res: Response) {
 export async function submitApplyReview(req: Request, res: Response) {
   try {
     const repo = AppDataSource.getRepository(ApplyReviewSubmission);
-    const row = repo.create({ ...req.body, status: "pending" });
+    const row = createEntity(repo, { ...req.body, status: "pending"  });
     await repo.save(row);
     return res.status(201).json({ message: "Application submitted", id: row.id });
   } catch {
@@ -281,7 +283,7 @@ export async function getAdminCharities(req: Request, res: Response) {
 export async function getAdminCharityById(req: Request, res: Response) {
   try {
     const charity = await charityRepo().findOne({
-      where: { id: Number(req.params.id) },
+      where: { id: Number(routeParam(req, 'id')) },
       relations: ["certifications"],
     });
     if (!charity) return res.status(404).json({ message: "Not found" });
@@ -293,7 +295,7 @@ export async function getAdminCharityById(req: Request, res: Response) {
 
 export async function createAdminCharity(req: Request, res: Response) {
   try {
-    const charity = charityRepo().create(req.body);
+    const charity = createEntity(charityRepo(), req.body);
     await charityRepo().save(charity);
     await logAudit(req, { action: "create", entityType: "charity", entityId: String(charity.id) });
     return res.status(201).json(charity);
@@ -304,7 +306,7 @@ export async function createAdminCharity(req: Request, res: Response) {
 
 export async function updateAdminCharity(req: Request, res: Response) {
   try {
-    const charity = await charityRepo().findOne({ where: { id: Number(req.params.id) } });
+    const charity = await charityRepo().findOne({ where: { id: Number(routeParam(req, 'id')) } });
     if (!charity) return res.status(404).json({ message: "Not found" });
     Object.assign(charity, req.body);
     await charityRepo().save(charity);
@@ -316,7 +318,7 @@ export async function updateAdminCharity(req: Request, res: Response) {
 
 export async function deleteAdminCharity(req: Request, res: Response) {
   try {
-    await charityRepo().delete({ id: Number(req.params.id) });
+    await charityRepo().delete({ id: Number(routeParam(req, 'id')) });
     return res.json({ message: "Deleted" });
   } catch {
     return res.status(500).json({ message: "Internal server error" });
@@ -345,7 +347,7 @@ export async function getAdminCertifications(req: Request, res: Response) {
 export async function getAdminCertificationById(req: Request, res: Response) {
   try {
     const cert = await certRepo().findOne({
-      where: { id: Number(req.params.id) },
+      where: { id: Number(routeParam(req, 'id')) },
       relations: ["charity"],
     });
     if (!cert) return res.status(404).json({ message: "Not found" });
@@ -357,7 +359,7 @@ export async function getAdminCertificationById(req: Request, res: Response) {
 
 export async function createAdminCertification(req: Request, res: Response) {
   try {
-    const cert = certRepo().create(req.body);
+    const cert = createEntity(certRepo(), req.body);
     await certRepo().save(cert);
     return res.status(201).json(cert);
   } catch {
@@ -367,7 +369,7 @@ export async function createAdminCertification(req: Request, res: Response) {
 
 export async function updateAdminCertification(req: Request, res: Response) {
   try {
-    const cert = await certRepo().findOne({ where: { id: Number(req.params.id) } });
+    const cert = await certRepo().findOne({ where: { id: Number(routeParam(req, 'id')) } });
     if (!cert) return res.status(404).json({ message: "Not found" });
     Object.assign(cert, req.body);
     await certRepo().save(cert);
@@ -379,7 +381,7 @@ export async function updateAdminCertification(req: Request, res: Response) {
 
 export async function deleteAdminCertification(req: Request, res: Response) {
   try {
-    await certRepo().delete({ id: Number(req.params.id) });
+    await certRepo().delete({ id: Number(routeParam(req, 'id')) });
     return res.json({ message: "Deleted" });
   } catch {
     return res.status(500).json({ message: "Internal server error" });
@@ -413,7 +415,7 @@ export async function getAdminApplyReview(req: Request, res: Response) {
 export async function updateAdminApplyReview(req: Request, res: Response) {
   try {
     const repo = AppDataSource.getRepository(ApplyReviewSubmission);
-    const row = await repo.findOne({ where: { id: Number(req.params.id) } });
+    const row = await repo.findOne({ where: { id: Number(routeParam(req, 'id')) } });
     if (!row) return res.status(404).json({ message: "Not found" });
     Object.assign(row, req.body);
     await repo.save(row);
@@ -425,7 +427,7 @@ export async function updateAdminApplyReview(req: Request, res: Response) {
 
 export async function deleteAdminApplyReview(req: Request, res: Response) {
   try {
-    await AppDataSource.getRepository(ApplyReviewSubmission).delete({ id: Number(req.params.id) });
+    await AppDataSource.getRepository(ApplyReviewSubmission).delete({ id: Number(routeParam(req, 'id')) });
     return res.json({ message: "Deleted" });
   } catch {
     return res.status(500).json({ message: "Internal server error" });

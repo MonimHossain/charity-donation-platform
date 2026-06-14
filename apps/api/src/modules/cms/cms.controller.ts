@@ -1,4 +1,6 @@
 import { Request, Response } from "express";
+import { createEntity } from "../../helper/typeorm.js";
+import { routeParam } from "../../helper/requestParams.js";
 import { AppDataSource } from "../../helper/connectDB.js";
 import { HeroSlide } from "../../components/cms/heroSlide.entity.js";
 import { HomepageSection } from "../../components/cms/homepageSection.entity.js";
@@ -22,7 +24,7 @@ export async function getHeroSlides(_req: Request, res: Response) {
 export async function updateHeroSlide(req: Request, res: Response) {
   try {
     const repo = AppDataSource.getRepository(HeroSlide);
-    const slide = await repo.findOne({ where: { id: req.params.id } });
+    const slide = await repo.findOne({ where: { id: routeParam(req, 'id') } });
     if (!slide) return res.status(404).json({ message: "Slide not found" });
     Object.assign(slide, req.body);
     await repo.save(slide);
@@ -35,7 +37,7 @@ export async function updateHeroSlide(req: Request, res: Response) {
 export async function createHeroSlide(req: Request, res: Response) {
   try {
     const repo = AppDataSource.getRepository(HeroSlide);
-    const slide = repo.create(req.body);
+    const slide = createEntity(repo, req.body);
     await repo.save(slide);
     await logAudit(req, { action: "create", entityType: "hero_slide", entityId: slide.id });
     return res.status(201).json(slide);
@@ -46,9 +48,9 @@ export async function createHeroSlide(req: Request, res: Response) {
 
 export async function deleteHeroSlide(req: Request, res: Response) {
   try {
-    const result = await AppDataSource.getRepository(HeroSlide).delete(req.params.id);
+    const result = await AppDataSource.getRepository(HeroSlide).delete(routeParam(req, 'id'));
     if (result.affected === 0) return res.status(404).json({ message: "Slide not found" });
-    await logAudit(req, { action: "delete", entityType: "hero_slide", entityId: req.params.id });
+    await logAudit(req, { action: "delete", entityType: "hero_slide", entityId: routeParam(req, 'id') });
     return res.json({ message: "Slide deleted" });
   } catch (error) {
     return res.status(500).json({ message: "Internal server error" });
@@ -69,7 +71,7 @@ export async function getHomepageSections(_req: Request, res: Response) {
 export async function updateHomepageSection(req: Request, res: Response) {
   try {
     const repo = AppDataSource.getRepository(HomepageSection);
-    const section = await repo.findOne({ where: { id: req.params.id } });
+    const section = await repo.findOne({ where: { id: routeParam(req, 'id') } });
     if (!section) return res.status(404).json({ message: "Section not found" });
     Object.assign(section, req.body);
     await repo.save(section);
@@ -153,7 +155,7 @@ export async function updateSiteSettings(req: Request, res: Response) {
       delete body.payment;
     }
     if (!settings) {
-      settings = repo.create(body);
+      settings = createEntity(repo, body);
     } else {
       Object.assign(settings, body);
       if (body.paymentConfig) {
@@ -183,7 +185,7 @@ export async function getDonationPresets(_req: Request, res: Response) {
 export async function updateDonationPreset(req: Request, res: Response) {
   try {
     const repo = AppDataSource.getRepository(DonationPreset);
-    const preset = await repo.findOne({ where: { id: req.params.id } });
+    const preset = await repo.findOne({ where: { id: routeParam(req, 'id') } });
     if (!preset) return res.status(404).json({ message: "Preset not found" });
     Object.assign(preset, req.body);
     await repo.save(preset);

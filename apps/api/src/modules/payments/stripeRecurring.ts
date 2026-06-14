@@ -1,6 +1,7 @@
-import Stripe from "stripe";
+import type Stripe from "stripe";
+import { createStripeClient } from "../../helper/stripeClient.js";
 
-const getStripe = () => new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-04-10" });
+const getStripe = () => createStripeClient(process.env.STRIPE_SECRET_KEY!);
 
 export async function pauseStripeSubscription(subscriptionId: string): Promise<void> {
   const stripe = getStripe();
