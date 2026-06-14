@@ -83,7 +83,7 @@ export function useImpactStats() {
       } catch {
         /* fall through */
       }
-      return mockImpactStats;
+      return [];
     },
   });
 }

@@ -11,6 +11,7 @@ import Quote from "@/components/home/Quote";
 import { calculateZakat } from "@/lib/api";
 import { USE_MOCK_DATA } from "@/lib/config";
 import { fmtMoney } from "@/lib/mock/format";
+import { statTotalClass } from "@/lib/home-buttons";
 
 export default function ZakatPage() {
   const [cashInHand, setCashInHand] = useState(0);
@@ -143,7 +144,7 @@ export default function ZakatPage() {
             {result && (
               <div className="mt-8 p-6 rounded-2xl bg-primary text-primary-foreground">
                 <p className="text-sm opacity-80">Zakat due (2.5%)</p>
-                <p className="font-serif text-4xl mt-1">
+                <p className={`${statTotalClass} mt-1`}>
                   {fmtMoney(result.zakatPayable, result.currency || "GBP")}
                 </p>
                 <p className="text-xs mt-2 opacity-70">

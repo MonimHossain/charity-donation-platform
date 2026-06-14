@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import PageShell from "@/components/site/PageShell";
+import { statValueSmClass } from "@/lib/home-buttons";
 import QuickDonate from "@/components/home/QuickDonate";
 import TrustBadges from "@/components/home/TrustBadges";
 import { Button } from "@/components/ui/button";
@@ -101,7 +102,7 @@ export default function CampaignLanding({
         <div className="lg:col-span-5 grid grid-cols-2 gap-4">
           {stats.map((s) => (
             <div key={s.label} className="rounded-2xl bg-secondary/60 border border-border p-6">
-              <p className="font-serif text-3xl text-primary">{s.value}</p>
+              <p className={statValueSmClass}>{s.value}</p>
               <p className="mt-1 text-sm text-muted-foreground">{s.label}</p>
             </div>
           ))}

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { statValueSmClass } from "@/lib/home-buttons";
 import { fetchUserProfile, fetchUserDonations, fetchUserRecurringDonations } from "@/lib/api";
 
 interface DashboardData {
@@ -155,7 +156,7 @@ function AccountDashboardApi() {
               </p>
               <card.icon className="w-5 h-5 opacity-60" />
             </div>
-            <p className="font-serif text-3xl mt-2 tabular-nums">
+            <p className={`${statValueSmClass} mt-2`}>
               {card.format(d[card.key as keyof DashboardData] as number)}
             </p>
           </div>

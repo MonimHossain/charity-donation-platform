@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { statTotalClass } from "@/lib/home-buttons";
 import { CURRENCIES, type CurrencyCode } from "@/lib/currency";
 import { useEffect, useState } from "react";
 import { trackEvent } from "@/components/analytics/GTMScript";
@@ -109,7 +110,7 @@ export default function ThankYouPage() {
           <p className="text-xs uppercase tracking-widest text-accent font-bold">
             Donation Summary
           </p>
-          <p className="font-serif text-4xl mt-2 tabular-nums">
+          <p className={`${statTotalClass} mt-2`}>
             {currencyInfo.symbol}
             {total}
           </p>

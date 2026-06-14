@@ -155,7 +155,7 @@
   padding: 0 0.1em;
 }
 
-@utility text-plum { color: rgb(185, 210, 14); }
+@utility text-plum { color: hsl(var(--accent)); }
 @utility text-blend-brand {
   background-image: var(--gradient-brand);
   -webkit-background-clip: text;

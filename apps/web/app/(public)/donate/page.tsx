@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { statTotalClass } from "@/lib/home-buttons";
 import { CURRENCIES, type CurrencyCode, formatCurrency } from "@/lib/currency";
 import {
   fetchCampaigns,
@@ -1107,7 +1108,7 @@ function DonatePageApi() {
             <p className="text-xs uppercase tracking-widest text-accent font-bold">
               Your Gift &middot; {currency}
             </p>
-            <p className="font-serif text-5xl mt-1 tabular-nums">
+            <p className={`${statTotalClass} mt-1`}>
               {currencyInfo.symbol}
               {totalWithGiftAid.toFixed(2)}
             </p>

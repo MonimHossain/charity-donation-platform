@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { statTotalClass } from "@/lib/home-buttons";
 import { CURRENCIES } from "@/lib/currency";
 import {
   createAutomatedSchedule,
@@ -835,7 +836,7 @@ function DonationCheckoutContent() {
 
           <div className="rounded-3xl gradient-plum text-primary-foreground p-6 lg:p-8 shadow-lift">
             <p className="text-xs uppercase tracking-widest text-accent font-bold">You pay · {currency}</p>
-            <p className="font-serif text-5xl mt-1 tabular-nums">
+            <p className={`${statTotalClass} mt-1`}>
               {currencyInfo.symbol}
               {chargeAmount.toFixed(2)}
             </p>

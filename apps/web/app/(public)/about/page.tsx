@@ -1,5 +1,5 @@
-"use client";
 import { Heart, Globe, Users, ShieldCheck, Award, Target } from "lucide-react";
+import { statValueSmClass } from "@/lib/home-buttons";
 
 const values = [
   { icon: Heart, title: "Compassion", desc: "We lead with empathy, treating every person with dignity and respect regardless of background." },
@@ -67,7 +67,7 @@ export default function AboutPage() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
             {stats.map((s) => (
               <div key={s.label} className="text-center p-6 rounded-3xl bg-card border border-border shadow-soft">
-                <p className="font-serif text-3xl lg:text-4xl font-bold text-primary">{s.value}</p>
+                <p className={statValueSmClass}>{s.value}</p>
                 <p className="mt-1 text-sm text-muted-foreground">{s.label}</p>
               </div>
             ))}

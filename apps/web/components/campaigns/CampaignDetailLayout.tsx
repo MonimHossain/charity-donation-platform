@@ -20,6 +20,7 @@ import TrustBadges from "@/components/home/TrustBadges";
 import MarkdownRenderer from "@/components/blog/MarkdownRenderer";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { statValueSmClass } from "@/lib/home-buttons";
 import { getCampaignHeroImage, getCampaignCardImage } from "@/lib/campaign-media";
 import { CampaignExpirationCountdown } from "@/components/campaigns/CampaignExpirationCountdown";
 import { CampaignFeaturedBadge } from "@/components/campaigns/CampaignFeaturedBadge";
@@ -387,7 +388,7 @@ function ImpactStatCard({
   return (
     <div className="rounded-2xl bg-primary-foreground/10 backdrop-blur p-4 border border-primary-foreground/15">
       <Icon className="w-4 h-4 text-accent" />
-      <p className="font-serif text-2xl mt-2">{value}</p>
+      <p className={`${statValueSmClass} mt-2`}>{value}</p>
       <p className="text-[11px] text-primary-foreground/75 mt-0.5">{label}</p>
     </div>
   );
