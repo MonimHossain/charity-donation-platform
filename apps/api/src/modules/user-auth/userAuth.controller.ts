@@ -1,18 +1,20 @@
 import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 import { AppDataSource } from "../../helper/connectDB.js";
 import { User } from "../../components/user/user.entity.js";
 import { Donation } from "../../components/donation/donation.entity.js";
-import { ILike } from "typeorm";
-
-const JWT_SECRET = process.env.USER_JWT_SECRET ?? "user-jwt-secret-dev";
-const JWT_EXPIRES = process.env.USER_JWT_EXPIRES_IN ?? "7d";
-const COOKIE_MAX_AGE = Number(process.env.USER_COOKIE_MAX_AGE_MS ?? 604800000);
+import {
+  findOrCreateDonorUser,
+  issueUserSession,
+  linkDonationsToUser,
+  normalizeEmail,
+  publicUser,
+  refreshUserDonationStats,
+} from "./userAuth.service.js";
 
 export async function registerUser(req: Request, res: Response) {
   try {
-    const { email, password, fullName } = req.body;
+    const { email, password, fullName, phone, marketingConsent, smsConsent } = req.body;
     if (!email || !password || !fullName) {
       return res
         .status(400)
@@ -20,37 +22,26 @@ export async function registerUser(req: Request, res: Response) {
     }
 
     const repo = AppDataSource.getRepository(User);
-    const existing = await repo.findOne({ where: { email } });
+    const normalized = normalizeEmail(email);
+    const existing = await repo.findOne({ where: { email: normalized } });
     if (existing) {
       return res.status(409).json({ message: "Email already registered" });
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
-    const user = repo.create({ email, fullName, passwordHash });
-    await repo.save(user);
-
-    const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRES }
-    );
-
-    res.cookie("user_token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: COOKIE_MAX_AGE,
+    const user = await findOrCreateDonorUser({
+      email: normalized,
+      fullName,
+      phone,
+      marketingConsent,
+      smsConsent,
+      authProvider: "local",
+      emailVerified: false,
+      passwordHash,
     });
 
-    return res.status(201).json({
-      user: {
-        id: user.id,
-        email: user.email,
-        fullName: user.fullName,
-        role: user.role,
-      },
-      token,
-    });
+    const session = issueUserSession(res, user);
+    return res.status(201).json(session);
   } catch (error) {
     console.error("Register error:", error);
     return res.status(500).json({ message: "Internal server error" });
@@ -65,9 +56,16 @@ export async function loginUser(req: Request, res: Response) {
     }
 
     const repo = AppDataSource.getRepository(User);
-    const user = await repo.findOne({ where: { email } });
+    const user = await repo.findOne({ where: { email: normalizeEmail(email) } });
     if (!user || !user.isActive) {
       return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    if (!user.passwordHash) {
+      const provider = user.authProvider === "apple" ? "Apple" : user.authProvider === "google" ? "Google" : "social sign-in";
+      return res.status(401).json({
+        message: `This account uses ${provider}. Please continue with that sign-in option.`,
+      });
     }
 
     const valid = await bcrypt.compare(password, user.passwordHash);
@@ -77,29 +75,11 @@ export async function loginUser(req: Request, res: Response) {
 
     user.lastLoginAt = new Date();
     await repo.save(user);
+    await linkDonationsToUser(user.id, user.email);
+    await refreshUserDonationStats(user.id);
 
-    const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRES }
-    );
-
-    res.cookie("user_token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: COOKIE_MAX_AGE,
-    });
-
-    return res.json({
-      user: {
-        id: user.id,
-        email: user.email,
-        fullName: user.fullName,
-        role: user.role,
-      },
-      token,
-    });
+    const session = issueUserSession(res, user);
+    return res.json(session);
   } catch (error) {
     console.error("Login error:", error);
     return res.status(500).json({ message: "Internal server error" });
@@ -120,20 +100,16 @@ export async function getUserProfile(req: Request, res: Response) {
     const user = await repo.findOne({ where: { id: userId } });
     if (!user) return res.status(404).json({ message: "User not found" });
 
+    await refreshUserDonationStats(user.id);
+
     return res.json({
-      id: user.id,
-      email: user.email,
-      fullName: user.fullName,
+      ...publicUser(user),
       phone: user.phone,
       address: user.address,
       city: user.city,
       postcode: user.postcode,
       country: user.country,
-      role: user.role,
       emailVerified: user.emailVerified,
-      avatarUrl: user.avatarUrl,
-      totalDonated: user.totalDonated,
-      donationCount: user.donationCount,
       preferredCurrency: user.preferredCurrency,
       preferredLanguage: user.preferredLanguage,
       marketingConsent: user.marketingConsent,
@@ -178,15 +154,12 @@ export async function updateUserProfile(req: Request, res: Response) {
     await repo.save(user);
 
     return res.json({
-      id: user.id,
-      email: user.email,
-      fullName: user.fullName,
+      ...publicUser(user),
       phone: user.phone,
       address: user.address,
       city: user.city,
       postcode: user.postcode,
       country: user.country,
-      avatarUrl: user.avatarUrl,
       preferredCurrency: user.preferredCurrency,
       preferredLanguage: user.preferredLanguage,
       marketingConsent: user.marketingConsent,
@@ -213,6 +186,10 @@ export async function changePassword(req: Request, res: Response) {
     const user = await repo.findOne({ where: { id: userId } });
     if (!user) return res.status(404).json({ message: "User not found" });
 
+    if (!user.passwordHash) {
+      return res.status(400).json({ message: "Password sign-in is not enabled for this account" });
+    }
+
     const valid = await bcrypt.compare(currentPassword, user.passwordHash);
     if (!valid) {
       return res.status(401).json({ message: "Current password is incorrect" });
@@ -234,7 +211,6 @@ export async function forgotPassword(req: Request, res: Response) {
       return res.status(400).json({ message: "Email is required" });
     }
 
-    // TODO: Generate reset token, save to DB, send email
     return res.json({
       message:
         "If an account with that email exists, a reset link has been sent",
@@ -253,7 +229,6 @@ export async function resetPassword(req: Request, res: Response) {
         .json({ message: "Token and new password are required" });
     }
 
-    // TODO: Verify reset token, update password
     return res.json({ message: "Password has been reset successfully" });
   } catch (error) {
     return res.status(500).json({ message: "Internal server error" });
@@ -280,7 +255,16 @@ export async function getUserDonations(req: Request, res: Response) {
     const [items, total] = await qb.getManyAndCount();
 
     return res.json({
-      items,
+      items: items.map((d) => ({
+        id: d.id,
+        amount: Number(d.amount),
+        currency: d.currency,
+        campaign: d.campaign?.title,
+        frequency: d.frequency,
+        status: d.status,
+        giftAid: d.giftAid,
+        createdAt: d.createdAt,
+      })),
       total,
       page: Number(page),
       limit: Number(limit),

@@ -241,7 +241,9 @@ export async function changeUserPassword(currentPassword: string, newPassword: s
 
 export async function fetchUserDonations(params?: Record<string, string>) {
   const { data } = await api.get("/my/donations", { params });
-  return data;
+  if (Array.isArray(data)) return { items: data, total: data.length };
+  if (Array.isArray(data?.items)) return data;
+  return { items: [], total: 0 };
 }
 
 // ═══════════════════════════════════
@@ -249,7 +251,9 @@ export async function fetchUserDonations(params?: Record<string, string>) {
 // ═══════════════════════════════════
 export async function fetchUserRecurringDonations() {
   const { data } = await api.get("/recurring/my");
-  return data;
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.items)) return data.items;
+  return [];
 }
 
 export async function createRecurringDonation(payload: Record<string, unknown>) {
@@ -298,6 +302,8 @@ export async function confirmStripePayment(payload: {
     recurringDonationId?: string;
     subscriptionId?: string;
     paymentIntentId?: string;
+    token?: string;
+    user?: { id: string; email: string; fullName?: string; name?: string };
   };
 }
 

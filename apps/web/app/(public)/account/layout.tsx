@@ -7,7 +7,6 @@ import {
   LayoutDashboard,
   History,
   Repeat,
-  Settings,
   LogOut,
   Heart,
   Menu,
@@ -27,7 +26,6 @@ const NAV_ITEMS = [
   { href: "/account", label: "Dashboard", icon: LayoutDashboard },
   { href: "/account/history", label: "Donation History", icon: History },
   { href: "/account/recurring", label: "Recurring Donations", icon: Repeat },
-  { href: "/account/settings", label: "Profile Settings", icon: Settings },
 ];
 
 export default function AccountLayout({
@@ -50,7 +48,18 @@ export default function AccountLayout({
 
     fetchUserProfile()
       .then((res) => {
-        setUser(res.user || res.data || res);
+        const profile = res.user || res.data || res;
+        setUser({
+          name: profile.fullName || profile.name || "Donor",
+          email: profile.email || "",
+        });
+        localStorage.setItem(
+          "user_profile",
+          JSON.stringify({
+            ...profile,
+            name: profile.fullName || profile.name,
+          })
+        );
         setLoading(false);
       })
       .catch(() => {

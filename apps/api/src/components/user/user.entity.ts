@@ -17,8 +17,14 @@ export class User {
   @Column({ type: "varchar", length: 255 })
   fullName!: string;
 
-  @Column({ type: "varchar", length: 255 })
-  passwordHash!: string;
+  @Column({ type: "varchar", length: 255, nullable: true })
+  passwordHash?: string | null;
+
+  @Column({ type: "varchar", length: 20, default: "local" })
+  authProvider!: string;
+
+  @Column({ type: "varchar", length: 255, nullable: true })
+  providerSubject?: string;
 
   @Column({ type: "varchar", length: 50, nullable: true })
   phone?: string;

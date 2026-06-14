@@ -62,7 +62,13 @@ router.get("/campaigns", getPublishedCampaigns);
 router.get("/campaigns/:slug", getCampaignBySlug);
 
 // Donations
-router.post("/donations", createDonation);
+router.post("/donations", async (req, res) => {
+  const { optionalUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  optionalUser(req, res, async () => {
+    const { createDonation } = await import("../modules/donations/donations.controller.js");
+    return createDonation(req, res);
+  });
+});
 router.get("/donations/recent", getRecentPublicDonations);
 router.get("/donations/:id/status", getDonationStatus);
 router.get("/donations/:id/receipt", getDonationReceipt);
@@ -137,6 +143,26 @@ router.post("/auth/login", async (req, res) => {
 router.post("/auth/logout", async (req, res) => {
   const { logoutUser } = await import("../modules/user-auth/userAuth.controller.js");
   return logoutUser(req, res);
+});
+router.get("/auth/providers", async (req, res) => {
+  const { getAuthProviders } = await import("../modules/user-auth/oauth.controller.js");
+  return getAuthProviders(req, res);
+});
+router.get("/auth/google", async (req, res) => {
+  const { startGoogleAuth } = await import("../modules/user-auth/oauth.controller.js");
+  return startGoogleAuth(req, res);
+});
+router.get("/auth/google/callback", async (req, res) => {
+  const { googleAuthCallback } = await import("../modules/user-auth/oauth.controller.js");
+  return googleAuthCallback(req, res);
+});
+router.get("/auth/apple", async (req, res) => {
+  const { startAppleAuth } = await import("../modules/user-auth/oauth.controller.js");
+  return startAppleAuth(req, res);
+});
+router.post("/auth/apple/callback", async (req, res) => {
+  const { appleAuthCallback } = await import("../modules/user-auth/oauth.controller.js");
+  return appleAuthCallback(req, res);
 });
 router.get("/auth/profile", async (req, res) => {
   const { requireUser } = await import("../modules/user-auth/userAuth.middleware.js");

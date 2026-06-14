@@ -189,8 +189,8 @@ export default function ThankYouPage() {
             {receiptLoading ? "Loading…" : "Download Receipt"}
           </Button>
           <Button asChild variant="default" size="lg" className="rounded-full gap-2">
-            <Link href="/auth/register">
-              <UserPlus className="w-4 h-4" /> Create an Account
+            <Link href="/account">
+              <UserPlus className="w-4 h-4" /> View My Dashboard
             </Link>
           </Button>
           <Button asChild variant="accent" size="lg" className="rounded-full gap-2">

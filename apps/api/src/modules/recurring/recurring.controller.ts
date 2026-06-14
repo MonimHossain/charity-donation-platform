@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { AppDataSource } from "../../helper/connectDB.js";
 import { RecurringDonation } from "../../components/recurringDonation/recurringDonation.entity.js";
+import { ensureDonorUserForDonation } from "../user-auth/userAuth.service.js";
 import {
   pauseStripeSubscription,
   resumeStripeSubscription,
@@ -52,7 +53,7 @@ export async function getRecurringDonations(req: Request, res: Response) {
 
 export async function getUserRecurringDonations(req: Request, res: Response) {
   try {
-    const userId = (req as any).userId;
+    const userId = (req as any).user?.id;
     if (!userId) {
       return res.status(401).json({ message: "Authentication required" });
     }
@@ -63,7 +64,19 @@ export async function getUserRecurringDonations(req: Request, res: Response) {
       relations: ["campaign"],
     });
 
-    return res.json(items);
+    return res.json({
+      items: items.map((item) => ({
+        id: item.id,
+        amount: Number(item.amount),
+        currency: item.currency,
+        frequency: item.frequency,
+        status: item.status,
+        campaign: item.campaign?.title,
+        nextPaymentDate: item.nextPaymentDate,
+        totalPaid: Number(item.totalPaid || 0),
+        createdAt: item.createdAt,
+      })),
+    });
   } catch (error) {
     console.error("Get user recurring donations error:", error);
     return res.status(500).json({ message: "Internal server error" });
@@ -91,8 +104,15 @@ export async function createRecurringDonation(req: Request, res: Response) {
       nextPaymentDate.setMonth(nextPaymentDate.getMonth() + 1);
     }
 
+    const authUserId = (req as any).user?.id as string | undefined;
+    const donorUser = await ensureDonorUserForDonation({
+      donorEmail,
+      donorName,
+      existingUserId: authUserId,
+    });
+
     const recurring = repo().create({
-      userId: (req as any).userId,
+      userId: donorUser.id,
       donorName,
       donorEmail,
       amount,

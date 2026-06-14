@@ -59,7 +59,7 @@ export default function DonationHistoryPage() {
 
   useEffect(() => {
     fetchUserDonations()
-      .then((res) => setDonations(res.data || res.donations || res || []))
+      .then((res) => setDonations(res.items || res.data || res.donations || res || []))
       .catch(() => setDonations([]))
       .finally(() => setLoading(false));
   }, []);

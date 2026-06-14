@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { userRegister } from "@/lib/api";
+import SsoButtons from "@/components/auth/SsoButtons";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -55,7 +56,12 @@ export default function RegisterPage() {
       });
       if (res.token) {
         localStorage.setItem("user_token", res.token);
-        if (res.user) localStorage.setItem("user_profile", JSON.stringify(res.user));
+        if (res.user) {
+          localStorage.setItem(
+            "user_profile",
+            JSON.stringify({ ...res.user, name: res.user.fullName || res.user.name })
+          );
+        }
       }
       router.push("/account");
     } catch (err: unknown) {
@@ -269,6 +275,16 @@ export default function RegisterPage() {
               )}
             </Button>
           </form>
+
+          <div className="mt-6 flex items-center gap-3 text-xs text-muted-foreground">
+            <span className="flex-1 h-px bg-border" />
+            or continue with
+            <span className="flex-1 h-px bg-border" />
+          </div>
+
+          <div className="mt-4">
+            <SsoButtons />
+          </div>
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
             Already have an account?{" "}

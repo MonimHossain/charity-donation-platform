@@ -6,12 +6,27 @@ import { RecurringDonation } from "../../components/recurringDonation/recurringD
 import { PaymentLog } from "../../components/paymentLog/paymentLog.entity.js";
 import { completeDonation, failDonation } from "./paymentCompletion.js";
 import { sendRecurringFailedPaymentEmail } from "../../helper/mailer.js";
+import { AppDataSource } from "../../helper/connectDB.js";
+import { User } from "../../components/user/user.entity.js";
+import { issueUserSession, createUserToken } from "../user-auth/userAuth.service.js";
 
 const getStripe = () => new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-04-10" });
 
 const donationRepo = () => AppDataSource.getRepository(Donation);
 const recurringRepo = () => AppDataSource.getRepository(RecurringDonation);
 const paymentLogRepo = () => AppDataSource.getRepository(PaymentLog);
+
+async function buildDonorSessionPayload(donationId?: string) {
+  if (!donationId) return {};
+  const donation = await donationRepo().findOne({ where: { id: donationId } });
+  if (!donation?.userId) return {};
+
+  const user = await AppDataSource.getRepository(User).findOne({ where: { id: donation.userId } });
+  if (!user) return {};
+
+  const session = createUserToken(user);
+  return { token: session.token, user: session.user };
+}
 
 export async function createPaymentIntent(req: Request, res: Response) {
   try {
@@ -502,6 +517,7 @@ export async function confirmStripePayment(req: Request, res: Response) {
         recurringDonationId: resolvedRecurringId,
         subscriptionId: resolvedSubscriptionId,
         paymentIntentId: paymentIntent.id,
+        ...(await buildDonorSessionPayload(resolvedDonationId)),
       });
     }
 

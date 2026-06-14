@@ -76,6 +76,7 @@ export default function SiteHeader() {
   const [scrolled, setScrolled] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const pathname = usePathname();
+  const [isSignedIn, setIsSignedIn] = useState(false);
   const islamicDate = useIslamicDate();
   const nextPrayer = useNextPrayer();
   const aboutRef = useRef<HTMLDivElement>(null);
@@ -95,6 +96,7 @@ export default function SiteHeader() {
   useEffect(() => {
     setOpen(false);
     setAboutOpen(false);
+    setIsSignedIn(Boolean(localStorage.getItem("user_token")));
   }, [pathname]);
 
   useEffect(() => {
@@ -179,9 +181,15 @@ export default function SiteHeader() {
               <span className="tabular-nums">£0.00</span>
             </Link>
             <Link
-              href="/account"
+              href={isSignedIn ? "/account" : "/auth/login"}
+              className="hidden sm:inline-flex h-9 px-3 items-center rounded-full border border-border text-xs font-semibold text-primary hover:bg-secondary transition"
+            >
+              {isSignedIn ? "My account" : "Sign in"}
+            </Link>
+            <Link
+              href={isSignedIn ? "/account" : "/auth/login"}
               className="p-2 rounded-full hover:bg-secondary text-foreground/80 hover:text-primary transition"
-              aria-label="My account"
+              aria-label={isSignedIn ? "My account" : "Sign in"}
             >
               <UserIcon className="w-4 h-4" />
             </Link>

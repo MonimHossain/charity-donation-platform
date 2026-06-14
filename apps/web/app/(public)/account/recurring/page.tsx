@@ -46,7 +46,7 @@ export default function RecurringDonationsPage() {
 
   const loadData = () => {
     fetchUserRecurringDonations()
-      .then((res) => setDonations(res.data || res.donations || res || []))
+      .then((list) => setDonations(Array.isArray(list) ? list : []))
       .catch(() => setDonations([]))
       .finally(() => setLoading(false));
   };
@@ -214,11 +214,13 @@ export default function RecurringDonationsPage() {
                     )}
                     <span className="flex items-center gap-1">
                       Started:{" "}
-                      {new Date(don.createdAt).toLocaleDateString("en-GB", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
+                      {don.createdAt
+                        ? new Date(don.createdAt).toLocaleDateString("en-GB", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })
+                        : "—"}
                     </span>
                   </div>
                 </div>

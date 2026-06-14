@@ -3,6 +3,7 @@ import { AppDataSource } from "../../helper/connectDB.js";
 import { Donation } from "../../components/donation/donation.entity.js";
 import { Campaign } from "../../components/campaign/campaign.entity.js";
 import { logAudit } from "../../helper/auditLog.js";
+import { ensureDonorUserForDonation } from "../user-auth/userAuth.service.js";
 
 const repo = () => AppDataSource.getRepository(Donation);
 const campaignRepo = () => AppDataSource.getRepository(Campaign);
@@ -30,11 +31,22 @@ export async function createDonation(req: Request, res: Response) {
     const giftAidAmount = giftAid && currency === "GBP" ? +(amount * 0.25).toFixed(2) : 0;
     const totalAmount = +(amount + giftAidAmount).toFixed(2);
 
+    const authUserId = (req as any).user?.id as string | undefined;
+    const donorUser = await ensureDonorUserForDonation({
+      donorEmail,
+      donorName,
+      donorPhone,
+      marketingConsent,
+      smsConsent,
+      existingUserId: authUserId,
+    });
+
     const donation = repo().create({
       amount,
       currency: currency || "GBP",
       frequency: frequency || "single",
       campaignId,
+      userId: donorUser.id,
       donorName,
       donorEmail,
       donorPhone,

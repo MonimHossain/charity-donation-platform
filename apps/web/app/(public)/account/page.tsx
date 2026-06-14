@@ -85,8 +85,8 @@ function AccountDashboardApi() {
         const donationList = donations.items || donations || [];
         const recurringList = recurring.items || recurring || [];
         setData({
-          totalDonated: profile.totalDonated ?? 0,
-          donationCount: profile.donationCount ?? donationList.length,
+          totalDonated: Number(profile.totalDonated ?? 0),
+          donationCount: Number(profile.donationCount ?? donationList.length),
           activeRecurring: recurringList.filter((r: { status: string }) => r.status === "active").length,
           recentDonations: donationList,
           recurringDonations: recurringList,
@@ -115,7 +115,8 @@ function AccountDashboardApi() {
   const d = data!;
   const userName =
     typeof window !== "undefined"
-      ? JSON.parse(localStorage.getItem("user_profile") || "{}")?.name
+      ? JSON.parse(localStorage.getItem("user_profile") || "{}")?.name ||
+        JSON.parse(localStorage.getItem("user_profile") || "{}")?.fullName
       : "";
 
   return (

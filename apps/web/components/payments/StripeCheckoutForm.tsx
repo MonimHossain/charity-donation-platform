@@ -265,12 +265,21 @@ function CheckoutForm({
 
   const finalizePayment = useCallback(
     async (paymentIntentId: string, subscriptionId?: string) => {
-      await confirmStripePayment({
+      const result = await confirmStripePayment({
         paymentIntentId,
         donationId,
         recurringDonationId,
         subscriptionId,
       });
+      if (result.token) {
+        localStorage.setItem("user_token", result.token);
+        if (result.user) {
+          localStorage.setItem(
+            "user_profile",
+            JSON.stringify({ ...result.user, name: result.user.fullName || result.user.name })
+          );
+        }
+      }
       onSuccess();
     },
     [donationId, onSuccess, recurringDonationId]

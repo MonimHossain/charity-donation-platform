@@ -2,6 +2,7 @@ import { AppDataSource } from "../../helper/connectDB.js";
 import { Donation } from "../../components/donation/donation.entity.js";
 import { Campaign } from "../../components/campaign/campaign.entity.js";
 import { sendDonationReceiptEmail } from "../../helper/mailer.js";
+import { ensureDonorUserForDonation, refreshUserDonationStats } from "../user-auth/userAuth.service.js";
 
 const donationRepo = () => AppDataSource.getRepository(Donation);
 const campaignRepo = () => AppDataSource.getRepository(Campaign);
@@ -37,6 +38,17 @@ export async function completeDonation(donationId: string): Promise<Donation | n
     return donation;
   }
 
+  if (!donation.userId && donation.donorEmail) {
+    const user = await ensureDonorUserForDonation({
+      donorEmail: donation.donorEmail,
+      donorName: donation.donorName,
+      donorPhone: donation.donorPhone,
+      marketingConsent: donation.marketingConsent,
+      smsConsent: donation.smsConsent,
+    });
+    donation.userId = user.id;
+  }
+
   donation.status = "completed";
   await donationRepo().save(donation);
 
@@ -55,6 +67,11 @@ export async function completeDonation(donationId: string): Promise<Donation | n
   }
 
   await sendReceiptEmailIfNeeded(donation);
+
+  if (donation.userId) {
+    await refreshUserDonationStats(donation.userId);
+  }
+
   return donation;
 }
 
