@@ -1,16 +1,16 @@
 import { Request, Response } from "express";
+import { resolvePublicClientIp } from "../../helper/clientIp.js";
 import {
   getPrayerTimesByCity,
   getPrayerTimesByCoordinates,
   getPrayerTimesNearIp,
   parseCoordinates,
-  resolveClientIp,
   sanitizeLocationPart,
 } from "./prayerTimes.service.js";
 
 export async function getPrayerTimesNearMe(req: Request, res: Response) {
   try {
-    const ip = resolveClientIp(req.headers["x-forwarded-for"], req.ip || req.socket.remoteAddress);
+    const ip = resolvePublicClientIp(req.headers["x-forwarded-for"], req.ip || req.socket.remoteAddress);
     if (!ip) {
       return res.status(400).json({
         message: "Could not detect your location. Try searching by city instead.",

@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import { resolveClientIp } from "../../helper/clientIp.js";
 
 interface RateLimitEntry {
   count: number;
@@ -14,10 +15,28 @@ setInterval(() => {
   }
 }, 60000);
 
+function requestPath(req: Request): string {
+  return (req.originalUrl || req.url || req.path || "").split("?")[0];
+}
+
+function isRateLimitExempt(req: Request): boolean {
+  if (req.method !== "GET") return false;
+  const path = requestPath(req);
+  return (
+    path.startsWith("/api/v1/prayer-times") ||
+    path.startsWith("/health") ||
+    path === "/"
+  );
+}
+
 export function rateLimit(maxRequests: number = 100, windowMs: number = 60000) {
   return (req: Request, res: Response, next: NextFunction) => {
-    const ip = req.ip || req.socket.remoteAddress || "unknown";
-    const key = `${ip}:${req.path}`;
+    if (isRateLimitExempt(req)) {
+      return next();
+    }
+
+    const ip = resolveClientIp(req.headers["x-forwarded-for"], req.ip || req.socket.remoteAddress);
+    const key = `${ip}:${requestPath(req)}`;
     const now = Date.now();
 
     let entry = store.get(key);

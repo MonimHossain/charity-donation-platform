@@ -150,14 +150,49 @@ export async function fetchQuickDonateConfig() {
   return data;
 }
 
+const prayerTimesCache = new Map<string, { expires: number; data: unknown }>();
+const prayerTimesInflight = new Map<string, Promise<unknown>>();
+const PRAYER_TIMES_CLIENT_CACHE_MS = 60_000;
+
+async function fetchPrayerTimesCached<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
+  const hit = prayerTimesCache.get(key);
+  if (hit && hit.expires > Date.now()) {
+    return hit.data as T;
+  }
+
+  const pending = prayerTimesInflight.get(key);
+  if (pending) {
+    return pending as Promise<T>;
+  }
+
+  const promise = fetcher()
+    .then((data) => {
+      prayerTimesCache.set(key, { expires: Date.now() + PRAYER_TIMES_CLIENT_CACHE_MS, data });
+      prayerTimesInflight.delete(key);
+      return data;
+    })
+    .catch((err) => {
+      prayerTimesInflight.delete(key);
+      throw err;
+    });
+
+  prayerTimesInflight.set(key, promise);
+  return promise;
+}
+
 export async function fetchPrayerTimes(params: Record<string, string>) {
-  const { data } = await api.get("/prayer-times", { params });
-  return data;
+  const key = `prayer:${JSON.stringify(params)}`;
+  return fetchPrayerTimesCached(key, async () => {
+    const { data } = await api.get("/prayer-times", { params });
+    return data;
+  });
 }
 
 export async function fetchPrayerTimesNearMe() {
-  const { data } = await api.get("/prayer-times/near-me");
-  return data;
+  return fetchPrayerTimesCached("prayer:near-me", async () => {
+    const { data } = await api.get("/prayer-times/near-me");
+    return data;
+  });
 }
 
 export async function fetchAdminQuickDonateOptions() {
