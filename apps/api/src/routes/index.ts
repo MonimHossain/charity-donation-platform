@@ -88,6 +88,10 @@ router.get("/cms/quick-donate", async (req, res) => {
   const { getPublicQuickDonate } = await import("../modules/quick-donate/quickDonate.controller.js");
   return getPublicQuickDonate(req, res);
 });
+router.get("/prayer-times/near-me", async (req, res) => {
+  const { getPrayerTimesNearMe } = await import("../modules/prayer-times/prayerTimes.controller.js");
+  return getPrayerTimesNearMe(req, res);
+});
 router.get("/prayer-times", async (req, res) => {
   const { getPrayerTimes } = await import("../modules/prayer-times/prayerTimes.controller.js");
   return getPrayerTimes(req, res);

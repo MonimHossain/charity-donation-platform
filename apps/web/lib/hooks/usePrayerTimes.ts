@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { fetchPrayerTimes } from "@/lib/api";
+import { fetchPrayerTimes, fetchPrayerTimesNearMe } from "@/lib/api";
 import {
   DEFAULT_PRAYER_LOCATION,
   readPrayerLocation,
@@ -33,6 +33,16 @@ export function usePrayerTimes() {
       }
       const result = await fetchPrayerTimes(params);
       setData(result);
+      if (result.coordinates && (loc.latitude != null || loc.longitude != null)) {
+        const updated: PrayerLocation = {
+          ...loc,
+          label: result.location,
+          latitude: result.coordinates.latitude,
+          longitude: result.coordinates.longitude,
+        };
+        savePrayerLocation(updated);
+        setLocation(updated);
+      }
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
@@ -69,6 +79,32 @@ export function usePrayerTimes() {
     [load]
   );
 
+  const loadNearMe = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await fetchPrayerTimesNearMe();
+      setData(result);
+      const loc: PrayerLocation = {
+        label: result.location,
+        latitude: result.coordinates?.latitude,
+        longitude: result.coordinates?.longitude,
+      };
+      savePrayerLocation(loc);
+      setLocation(loc);
+      return true;
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        "Could not detect your location";
+      setError(message);
+      setData(null);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
@@ -87,6 +123,7 @@ export function usePrayerTimes() {
     nextPrayer,
     islamicDate: data?.islamicDate ?? null,
     updateLocation,
+    loadNearMe,
     reload: () => load(location),
   };
 }

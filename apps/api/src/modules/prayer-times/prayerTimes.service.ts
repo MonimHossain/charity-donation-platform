@@ -83,7 +83,21 @@ function normalizeTimings(raw: Record<string, string>) {
   };
 }
 
-function normalizePayload(data: Record<string, unknown>, locationLabel: string) {
+export type PrayerTimesPayload = {
+  location: string;
+  timezone: string | null;
+  date: string;
+  islamicDate: string | null;
+  timings: ReturnType<typeof normalizeTimings>;
+  method: string;
+  coordinates?: { latitude: number; longitude: number };
+};
+
+function normalizePayload(
+  data: Record<string, unknown>,
+  locationLabel: string,
+  coordinates?: { latitude: number; longitude: number }
+): PrayerTimesPayload {
   const timings = normalizeTimings(
     ((data.timings as Record<string, string>) ?? {}) as Record<string, string>
   );
@@ -104,7 +118,90 @@ function normalizePayload(data: Record<string, unknown>, locationLabel: string) 
     islamicDate,
     timings,
     method: "ISNA",
+    ...(coordinates ? { coordinates } : {}),
   };
+}
+
+function isPublicIp(ip: string): boolean {
+  const normalized = ip.replace(/^::ffff:/, "").trim();
+  if (!normalized || normalized === "::1") return false;
+  if (normalized.startsWith("127.")) return false;
+  if (normalized.startsWith("10.")) return false;
+  if (normalized.startsWith("192.168.")) return false;
+  if (/^172\.(1[6-9]|2\d|3[01])\./.test(normalized)) return false;
+  if (normalized.startsWith("fc") || normalized.startsWith("fd")) return false;
+  return true;
+}
+
+export function resolveClientIp(
+  forwardedFor: string | string[] | undefined,
+  fallback?: string | null
+): string | null {
+  const raw =
+    (typeof forwardedFor === "string"
+      ? forwardedFor.split(",")[0]?.trim()
+      : Array.isArray(forwardedFor)
+        ? forwardedFor[0]?.trim()
+        : null) ||
+    fallback?.trim() ||
+    null;
+  if (!raw) return null;
+  const ip = raw.replace(/^::ffff:/, "");
+  return isPublicIp(ip) ? ip : null;
+}
+
+type IpApiResponse = {
+  status: string;
+  message?: string;
+  country?: string;
+  city?: string;
+  lat?: number;
+  lon?: number;
+};
+
+async function geolocateIp(ip: string) {
+  const url = `http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,message,country,city,lat,lon`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8_000);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    if (!res.ok) return null;
+    const json = (await res.json()) as IpApiResponse;
+    if (json.status !== "success" || json.lat == null || json.lon == null) return null;
+    return {
+      latitude: json.lat,
+      longitude: json.lon,
+      city: json.city,
+      country: json.country,
+    };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export async function getPrayerTimesNearIp(ip: string) {
+  const key = cacheKey({ type: "ip", ip, date: todayDdMmYyyy() });
+  const cached = readCache<PrayerTimesPayload>(key);
+  if (cached) return cached;
+
+  const geo = await geolocateIp(ip);
+  if (!geo) {
+    throw new Error("Could not detect your location from this network");
+  }
+
+  const label =
+    [geo.city, geo.country].filter(Boolean).join(", ") ||
+    `Lat ${geo.latitude.toFixed(4)}, Lng ${geo.longitude.toFixed(4)}`;
+
+  const coordsPayload = await getPrayerTimesByCoordinates(geo.latitude, geo.longitude);
+  const payload: PrayerTimesPayload = {
+    ...coordsPayload,
+    location: label,
+  };
+  writeCache(key, payload);
+  return payload;
 }
 
 export async function getPrayerTimesByCity(city: string, country: string) {
@@ -143,7 +240,7 @@ export async function getPrayerTimesByCoordinates(latitude: number, longitude: n
     [meta?.city, meta?.country].filter(Boolean).join(", ") ||
     `Lat ${lat}, Lng ${lng}`;
 
-  const payload = normalizePayload(data, label);
+  const payload = normalizePayload(data, label, { latitude, longitude });
   writeCache(key, payload);
   return payload;
 }

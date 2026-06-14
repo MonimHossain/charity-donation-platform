@@ -19,6 +19,9 @@ import routes from "./routes/index.js";
 const app = express();
 const port = Number(process.env.PORT ?? "4000");
 
+// Trust X-Forwarded-* from nginx so req.ip reflects the visitor, not 127.0.0.1
+app.set("trust proxy", 1);
+
 function normalizeOrigin(value: string): string {
   return value.trim().replace(/\/$/, "").toLowerCase();
 }

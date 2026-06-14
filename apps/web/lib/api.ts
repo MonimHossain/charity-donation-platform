@@ -155,6 +155,11 @@ export async function fetchPrayerTimes(params: Record<string, string>) {
   return data;
 }
 
+export async function fetchPrayerTimesNearMe() {
+  const { data } = await api.get("/prayer-times/near-me");
+  return data;
+}
+
 export async function fetchAdminQuickDonateOptions() {
   const { data } = await api.get("/admin/quick-donate/options");
   return data;

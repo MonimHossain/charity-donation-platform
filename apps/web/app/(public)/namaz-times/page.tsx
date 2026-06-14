@@ -20,11 +20,13 @@ import {
 } from "@/lib/prayer-times";
 
 export default function NamazTimesPage() {
-  const { location, data, loading, error, nextPrayer, updateLocation, reload } = usePrayerTimes();
+  const { location, data, loading, error, nextPrayer, updateLocation, loadNearMe, reload } =
+    usePrayerTimes();
   const [locationQuery, setLocationQuery] = useState(
     formatLocationQuery(location) || formatLocationQuery(DEFAULT_PRAYER_LOCATION)
   );
   const [locating, setLocating] = useState(false);
+  const [locateError, setLocateError] = useState<string | null>(null);
 
   useEffect(() => {
     setLocationQuery(formatLocationQuery(location));
@@ -41,8 +43,26 @@ export default function NamazTimesPage() {
     });
   }
 
-  function handleMyLocation() {
-    if (!navigator.geolocation) return;
+  async function handleMyLocation() {
+    setLocateError(null);
+
+    const canUseBrowserGeo =
+      typeof window !== "undefined" &&
+      window.isSecureContext &&
+      typeof navigator.geolocation !== "undefined";
+
+    if (!canUseBrowserGeo) {
+      setLocating(true);
+      const ok = await loadNearMe();
+      setLocating(false);
+      if (!ok) {
+        setLocateError(
+          "Location detection is unavailable in this browser. Try searching by city instead."
+        );
+      }
+      return;
+    }
+
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -53,7 +73,15 @@ export default function NamazTimesPage() {
         });
         setLocating(false);
       },
-      () => setLocating(false),
+      async () => {
+        const ok = await loadNearMe();
+        setLocating(false);
+        if (!ok) {
+          setLocateError(
+            "Could not access your location. Allow location permission or search by city."
+          );
+        }
+      },
       { enableHighAccuracy: false, timeout: 12_000, maximumAge: 300_000 }
     );
   }
@@ -111,6 +139,12 @@ export default function NamazTimesPage() {
               My location
             </Button>
           </form>
+
+          {locateError && (
+            <p className="mt-3 text-sm text-destructive max-w-2xl" role="alert">
+              {locateError}
+            </p>
+          )}
 
           <div className="mt-8 rounded-3xl gradient-plum text-primary-foreground p-6 sm:p-8 shadow-lift">
             <div className="flex flex-wrap items-end justify-between gap-4">
