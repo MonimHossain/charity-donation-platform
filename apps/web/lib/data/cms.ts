@@ -16,7 +16,9 @@ import {
   fetchSiteSettings,
   fetchPublicStats,
   fetchBanners,
+  fetchQuickDonateConfig,
 } from "@/lib/api";
+import { resolveQuickDonateConfig } from "@/lib/quick-donate";
 import { queryKeys } from "./query-keys";
 
 export function useHeroSlides() {
@@ -112,6 +114,21 @@ export function useEmergencyBanner() {
         return Array.isArray(data) ? data : [];
       } catch {
         return [];
+      }
+    },
+  });
+}
+
+export function useQuickDonateConfig() {
+  return useQuery({
+    queryKey: ["cms", "quick-donate"],
+    queryFn: async () => {
+      if (USE_MOCK_DATA) return resolveQuickDonateConfig(null);
+      try {
+        const data = await fetchQuickDonateConfig();
+        return resolveQuickDonateConfig(data);
+      } catch {
+        return resolveQuickDonateConfig(null);
       }
     },
   });

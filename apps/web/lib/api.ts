@@ -145,6 +145,41 @@ export async function fetchDonationPresets() {
   return data;
 }
 
+export async function fetchQuickDonateConfig() {
+  const { data } = await api.get("/cms/quick-donate");
+  return data;
+}
+
+export async function fetchAdminQuickDonateOptions() {
+  const { data } = await api.get("/admin/quick-donate/options");
+  return data;
+}
+
+export async function createAdminQuickDonateOption(payload: Record<string, unknown>) {
+  const { data } = await api.post("/admin/quick-donate/options", payload);
+  return data;
+}
+
+export async function updateAdminQuickDonateOption(id: string, payload: Record<string, unknown>) {
+  const { data } = await api.put(`/admin/quick-donate/options/${id}`, payload);
+  return data;
+}
+
+export async function deleteAdminQuickDonateOption(id: string) {
+  const { data } = await api.delete(`/admin/quick-donate/options/${id}`);
+  return data;
+}
+
+export async function fetchAdminQuickDonateSettings() {
+  const { data } = await api.get("/admin/quick-donate/settings");
+  return data;
+}
+
+export async function updateAdminQuickDonateSettings(payload: Record<string, unknown>) {
+  const { data } = await api.put("/admin/quick-donate/settings", payload);
+  return data;
+}
+
 export async function fetchTestimonials() {
   const { data } = await api.get("/cms/testimonials");
   return data;

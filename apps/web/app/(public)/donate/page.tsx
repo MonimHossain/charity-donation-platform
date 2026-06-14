@@ -200,8 +200,11 @@ function DonatePageApi() {
       routedToCheckout.current = true;
       const cause = params.get("cause") || params.get("type") || "donation";
       const campaignId = params.get("campaign") || params.get("campaignId") || undefined;
-      const paymentType = params.get("type") || "single";
+      const paymentType = params.get("type") || params.get("freq") || "single";
       const freq = params.get("freq") || params.get("interval") || undefined;
+      const isQuickDonate = params.get("source") === "quick";
+      const quickLabel = params.get("label") || "";
+      const donationCategory = params.get("category") || undefined;
       const qty = params.get("qty");
       const cancelAt = params.get("cancelAt");
       const upsellsParam = params.get("upsells");
@@ -213,17 +216,22 @@ function DonatePageApi() {
         : undefined;
       addDonationCartItem({
         kind: "standard",
-        donationPageId: "legacy-url",
+        donationPageId: isQuickDonate ? "quick-donate" : "legacy-url",
         donationPageSlug: cause,
-        title: cause.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+        title: isQuickDonate
+          ? quickLabel || cause.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+          : cause.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
         amount: parsed,
         currency: (params.get("currency") || "GBP").toUpperCase(),
-        description: `Donation — £${parsed.toFixed(2)}`,
+        description: isQuickDonate
+          ? `Quick donation — £${parsed.toFixed(2)}`
+          : `Donation — £${parsed.toFixed(2)}`,
         campaignId: campaignId || undefined,
-        donationType: cause,
+        category: donationCategory,
+        donationType: isQuickDonate ? "quick_donation" : cause,
         quantity: qty ? Number(qty) : undefined,
         recurringFrequency:
-          paymentType === "regular" && freq && freq !== "single" ? freq : undefined,
+          freq && freq !== "single" ? freq : undefined,
         recurringInterval:
           intervalParam === "day" ||
           intervalParam === "week" ||

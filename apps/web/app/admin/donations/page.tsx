@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { fetchAdminDonations } from "@/lib/api";
+import { formatDonationTypeLabel, QUICK_DONATION_TYPE } from "@/lib/quick-donate";
 
 interface Donation {
   id?: string;
@@ -23,6 +24,7 @@ interface Donation {
   currency?: string;
   campaignTitle?: string;
   campaign?: { title?: string };
+  donationType?: string;
   frequency?: string;
   status: string;
   giftAid?: boolean;
@@ -69,13 +71,16 @@ export default function DonationsPage() {
 
   function handleExport() {
     const rows = [
-      ["Donor", "Email", "Amount", "Currency", "Campaign", "Frequency", "Status", "Gift Aid", "Date"],
+      ["Donor", "Email", "Amount", "Currency", "Campaign", "Source", "Frequency", "Status", "Gift Aid", "Date"],
       ...filtered.map((d) => [
         d.donorName || d.donor || "Anonymous",
         d.donorEmail || d.email || "",
         String(d.amount),
         d.currency || "GBP",
-        d.campaignTitle || d.campaign?.title || "",
+        d.donationType === QUICK_DONATION_TYPE
+          ? "Quick Donation"
+          : d.campaignTitle || d.campaign?.title || "",
+        formatDonationTypeLabel(d.donationType),
         d.frequency || "one-time",
         d.status,
         d.giftAid ? "Yes" : "No",
@@ -156,6 +161,7 @@ export default function DonationsPage() {
                 <th className="px-5 py-3 text-left font-medium text-muted-foreground">Donor</th>
                 <th className="px-5 py-3 text-left font-medium text-muted-foreground">Amount</th>
                 <th className="px-5 py-3 text-left font-medium text-muted-foreground">Campaign</th>
+                <th className="px-5 py-3 text-left font-medium text-muted-foreground">Source</th>
                 <th className="px-5 py-3 text-left font-medium text-muted-foreground">Frequency</th>
                 <th className="px-5 py-3 text-left font-medium text-muted-foreground">Gift Aid</th>
                 <th className="px-5 py-3 text-left font-medium text-muted-foreground">Date</th>
@@ -174,7 +180,20 @@ export default function DonationsPage() {
                     {Number(d.amount || 0).toLocaleString("en-GB", { minimumFractionDigits: 2 })}
                   </td>
                   <td className="px-5 py-3 text-muted-foreground">
-                    {d.campaignTitle || d.campaign?.title || "—"}
+                    {d.campaignTitle || d.campaign?.title ||
+                      (d.donationType === QUICK_DONATION_TYPE ? "Quick Donation" : "—")}
+                  </td>
+                  <td className="px-5 py-3">
+                    <span
+                      className={cn(
+                        "inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium",
+                        d.donationType === QUICK_DONATION_TYPE
+                          ? "bg-violet-100 text-violet-700"
+                          : "bg-slate-100 text-slate-600"
+                      )}
+                    >
+                      {formatDonationTypeLabel(d.donationType)}
+                    </span>
                   </td>
                   <td className="px-5 py-3 text-muted-foreground capitalize">
                     {d.frequency || "one-time"}
@@ -203,7 +222,7 @@ export default function DonationsPage() {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-5 py-10 text-center text-muted-foreground">
+                  <td colSpan={8} className="px-5 py-10 text-center text-muted-foreground">
                     No donations found
                   </td>
                 </tr>

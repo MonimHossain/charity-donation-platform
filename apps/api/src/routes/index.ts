@@ -84,6 +84,10 @@ router.get("/cms/homepage-sections", getHomepageSections);
 router.get("/cms/settings", getSiteSettings);
 router.get("/cms/donation-presets", getDonationPresets);
 router.get("/cms/testimonials", getTestimonials);
+router.get("/cms/quick-donate", async (req, res) => {
+  const { getPublicQuickDonate } = await import("../modules/quick-donate/quickDonate.controller.js");
+  return getPublicQuickDonate(req, res);
+});
 
 // Blog
 router.get("/blog", getBlogPosts);
@@ -399,6 +403,30 @@ router.get("/admin/payments/status", requireAdmin, async (req, res) => {
   return getAdminPaymentStatus(req, res);
 });
 router.put("/admin/cms/donation-presets/:id", requireAdmin, updateDonationPreset);
+router.get("/admin/quick-donate/options", requireAdmin, async (req, res) => {
+  const { listQuickDonateOptions } = await import("../modules/quick-donate/quickDonate.controller.js");
+  return listQuickDonateOptions(req, res);
+});
+router.post("/admin/quick-donate/options", requireAdmin, async (req, res) => {
+  const { createQuickDonateOption } = await import("../modules/quick-donate/quickDonate.controller.js");
+  return createQuickDonateOption(req, res);
+});
+router.put("/admin/quick-donate/options/:id", requireAdmin, async (req, res) => {
+  const { updateQuickDonateOption } = await import("../modules/quick-donate/quickDonate.controller.js");
+  return updateQuickDonateOption(req, res);
+});
+router.delete("/admin/quick-donate/options/:id", requireAdmin, async (req, res) => {
+  const { deleteQuickDonateOption } = await import("../modules/quick-donate/quickDonate.controller.js");
+  return deleteQuickDonateOption(req, res);
+});
+router.get("/admin/quick-donate/settings", requireAdmin, async (req, res) => {
+  const { getQuickDonateSettings } = await import("../modules/quick-donate/quickDonate.controller.js");
+  return getQuickDonateSettings(req, res);
+});
+router.put("/admin/quick-donate/settings", requireAdmin, async (req, res) => {
+  const { updateQuickDonateSettings } = await import("../modules/quick-donate/quickDonate.controller.js");
+  return updateQuickDonateSettings(req, res);
+});
 
 // Admin CMS Extended (lazy-loaded)
 router.post("/admin/cms/navigation", requireAdmin, async (req, res) => {
