@@ -7,6 +7,7 @@ import QuickDonate from "@/components/home/QuickDonate";
 import TrustBadges from "@/components/home/TrustBadges";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, CheckCircle2, AlertTriangle } from "lucide-react";
+import { useCurrency } from "@/lib/currency";
 
 export interface CampaignLandingProps {
   slug: string;
@@ -33,6 +34,7 @@ export default function CampaignLanding({
   raised,
   goal,
 }: CampaignLandingProps) {
+  const { formatMoney } = useCurrency();
   const pct = Math.min(100, Math.round((raised / goal) * 100));
 
   return (
@@ -57,7 +59,7 @@ export default function CampaignLanding({
             <p className="mt-5 text-lg text-primary-foreground/85 max-w-xl text-pretty">{intro}</p>
             <div className="mt-8 max-w-md">
               <div className="flex justify-between text-sm font-semibold">
-                <span>£{raised.toLocaleString()} raised</span>
+                <span>{formatMoney(raised, { from: "GBP" })} raised</span>
                 <span className="text-accent">{pct}%</span>
               </div>
               <div className="mt-2 h-2.5 rounded-full bg-primary-foreground/15 overflow-hidden">
@@ -66,7 +68,7 @@ export default function CampaignLanding({
                   style={{ width: `${pct}%` }}
                 />
               </div>
-              <p className="mt-1 text-xs text-primary-foreground/70">Goal: £{goal.toLocaleString()}</p>
+              <p className="mt-1 text-xs text-primary-foreground/70">Goal: {formatMoney(goal, { from: "GBP" })}</p>
             </div>
           </div>
           <div className="lg:col-span-5 lg:sticky lg:top-28">

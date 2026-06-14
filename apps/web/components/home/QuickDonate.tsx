@@ -3,6 +3,7 @@
 import { ShieldCheck, ChevronDown, HandHeart, CircleDollarSign, Tag } from "lucide-react";
 import { homeDonateButtonClass } from "@/lib/home-buttons";
 import { useQuickDonateForm } from "@/lib/hooks/useQuickDonateForm";
+import { useCurrency } from "@/lib/currency";
 
 interface Props {
   defaultAmount?: number;
@@ -37,7 +38,7 @@ export default function QuickDonate({ campaign = "gaza", variant = "light" }: Pr
     goToDonate,
   } = useQuickDonateForm(campaign);
 
-  const symbol = "£";
+  const { symbol } = useCurrency();
   const frequencies = (
     [
       showSingle ? ("single" as const) : null,

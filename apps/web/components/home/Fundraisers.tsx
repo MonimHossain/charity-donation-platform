@@ -6,6 +6,7 @@ import { Clock, Users, Target, ArrowRight, Flame } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useHomepageFundraisers } from "@/lib/data/campaigns";
 import { getCampaignCardImage } from "@/lib/campaign-media";
+import { useCurrency } from "@/lib/currency";
 
 type Fundraiser = {
   slug: string;
@@ -18,14 +19,6 @@ type Fundraiser = {
   currency: string;
   endsAt: number;
   urgent?: boolean;
-};
-
-const CURRENCY_SYMBOLS: Record<string, string> = {
-  GBP: "£",
-  USD: "$",
-  EUR: "€",
-  CAD: "C$",
-  AUD: "A$",
 };
 
 function mapFundraiser(c: Record<string, unknown>): Fundraiser | null {
@@ -89,10 +82,10 @@ const useCountdown = (target: number) => {
 
 const FundraiserCard = ({ f }: { f: Fundraiser }) => {
   const { ready, days, hours, minutes, seconds, ended } = useCountdown(f.endsAt);
+  const { formatMoney } = useCurrency();
   const pct = Math.min(100, Math.round((f.raised / f.goal) * 100));
   const pending = Math.max(0, f.goal - f.raised);
-  const sym = CURRENCY_SYMBOLS[f.currency] || "£";
-  const fmt = (n: number) => `${sym}${n.toLocaleString()}`;
+  const fmt = (n: number) => formatMoney(n, { from: f.currency });
 
   return (
     <article className="group relative rounded-3xl overflow-hidden bg-card border border-border shadow-soft hover:shadow-lift transition-all duration-500 flex flex-col">

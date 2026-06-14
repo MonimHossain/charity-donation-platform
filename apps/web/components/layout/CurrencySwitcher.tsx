@@ -2,17 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Check, ChevronDown } from "lucide-react";
-
-const CURRENCIES = [
-  { code: "GBP", symbol: "£", flag: "🇬🇧" },
-  { code: "USD", symbol: "$", flag: "🇺🇸" },
-  { code: "EUR", symbol: "€", flag: "🇪🇺" },
-  { code: "CAD", symbol: "C$", flag: "🇨🇦" },
-  { code: "AUD", symbol: "A$", flag: "🇦🇺" },
-  { code: "AED", symbol: "د.إ", flag: "🇦🇪" },
-  { code: "SAR", symbol: "﷼", flag: "🇸🇦" },
-  { code: "MYR", symbol: "RM", flag: "🇲🇾" },
-];
+import { CURRENCY_LIST, useCurrency } from "@/lib/currency";
 
 interface Props {
   variant?: "header" | "inline" | "dark";
@@ -21,7 +11,7 @@ interface Props {
 
 export default function CurrencySwitcher({ variant = "header", className = "" }: Props) {
   const [open, setOpen] = useState(false);
-  const [selected, setSelected] = useState(CURRENCIES[0]);
+  const { code, currency, setCurrency } = useCurrency();
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -46,8 +36,8 @@ export default function CurrencySwitcher({ variant = "header", className = "" }:
         aria-label="Change currency"
         className={`inline-flex items-center gap-1 px-2.5 h-9 rounded-full text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-accent ${styles} ${className}`}
       >
-        <span className="tabular-nums">{selected.symbol}</span>
-        <span>{selected.code}</span>
+        <span className="tabular-nums">{currency.symbol}</span>
+        <span>{code}</span>
         <ChevronDown className={`w-3 h-3 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
@@ -56,13 +46,13 @@ export default function CurrencySwitcher({ variant = "header", className = "" }:
             Choose currency
           </div>
           <div className="border-t border-border" />
-          {CURRENCIES.map((c) => {
-            const active = c.code === selected.code;
+          {CURRENCY_LIST.map((c) => {
+            const active = c.code === code;
             return (
               <button
                 key={c.code}
                 onClick={() => {
-                  setSelected(c);
+                  setCurrency(c.code);
                   setOpen(false);
                 }}
                 className="flex items-center gap-3 w-full px-3 py-2.5 text-left text-sm cursor-pointer rounded-lg hover:bg-secondary transition-colors"

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useQuickDonateConfig } from "@/lib/data/cms";
 import type { QuickDonateOption } from "@/lib/quick-donate";
 import { defaultQuickDonateAmount } from "@/lib/quick-donate";
+import { getCurrencyCode } from "@/lib/currency";
 
 export type QuickDonateFrequency = "single" | "monthly";
 
@@ -82,6 +83,7 @@ export function useQuickDonateForm(initialCampaignSlug?: string) {
       category,
       source: "quick",
       label: selectedOption.label,
+      currency: getCurrencyCode(),
     });
     if (selectedOption.campaignId) {
       params.set("campaign", selectedOption.campaignId);

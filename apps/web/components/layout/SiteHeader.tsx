@@ -11,6 +11,8 @@ import LanguageSwitcher from "./LanguageSwitcher";
 import { USE_MOCK_DATA } from "@/lib/config";
 import { useHeaderNavCampaigns } from "@/lib/data/campaigns";
 import { usePrayerTimes } from "@/lib/hooks/usePrayerTimes";
+import { useDonationCart } from "@/lib/stores/donationCartStore";
+import { useCurrency } from "@/lib/currency";
 
 const mockNav = [
   { href: "/causes/food", label: "Food Aid" },
@@ -41,6 +43,9 @@ export default function SiteHeader() {
   const { islamicDate, nextPrayer, location: prayerLocation } = usePrayerTimes();
   const aboutRef = useRef<HTMLDivElement>(null);
   const { data: headerCampaigns } = useHeaderNavCampaigns();
+  const { subtotal } = useDonationCart();
+  const { formatMoney } = useCurrency();
+  const basketLabel = formatMoney(subtotal, { decimals: 2 });
 
   const nav = useMemo(() => {
     if (USE_MOCK_DATA) return mockNav;
@@ -144,7 +149,7 @@ export default function SiteHeader() {
               aria-label="Basket"
             >
               <ShoppingBasket className="w-4 h-4" />
-              <span className="tabular-nums">£0.00</span>
+              <span className="tabular-nums">{basketLabel}</span>
             </Link>
             <Link
               href={isSignedIn ? "/account" : "/auth/login"}
@@ -248,7 +253,7 @@ export default function SiteHeader() {
                 tabIndex={scrolled ? 0 : -1}
               >
                 <ShoppingBasket className="w-4 h-4" />
-                <span className="tabular-nums">£0.00</span>
+                <span className="tabular-nums">{basketLabel}</span>
               </Link>
             </div>
           </div>
@@ -320,7 +325,7 @@ export default function SiteHeader() {
               aria-label="Basket"
             >
               <ShoppingBasket className="w-4 h-4" />
-              <span className="tabular-nums">£0.00</span>
+              <span className="tabular-nums">{basketLabel}</span>
             </Link>
           </div>
           {/* Achievements badge on mobile */}

@@ -132,6 +132,9 @@ export const CURRENCY_SYMBOLS: Record<string, string> = {
   EUR: "\u20ac",
   CAD: "C$",
   AUD: "A$",
+  AED: "د.إ",
+  SAR: "﷼",
+  MYR: "RM",
 };
 
 export const TAG_COLORS: Record<string, string> = {

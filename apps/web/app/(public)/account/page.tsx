@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { statValueSmClass } from "@/lib/home-buttons";
 import { fetchUserProfile, fetchUserDonations, fetchUserRecurringDonations } from "@/lib/api";
+import { useCurrency } from "@/lib/currency";
 
 interface DashboardData {
   totalDonated: number;
@@ -45,7 +46,7 @@ const STAT_CARDS = [
     key: "totalDonated",
     label: "Total Donated",
     icon: TrendingUp,
-    format: (v: number) => `£${v.toLocaleString()}`,
+    money: true,
     gradient: "gradient-plum",
     textClass: "text-primary-foreground",
   },
@@ -53,7 +54,7 @@ const STAT_CARDS = [
     key: "donationCount",
     label: "Donations Made",
     icon: Heart,
-    format: (v: number) => v.toString(),
+    money: false,
     gradient: "gradient-lavender",
     textClass: "text-foreground",
   },
@@ -61,7 +62,7 @@ const STAT_CARDS = [
     key: "activeRecurring",
     label: "Active Recurring",
     icon: Repeat,
-    format: (v: number) => v.toString(),
+    money: false,
     gradient: "gradient-mint",
     textClass: "text-foreground",
   },
@@ -73,6 +74,7 @@ export default function AccountDashboard() {
 }
 
 function AccountDashboardApi() {
+  const { formatMoney } = useCurrency();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -157,7 +159,9 @@ function AccountDashboardApi() {
               <card.icon className="w-5 h-5 opacity-60" />
             </div>
             <p className={`${statValueSmClass} mt-2`}>
-              {card.format(d[card.key as keyof DashboardData] as number)}
+              {card.money
+                ? formatMoney(d[card.key as keyof DashboardData] as number, { from: "GBP" })
+                : String(d[card.key as keyof DashboardData])}
             </p>
           </div>
         ))}
@@ -211,7 +215,7 @@ function AccountDashboardApi() {
                       </span>
                     </td>
                     <td className="py-3 font-semibold tabular-nums">
-                      £{don.amount.toFixed(2)}
+                      {formatMoney(don.amount, { from: don.currency, decimals: 2 })}
                     </td>
                     <td className="py-3 hidden sm:table-cell text-muted-foreground">
                       {don.campaign || "General"}
@@ -262,7 +266,7 @@ function AccountDashboardApi() {
                 >
                   <div>
                     <p className="font-semibold">
-                      £{r.amount.toFixed(2)}/{r.frequency}
+                      {formatMoney(r.amount, { from: r.currency, decimals: 2 })}/{r.frequency}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {r.campaign || "General Fund"}

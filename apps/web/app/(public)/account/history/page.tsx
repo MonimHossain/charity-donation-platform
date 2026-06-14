@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { fetchUserDonations, fetchDonationReceipt } from "@/lib/api";
+import { useCurrency } from "@/lib/currency";
 
 interface Donation {
   id: string;
@@ -31,6 +32,7 @@ const STATUSES = ["all", "completed", "pending", "failed", "refunded"];
 const PER_PAGE = 10;
 
 export default function DonationHistoryPage() {
+  const { formatMoney } = useCurrency();
   const [donations, setDonations] = useState<Donation[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -230,7 +232,7 @@ export default function DonationHistoryPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 font-semibold tabular-nums">
-                      £{don.amount.toFixed(2)}
+                      {formatMoney(don.amount, { from: don.currency, decimals: 2 })}
                       {don.giftAid && (
                         <span className="text-xs text-accent-deep ml-1">+GA</span>
                       )}

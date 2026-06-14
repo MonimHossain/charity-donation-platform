@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { fetchCampaigns } from "@/lib/api";
 import { getCampaignCardImage } from "@/lib/campaign-media";
 import { CampaignFeaturedBadge } from "@/components/campaigns/CampaignFeaturedBadge";
+import { useCurrency } from "@/lib/currency";
 
 const CATEGORIES = [
   "All",
@@ -51,18 +52,6 @@ interface Campaign {
   visibilitySettings?: { pinToTop?: boolean };
 }
 
-const CURRENCY_SYMBOLS: Record<string, string> = {
-  GBP: "£", USD: "$", EUR: "€", CAD: "C$", AUD: "A$",
-};
-
-function formatCurrency(amount: number, currency: string = "GBP") {
-  const sym = CURRENCY_SYMBOLS[currency] || "£";
-  if (amount >= 1000) {
-    return `${sym}${(amount / 1000).toFixed(amount % 1000 === 0 ? 0 : 1)}k`;
-  }
-  return `${sym}${amount.toLocaleString()}`;
-}
-
 function sortCampaignsForDisplay(campaigns: Campaign[]) {
   return [...campaigns].sort((a, b) => {
     if (Boolean(a.isFeatured) !== Boolean(b.isFeatured)) {
@@ -81,6 +70,7 @@ export default function CampaignsPage() {
 }
 
 function CampaignsPageApi() {
+  const { formatMoney } = useCurrency();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState("All");
@@ -250,10 +240,10 @@ function CampaignsPageApi() {
                         <Progress value={percentage} className="h-2" />
                         <div className="mt-2 flex items-center justify-between text-sm">
                           <span className="font-semibold text-primary">
-                            {formatCurrency(Number(campaign.raisedAmount), campaign.currency)} raised
+                            {formatMoney(Number(campaign.raisedAmount), { from: campaign.currency, compact: true })} raised
                           </span>
                           <span className="text-muted-foreground">
-                            of {formatCurrency(Number(campaign.goalAmount), campaign.currency)}
+                            of {formatMoney(Number(campaign.goalAmount), { from: campaign.currency, compact: true })}
                           </span>
                         </div>
                         <div className="mt-1.5 flex items-center justify-between text-xs text-muted-foreground">

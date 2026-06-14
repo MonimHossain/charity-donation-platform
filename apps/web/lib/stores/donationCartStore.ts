@@ -1,6 +1,12 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore } from "react";
+import {
+  convertAmount,
+  getCurrencyCode,
+  normalizeCurrencyCode,
+  subscribeDisplayCurrency,
+} from "@/lib/currency";
 import type { RecurringDonationPlan } from "@icac/shared-types";
 import type { CheckoutSettings } from "@/components/campaigns/campaign-detail-types";
 import type { CampaignUpsell } from "@/lib/checkout-campaign-config";
@@ -139,12 +145,29 @@ export function getDonationCartTotal(currency = "GBP"): number {
 
 export function useDonationCart() {
   const items = useSyncExternalStore(subscribeDonationCart, getDonationCartSnapshot, () => []);
-  const currency = (items[0]?.currency ?? "GBP").toUpperCase();
-  const subtotal = items.reduce((s, i) => s + Number(i.amount || 0), 0);
+  const displayCode = useSyncExternalStore(
+    subscribeDisplayCurrency,
+    getCurrencyCode,
+    () => "GBP"
+  );
+  const subtotal = useMemo(
+    () =>
+      items.reduce(
+        (s, i) =>
+          s +
+          convertAmount(
+            Number(i.amount || 0),
+            normalizeCurrencyCode(i.currency),
+            displayCode
+          ),
+        0
+      ),
+    [items, displayCode]
+  );
   return {
     items,
     subtotal,
-    currency,
+    currency: displayCode,
     addItem: addDonationCartItem,
     removeItem: removeDonationCartItem,
     clear: clearDonationCart,

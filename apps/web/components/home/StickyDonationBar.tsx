@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Heart, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQuickDonateForm } from "@/lib/hooks/useQuickDonateForm";
+import { useCurrency } from "@/lib/currency";
 
 const HIDE_ON = ["/donate", "/donation/checkout"];
 const HIDE_PREFIXES = ["/donation/"];
@@ -22,7 +23,7 @@ const StickyDonationBar = () => {
   const [open, setOpen] = useState(false);
   const [visible, setVisible] = useState(false);
   const pathname = usePathname();
-  const symbol = "£";
+  const { symbol } = useCurrency();
 
   const {
     options,

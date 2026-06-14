@@ -22,6 +22,7 @@ import {
   cancelRecurringDonation,
   createRecurringBillingPortal,
 } from "@/lib/api";
+import { useCurrency } from "@/lib/currency";
 
 interface RecurringDonation {
   id: string;
@@ -35,6 +36,7 @@ interface RecurringDonation {
 }
 
 export default function RecurringDonationsPage() {
+  const { formatMoney } = useCurrency();
   const [donations, setDonations] = useState<RecurringDonation[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -184,7 +186,7 @@ export default function RecurringDonationsPage() {
                     </div>
                     <div>
                       <p className="font-semibold text-lg">
-                        £{don.amount.toFixed(2)}
+                        {formatMoney(don.amount, { from: don.currency, decimals: 2 })}
                         <span className="text-muted-foreground text-sm font-normal">
                           /{don.frequency}
                         </span>

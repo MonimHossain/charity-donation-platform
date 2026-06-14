@@ -30,7 +30,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { statTotalClass } from "@/lib/home-buttons";
-import { CURRENCIES, type CurrencyCode, formatCurrency } from "@/lib/currency";
+import { CURRENCIES, CURRENCY_LIST, type CurrencyCode, getCurrency, getCurrencyCode, useCurrency } from "@/lib/currency";
 import {
   fetchCampaigns,
   createDonation,
@@ -140,7 +140,7 @@ function DonatePageApi() {
   );
   const [amount, setAmount] = useState(Number(params.get("amount")) || 50);
   const [customAmount, setCustomAmount] = useState("");
-  const [currency, setCurrency] = useState<CurrencyCode>("GBP");
+  const { code: currency, currency: currencyInfo, setCurrency } = useCurrency();
   const [giftAid, setGiftAid] = useState(false);
   const [zakatType, setZakatType] = useState<ZakatType>(
     (params.get("zakat") as ZakatType) || "general"
@@ -222,10 +222,10 @@ function DonatePageApi() {
           ? quickLabel || cause.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
           : cause.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
         amount: parsed,
-        currency: (params.get("currency") || "GBP").toUpperCase(),
+        currency: (params.get("currency") || getCurrencyCode()).toUpperCase(),
         description: isQuickDonate
-          ? `Quick donation — £${parsed.toFixed(2)}`
-          : `Donation — £${parsed.toFixed(2)}`,
+          ? `Quick donation — ${getCurrency().symbol}${parsed.toFixed(2)}`
+          : `Donation — ${getCurrency().symbol}${parsed.toFixed(2)}`,
         campaignId: campaignId || undefined,
         category: donationCategory,
         donationType: isQuickDonate ? "quick_donation" : cause,
@@ -343,7 +343,6 @@ function DonatePageApi() {
   }, [activeCampaign, selectedUpsells, baseAmount]);
 
   const finalAmount = (baseAmount + attributePriceAdj) * effectiveQuantity + upsellTotal;
-  const currencyInfo = CURRENCIES[currency];
   const giftAidExtra = useMemo(
     () => (giftAid ? +(finalAmount * 0.25).toFixed(2) : 0),
     [giftAid, finalAmount]
@@ -587,19 +586,19 @@ function DonatePageApi() {
                 <Globe className="w-3.5 h-3.5" /> Currency
               </Label>
               <div className="mt-2 flex flex-wrap gap-2">
-                {(Object.keys(CURRENCIES) as CurrencyCode[]).map((code) => (
+                {CURRENCY_LIST.map((c) => (
                   <button
-                    key={code}
+                    key={c.code}
                     type="button"
-                    onClick={() => setCurrency(code)}
+                    onClick={() => setCurrency(c.code)}
                     className={cn(
                       "px-3.5 py-2 rounded-full text-sm border transition-all font-medium",
-                      currency === code
+                      currency === c.code
                         ? "bg-primary text-primary-foreground border-primary"
                         : "bg-background border-border hover:border-primary/40"
                     )}
                   >
-                    {CURRENCIES[code].symbol} {code}
+                    {c.symbol} {c.code}
                   </button>
                 ))}
               </div>

@@ -21,11 +21,11 @@ import MarkdownRenderer from "@/components/blog/MarkdownRenderer";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { statValueSmClass } from "@/lib/home-buttons";
+import { useCurrency } from "@/lib/currency";
 import { getCampaignHeroImage, getCampaignCardImage } from "@/lib/campaign-media";
 import { CampaignExpirationCountdown } from "@/components/campaigns/CampaignExpirationCountdown";
 import { CampaignFeaturedBadge } from "@/components/campaigns/CampaignFeaturedBadge";
 import {
-  CURRENCY_SYMBOLS,
   TAG_COLORS,
   type CampaignData,
   type RecentDonation,
@@ -62,7 +62,7 @@ export interface CampaignDetailLayoutProps {
 
 export function CampaignDetailLayout({
   campaign,
-  sym,
+  sym: _sym,
   percentage,
   daysLeft,
   isFundraiser,
@@ -72,6 +72,8 @@ export function CampaignDetailLayout({
   onShare,
   donateHref,
 }: CampaignDetailLayoutProps) {
+  const { formatMoney } = useCurrency();
+  const sourceCurrency = campaign.currency || "GBP";
   const fs = campaign.fundraiserSettings;
   const heroImage = getCampaignHeroImage(campaign);
   const pageTitle = campaign.seoSettings?.metaTitle || `${campaign.title} — Donate`;
@@ -158,15 +160,13 @@ export function CampaignDetailLayout({
                     <div>
                       <p className="text-primary/70 text-[11px] uppercase tracking-widest">Raised</p>
                       <p className="font-serif text-2xl mt-0.5">
-                        {sym}
-                        {Number(fs.raisedAmount).toLocaleString()}
+                        {formatMoney(Number(fs.raisedAmount), { from: sourceCurrency })}
                       </p>
                     </div>
                     <div className="text-right">
                       <p className="text-primary/70 text-[11px] uppercase tracking-widest">Goal</p>
                       <p className="font-serif text-2xl mt-0.5">
-                        {sym}
-                        {Number(fs.targetAmount).toLocaleString()}
+                        {formatMoney(Number(fs.targetAmount), { from: sourceCurrency })}
                       </p>
                     </div>
                   </div>
@@ -244,7 +244,7 @@ export function CampaignDetailLayout({
                   <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
                     <ImpactStatCard
                       icon={Heart}
-                      value={`${sym}${Number(fs.raisedAmount).toLocaleString()}`}
+                      value={formatMoney(Number(fs.raisedAmount), { from: sourceCurrency })}
                       label="Raised so far"
                     />
                     <ImpactStatCard
@@ -304,8 +304,7 @@ export function CampaignDetailLayout({
                       </div>
                     </div>
                     <p className="font-serif text-xl text-primary whitespace-nowrap">
-                      {CURRENCY_SYMBOLS[d.currency] || sym}
-                      {Number(d.amount).toFixed(2)}
+                      {formatMoney(Number(d.amount), { from: d.currency, decimals: 2 })}
                     </p>
                   </div>
                 </div>

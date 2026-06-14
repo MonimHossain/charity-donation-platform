@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Heart, Clock } from "lucide-react";
+import { useCurrency } from "@/lib/currency";
 
 interface RecentDonation {
   id: string;
@@ -20,11 +21,8 @@ function timeAgo(date: string): string {
   return `${Math.floor(seconds / 86400)}d ago`;
 }
 
-const CURRENCY_SYMBOLS: Record<string, string> = {
-  GBP: "£", USD: "$", EUR: "€", CAD: "C$", AUD: "A$",
-};
-
 export default function LiveDonationFeed() {
+  const { formatMoney } = useCurrency();
   const [donations, setDonations] = useState<RecentDonation[]>([]);
   const [visible, setVisible] = useState(0);
 
@@ -73,8 +71,10 @@ export default function LiveDonationFeed() {
           <p className="text-sm font-medium text-foreground truncate">
             {donations[visible]?.donorName} donated{" "}
             <span className="text-accent font-bold">
-              {CURRENCY_SYMBOLS[donations[visible]?.currency || "GBP"]}
-              {donations[visible]?.amount}
+              {formatMoney(donations[visible]?.amount ?? 0, {
+                from: donations[visible]?.currency || "GBP",
+                decimals: 0,
+              })}
             </span>
           </p>
           <p className="text-xs text-muted-foreground flex items-center gap-1">
