@@ -41,7 +41,7 @@ export default function MonthlyUpsell() {
                 <Link
                   key={p.amount}
                   href={`/donate?amount=${p.amount}&freq=monthly`}
-                  className="px-5 py-2.5 rounded-full bg-primary-foreground/10 text-primary-foreground font-bold text-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+                  className="px-5 py-2.5 rounded-full bg-primary-foreground/10 text-primary-foreground font-bold text-sm hover:bg-primary hover:text-primary-foreground transition-colors"
                 >
                   {p.label}
                 </Link>
@@ -49,7 +49,7 @@ export default function MonthlyUpsell() {
             </div>
 
             <div className="mt-6">
-              <Button asChild size="lg" className="rounded-full bg-accent text-accent-foreground hover:bg-accent/90">
+              <Button asChild size="lg" className="rounded-full bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground">
                 <Link href="/donate?freq=monthly">
                   <Heart className="w-5 h-5" /> Start Monthly Giving <ArrowRight className="w-4 h-4" />
                 </Link>

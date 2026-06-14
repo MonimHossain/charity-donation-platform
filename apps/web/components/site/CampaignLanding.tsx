@@ -88,7 +88,7 @@ export default function CampaignLanding({
             ))}
           </ul>
           <div className="mt-8 flex gap-3 flex-wrap">
-            <Button asChild variant="default" size="lg" className="rounded-full bg-accent hover:bg-accent/90">
+            <Button asChild variant="default" size="lg" className="rounded-full bg-accent hover:bg-primary hover:text-primary-foreground">
               <Link href={`/donate?cause=${slug}`}>
                 Donate to {title} <ArrowRight className="w-4 h-4" />
               </Link>

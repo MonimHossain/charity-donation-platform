@@ -320,7 +320,7 @@ export function RamadanSplitForm({
 
         <Button
           size="lg"
-          className="w-full rounded-full bg-accent hover:bg-accent/90 h-14 text-base font-bold"
+          className="w-full rounded-full bg-accent hover:bg-primary hover:text-primary-foreground h-14 text-base font-bold"
           disabled={!canDonate}
           onClick={handleDonate}
         >

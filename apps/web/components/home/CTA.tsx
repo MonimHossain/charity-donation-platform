@@ -17,7 +17,7 @@ const CTA = () => (
             Join thousands of donors delivering food, water and dignity to families in crisis. Every donation, no matter the size, makes a measurable difference.
           </p>
           <div className="mt-10 flex flex-wrap gap-4">
-            <Button asChild size="lg" className="rounded-full bg-accent text-accent-foreground hover:bg-accent/90 px-8 py-6 text-lg">
+            <Button asChild size="lg" className="rounded-full bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground px-8 py-6 text-lg">
               <Link href="/donate">Donate Now <ArrowRight className="w-5 h-5" /></Link>
             </Button>
             <Button

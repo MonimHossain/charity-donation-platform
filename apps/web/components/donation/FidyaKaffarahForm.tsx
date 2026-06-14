@@ -107,7 +107,7 @@ export default function FidyaKaffarahForm({
 
       <Button
         size="lg"
-        className="w-full rounded-full bg-accent hover:bg-accent/90 h-14 text-base"
+        className="w-full rounded-full bg-accent hover:bg-primary hover:text-primary-foreground h-14 text-base"
         disabled={!Number.isFinite(total) || total <= 0}
         onClick={() => {
           const label = selected?.label ?? selectedKey;

@@ -582,7 +582,7 @@ export function CampaignDonationCard({
       <Button
         type="button"
         onClick={handleProceedToCheckout}
-        className="w-full rounded-full text-base font-bold h-14 bg-accent text-accent-foreground hover:bg-accent-deep hover:text-primary-foreground shadow-soft hover:shadow-glow px-10"
+        className="w-full rounded-full text-base font-bold h-14 bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground shadow-soft hover:shadow-glow px-10"
       >
         Donate {sym}
         {total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

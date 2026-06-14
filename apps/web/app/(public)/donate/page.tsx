@@ -1079,7 +1079,7 @@ function DonatePageApi() {
                 showPayPal
               }
               size="lg"
-              className="w-full rounded-full text-base bg-accent text-accent-foreground hover:bg-accent/90 h-14"
+              className="w-full rounded-full text-base bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground h-14"
             >
               {submitting ? (
                 <>

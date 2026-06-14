@@ -418,7 +418,7 @@ function DonationCheckoutContent() {
         <p className="text-muted-foreground max-w-md mx-auto">
           Add a donation from a campaign, then return here to complete checkout.
         </p>
-        <Button asChild className="rounded-full bg-accent hover:bg-accent/90">
+        <Button asChild className="rounded-full bg-accent hover:bg-primary hover:text-primary-foreground">
           <Link href="/campaigns">Browse campaigns</Link>
         </Button>
       </section>
@@ -651,7 +651,7 @@ function DonationCheckoutContent() {
                     type="button"
                     variant="outline"
                     onClick={goBackFromDetails}
-                    className="rounded-full min-w-[120px] border-accent text-accent hover:bg-accent/10"
+                    className="rounded-full min-w-[120px] border-accent text-accent hover:bg-primary hover:text-primary-foreground"
                   >
                     Previous
                   </Button>
@@ -660,7 +660,7 @@ function DonationCheckoutContent() {
                   type="button"
                   onClick={goToPayment}
                   disabled={!donorName.trim() || !donorEmail.trim()}
-                  className="rounded-full min-w-[120px] bg-accent text-accent-foreground hover:bg-accent/90"
+                  className="rounded-full min-w-[120px] bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground"
                 >
                   Next
                 </Button>
@@ -683,7 +683,7 @@ function DonationCheckoutContent() {
                       type="button"
                       variant="outline"
                       onClick={goBackFromPayment}
-                      className="rounded-full min-w-[120px] border-accent text-accent hover:bg-accent/10"
+                      className="rounded-full min-w-[120px] border-accent text-accent hover:bg-primary hover:text-primary-foreground"
                     >
                       Previous
                     </Button>
@@ -702,7 +702,7 @@ function DonationCheckoutContent() {
                           type="button"
                           variant="outline"
                           onClick={goBackFromPayment}
-                          className="rounded-full min-w-[120px] border-accent text-accent hover:bg-accent/10"
+                          className="rounded-full min-w-[120px] border-accent text-accent hover:bg-primary hover:text-primary-foreground"
                         >
                           Previous
                         </Button>
@@ -713,7 +713,7 @@ function DonationCheckoutContent() {
                             void preparePayment();
                           }}
                           disabled={submitting}
-                          className="rounded-full min-w-[120px] bg-accent text-accent-foreground hover:bg-accent/90"
+                          className="rounded-full min-w-[120px] bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground"
                         >
                           {submitting ? (
                             <>
@@ -763,7 +763,7 @@ function DonationCheckoutContent() {
                       variant="outline"
                       onClick={goBackFromPayment}
                       disabled={submitting}
-                      className="rounded-full min-w-[120px] border-accent text-accent hover:bg-accent/10"
+                      className="rounded-full min-w-[120px] border-accent text-accent hover:bg-primary hover:text-primary-foreground"
                     >
                       Previous
                     </Button>

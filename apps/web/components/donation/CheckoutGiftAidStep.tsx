@@ -113,7 +113,7 @@ export default function CheckoutGiftAidStep({
             type="button"
             variant="outline"
             onClick={onPrevious}
-            className="rounded-full min-w-[120px] border-accent text-accent hover:bg-accent/10"
+            className="rounded-full min-w-[120px] border-accent text-accent hover:bg-primary hover:text-primary-foreground"
           >
             Previous
           </Button>
@@ -121,7 +121,7 @@ export default function CheckoutGiftAidStep({
         <Button
           type="button"
           onClick={onNext}
-          className="rounded-full min-w-[120px] bg-accent text-accent-foreground hover:bg-accent/90"
+          className="rounded-full min-w-[120px] bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground"
         >
           Next
         </Button>

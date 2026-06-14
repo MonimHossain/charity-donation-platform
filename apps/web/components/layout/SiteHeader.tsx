@@ -262,7 +262,7 @@ export default function SiteHeader() {
           </div>
 
           <div className="hidden lg:flex items-center gap-2">
-            <Button asChild size="sm" className="rounded-full bg-accent text-accent-foreground hover:bg-accent/90">
+            <Button asChild size="sm" className="rounded-full bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground">
               <Link href="/donate">Donate</Link>
             </Button>
             {/* Show extra controls when scrolled */}
@@ -289,7 +289,7 @@ export default function SiteHeader() {
 
           {/* Mobile */}
           <div className="flex lg:hidden items-center gap-1.5 ml-auto">
-            <Button asChild size="sm" className="rounded-full h-9 px-3 bg-accent text-accent-foreground hover:bg-accent/90">
+            <Button asChild size="sm" className="rounded-full h-9 px-3 bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground">
               <Link href="/donate">Donate</Link>
             </Button>
             <button

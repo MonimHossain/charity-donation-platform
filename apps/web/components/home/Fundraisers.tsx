@@ -176,8 +176,8 @@ const FundraiserCard = ({ f }: { f: Fundraiser }) => {
           )}
         </div>
 
-        <Button asChild size="lg" className="mt-5 rounded-full w-full bg-accent text-accent-foreground hover:bg-accent/90">
-          <Link href={`/causes/${f.slug}`}>
+        <Button asChild size="lg" className="mt-5 rounded-full w-full bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground">
+          <Link href={`/campaigns/${f.slug}`}>
             Donate now <ArrowRight className="w-4 h-4" />
           </Link>
         </Button>

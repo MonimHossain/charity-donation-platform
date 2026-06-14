@@ -8,7 +8,6 @@ import { getCampaignCardImage } from "@/lib/campaign-media";
 import { isCampaignExpired } from "@/lib/campaign-expiration";
 import { CampaignExpirationCountdown } from "@/components/campaigns/CampaignExpirationCountdown";
 import { CampaignFeaturedBadge } from "@/components/campaigns/CampaignFeaturedBadge";
-import { demoCampaigns } from "@/lib/mock/campaigns";
 import { homeDonateButtonClass } from "@/lib/home-buttons";
 import {
   CAMPAIGN_MODE_LABELS,
@@ -102,7 +101,7 @@ const AppealCard = ({
   onExpired?: () => void;
 }) => (
   <div className={`group relative flex flex-col overflow-hidden rounded-2xl sm:rounded-3xl bg-card border border-border/60 shadow-soft hover:shadow-lift hover:-translate-y-1 transition-all duration-500 ${large ? "sm:col-span-2 lg:col-span-2" : ""}`}>
-    <Link href={`/causes/${a.slug}`} className="relative block overflow-hidden">
+    <Link href={`/campaigns/${a.slug}`} className="relative block overflow-hidden">
       <div className={`relative overflow-hidden ${large ? "aspect-[8/3]" : "aspect-[4/3]"}`}>
         <img
           src={a.image}
@@ -170,7 +169,7 @@ const AppealCard = ({
 
       <div className="mt-auto pt-2">
         <Link
-          href={`/donate?cause=${a.slug}`}
+          href={`/campaigns/${a.slug}`}
           className={`w-full px-4 py-2.5 text-sm ${homeDonateButtonClass}`}
         >
           Donate now
@@ -193,9 +192,7 @@ const FeaturedCampaigns = () => {
     [refetch]
   );
 
-  const sourceItems = (data?.items?.length ? data.items : demoCampaigns) as Array<
-    Record<string, unknown>
-  >;
+  const sourceItems = (data?.items ?? []) as Array<Record<string, unknown>>;
   const appeals = useMemo(
     () => mapCampaigns(sourceItems).filter((a) => !hiddenSlugs.has(a.slug)),
     [sourceItems, hiddenSlugs]
@@ -207,6 +204,10 @@ const FeaturedCampaigns = () => {
         <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
       </section>
     );
+  }
+
+  if (appeals.length === 0) {
+    return null;
   }
 
   return (

@@ -20,7 +20,7 @@ export default function VolunteerCTA() {
               Join thousands of donors delivering food, water and dignity to families in crisis. Every donation, no matter the size, makes a measurable difference.
             </p>
             <div className="mt-10 flex flex-wrap gap-4">
-              <Button asChild size="lg" className="rounded-full bg-accent text-accent-foreground hover:bg-accent/90 text-base px-8 h-14">
+              <Button asChild size="lg" className="rounded-full bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground text-base px-8 h-14">
                 <Link href="/donate">Donate Now <ArrowRight className="w-5 h-5" /></Link>
               </Button>
               <Button asChild size="lg" variant="outline" className="rounded-full border-primary-foreground/40 bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground hover:text-primary backdrop-blur text-base px-8 h-14">

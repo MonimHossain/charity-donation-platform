@@ -118,7 +118,7 @@ const StickyDonationBar = () => {
           </button>
           <Button
             onClick={go}
-            className="flex-1 rounded-xl text-sm sm:text-base font-bold h-10 sm:h-11 bg-accent text-accent-foreground hover:bg-accent/90"
+            className="flex-1 rounded-xl text-sm sm:text-base font-bold h-10 sm:h-11 bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground"
           >
             <Heart className="w-4 h-4 sm:w-5 sm:h-5" /> Donate Now
           </Button>

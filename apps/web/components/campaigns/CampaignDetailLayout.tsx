@@ -217,7 +217,7 @@ export function CampaignDetailLayout({
               <div className="mt-8 flex flex-wrap gap-3">
                 <Button
                   asChild
-                  className="h-12 px-8 text-base rounded-full bg-accent text-accent-foreground hover:bg-accent-deep hover:text-primary-foreground shadow-soft hover:shadow-glow"
+                  className="h-12 px-8 text-base rounded-full bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground shadow-soft hover:shadow-glow"
                 >
                   <Link href={checkoutLink}>
                     Donate now <ArrowRight className="w-4 h-4" />
@@ -227,7 +227,7 @@ export function CampaignDetailLayout({
                   type="button"
                   variant="outline"
                   onClick={() => onShare("copy")}
-                  className="h-12 px-8 text-base rounded-full bg-primary-foreground/95 hover:bg-accent hover:text-accent-foreground"
+                  className="h-12 px-8 text-base rounded-full bg-primary-foreground/95 hover:bg-primary hover:text-primary-foreground"
                 >
                   <Share2 className="w-4 h-4" /> Share
                 </Button>
@@ -277,7 +277,7 @@ export function CampaignDetailLayout({
               </div>
               <Button
                 asChild
-                className="rounded-full bg-accent text-accent-foreground hover:bg-accent-deep shadow-soft hover:shadow-glow h-10 px-5"
+                className="rounded-full bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground shadow-soft hover:shadow-glow h-10 px-5"
               >
                 <Link href={checkoutLink}>
                   Donate now <ArrowRight className="w-4 h-4" />
@@ -327,7 +327,7 @@ export function CampaignDetailLayout({
           </p>
           <Button
             asChild
-            className="mt-6 h-12 px-8 text-base rounded-full bg-accent text-accent-foreground hover:bg-accent-deep shadow-soft hover:shadow-glow"
+            className="mt-6 h-12 px-8 text-base rounded-full bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground shadow-soft hover:shadow-glow"
           >
             <Link href={checkoutLink}>
               Donate to {campaign.title} <ArrowRight className="w-4 h-4" />
@@ -344,7 +344,7 @@ export function CampaignDetailLayout({
             {relatedCampaigns.map((c) => (
               <Link
                 key={c.slug}
-                href={`/causes/${c.slug}`}
+                href={`/campaigns/${c.slug}`}
                 className="group rounded-2xl overflow-hidden border border-border bg-card hover:shadow-lift hover:-translate-y-0.5 transition-all duration-300"
               >
                 <div className="relative h-32 overflow-hidden">

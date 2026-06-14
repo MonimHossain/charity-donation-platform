@@ -59,7 +59,7 @@ const Newsletter = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 className="h-12 rounded-full bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/50 focus-visible:ring-accent"
               />
-              <Button type="submit" disabled={loading || done} className="rounded-full whitespace-nowrap bg-accent text-accent-foreground hover:bg-accent/90" size="lg">
+              <Button type="submit" disabled={loading || done} className="rounded-full whitespace-nowrap bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground" size="lg">
                 {done ? <><CheckCircle2 className="w-4 h-4" /> Subscribed</> : loading ? "Subscribing…" : "Subscribe"}
               </Button>
             </div>

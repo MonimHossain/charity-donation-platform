@@ -93,7 +93,7 @@ export default function ZakatPage() {
               <p className="text-muted-foreground mt-1">{p.d}</p>
             </div>
           ))}
-          <Button asChild size="lg" className="rounded-full bg-accent hover:bg-accent/90">
+          <Button asChild size="lg" className="rounded-full bg-accent hover:bg-primary hover:text-primary-foreground">
             <Link href={donateHref}>Donate Zakat Online</Link>
           </Button>
         </div>
@@ -153,7 +153,7 @@ export default function ZakatPage() {
                     : " · Below nisab threshold — consult a scholar"}
                 </p>
                 {result.isAboveNisab && result.zakatPayable > 0 && (
-                  <Button asChild className="mt-4 rounded-full bg-accent text-accent-foreground hover:bg-accent/90">
+                  <Button asChild className="mt-4 rounded-full bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground">
                     <Link href={donateHref}>Pay your Zakat now</Link>
                   </Button>
                 )}

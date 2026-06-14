@@ -15,8 +15,8 @@ export default function SiteFooter() {
             A faith-driven international NGO based in the UK, supporting communities affected by conflict, poverty, hunger and injustice.
           </p>
           <div className="mt-6 flex gap-3">
-            <a href="https://www.facebook.com/" target="_blank" rel="noopener noreferrer" className="grid place-items-center w-10 h-10 rounded-full bg-primary-foreground/10 hover:bg-accent hover:text-accent-foreground transition-colors" aria-label="Facebook"><Facebook className="w-4 h-4" /></a>
-            <a href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer" className="grid place-items-center w-10 h-10 rounded-full bg-primary-foreground/10 hover:bg-accent hover:text-accent-foreground transition-colors" aria-label="Instagram"><Instagram className="w-4 h-4" /></a>
+            <a href="https://www.facebook.com/" target="_blank" rel="noopener noreferrer" className="grid place-items-center w-10 h-10 rounded-full bg-primary-foreground/10 hover:bg-primary hover:text-primary-foreground transition-colors" aria-label="Facebook"><Facebook className="w-4 h-4" /></a>
+            <a href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer" className="grid place-items-center w-10 h-10 rounded-full bg-primary-foreground/10 hover:bg-primary hover:text-primary-foreground transition-colors" aria-label="Instagram"><Instagram className="w-4 h-4" /></a>
           </div>
         </div>
 

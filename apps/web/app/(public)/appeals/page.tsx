@@ -49,7 +49,7 @@ export default function AppealsPage() {
               </div>
               <h2 className="mt-4 font-serif text-3xl text-primary">{a.title}</h2>
               <p className="mt-3 text-muted-foreground leading-relaxed">{a.summary}</p>
-              <Button asChild className="mt-6 rounded-full bg-accent hover:bg-accent/90" variant="default">
+              <Button asChild className="mt-6 rounded-full bg-accent hover:bg-primary hover:text-primary-foreground" variant="default">
                 <Link href={`/campaigns/${a.slug}`}>
                   Learn more & donate <ArrowRight className="w-4 h-4" />
                 </Link>
