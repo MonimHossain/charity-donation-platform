@@ -50,7 +50,11 @@ export function parseCoordinates(lat: unknown, lng: unknown): { latitude: number
   return { latitude, longitude };
 }
 
-async function fetchAladhan(url: string) {
+type AladhanApiResponse = {
+  data?: Record<string, unknown>;
+};
+
+async function fetchAladhan(url: string): Promise<AladhanApiResponse> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 12_000);
   try {
@@ -61,7 +65,7 @@ async function fetchAladhan(url: string) {
     if (!res.ok) {
       throw new Error(`Aladhan responded with ${res.status}`);
     }
-    return res.json();
+    return (await res.json()) as AladhanApiResponse;
   } finally {
     clearTimeout(timeout);
   }
