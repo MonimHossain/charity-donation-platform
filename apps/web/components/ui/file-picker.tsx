@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Upload, FileText, X } from "lucide-react";
 import { Button } from "./button";
 import { MediaPickerDialog } from "./media-picker-dialog";
+import { resolveMediaUrl } from "@/lib/campaign-media";
 
 interface PickedFile {
   id: string;
@@ -31,7 +32,7 @@ export function FilePicker({ value, onChange, accept = "all", label, className }
       {value ? (
         <div className="relative group rounded-lg border bg-muted/30 overflow-hidden">
           {value.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i) ? (
-            <img src={value} alt="" className="w-full h-32 object-cover" />
+            <img src={resolveMediaUrl(value) ?? value} alt="" className="w-full h-32 object-cover" />
           ) : (
             <div className="h-32 flex items-center justify-center">
               <FileText className="h-8 w-8 text-muted-foreground" />

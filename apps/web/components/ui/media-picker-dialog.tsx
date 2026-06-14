@@ -7,6 +7,7 @@ import { Upload, Image, Film, FileText, X, Search, Loader2, Check } from "lucide
 import { Button } from "./button";
 import { Input } from "./input";
 import { cn } from "@/lib/utils";
+import { resolveMediaUrl } from "@/lib/campaign-media";
 
 interface MediaFile {
   id: string;
@@ -174,7 +175,7 @@ export function MediaPickerDialog({
                     <div className="aspect-square bg-muted/50 flex items-center justify-center">
                       {isImage ? (
                         <img
-                          src={file.url}
+                          src={resolveMediaUrl(file.url) ?? file.url}
                           alt={file.name}
                           className="w-full h-full object-cover"
                           loading="lazy"

@@ -8,7 +8,28 @@ const useSSL = process.env.MINIO_USE_SSL === "true";
 const accessKey = process.env.MINIO_ACCESS_KEY || "minioadmin";
 const secretKey = process.env.MINIO_SECRET_KEY || "minioadmin";
 const bucket = process.env.MINIO_BUCKET_MEDIA || "charity-media";
-const publicBase = process.env.MINIO_PUBLIC_BASE_URL || `http://${endpoint}:${port}/${bucket}`;
+
+/** Public URL for browser access — prefer nginx proxy path, not direct MinIO port. */
+function resolvePublicBase(): string {
+  const configured = process.env.MINIO_PUBLIC_BASE_URL?.trim().replace(/\/$/, "");
+  if (configured) return configured;
+  const appUrl = (process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL)?.trim().replace(/\/$/, "");
+  if (appUrl) return `${appUrl}/charity-media`;
+  return `http://${endpoint}:${port}/${bucket}`;
+}
+
+const publicBase = resolvePublicBase();
+
+const BUCKET_POLICY = JSON.stringify({
+  Version: "2012-10-17",
+  Statement: [{
+    Sid: "PublicRead",
+    Effect: "Allow",
+    Principal: "*",
+    Action: ["s3:GetObject"],
+    Resource: [`arn:aws:s3:::${bucket}/*`],
+  }],
+});
 
 let clientInstance: Client | null = null;
 
@@ -24,18 +45,21 @@ export async function ensureBucket(): Promise<void> {
   const exists = await client.bucketExists(bucket);
   if (!exists) {
     await client.makeBucket(bucket);
-    const policy = JSON.stringify({
-      Version: "2012-10-17",
-      Statement: [{
-        Sid: "PublicRead",
-        Effect: "Allow",
-        Principal: "*",
-        Action: ["s3:GetObject"],
-        Resource: [`arn:aws:s3:::${bucket}/*`],
-      }],
-    });
-    await client.setBucketPolicy(bucket, policy);
   }
+  await client.setBucketPolicy(bucket, BUCKET_POLICY);
+}
+
+/** Rewrite legacy direct-MinIO URLs to the current public base (e.g. nginx /charity-media/). */
+export function normalizeStoredMediaUrl(url: string): string {
+  const trimmed = url.trim();
+  if (!trimmed) return trimmed;
+  const objectMatch = trimmed.match(/\/charity-media\/(.+)$/);
+  if (!objectMatch) return trimmed;
+  const legacyHost = /^https?:\/\/[^/]+:9002\/charity-media\//.test(trimmed)
+    || /^https?:\/\/127\.0\.0\.1:9002\/charity-media\//.test(trimmed)
+    || /^https?:\/\/localhost:9002\/charity-media\//.test(trimmed);
+  if (!legacyHost) return trimmed;
+  return `${publicBase}/${objectMatch[1]}`;
 }
 
 function uniqueName(originalName: string): string {
@@ -73,7 +97,7 @@ export async function uploadFile(
 
   return {
     objectName,
-    url: `${publicBase}/${objectName}`,
+    url: getPublicUrl(objectName),
     size: buffer.length,
     mimeType,
   };

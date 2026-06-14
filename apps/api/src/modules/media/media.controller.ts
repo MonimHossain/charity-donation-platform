@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { routeParam } from "../../helper/requestParams.js";
 import { AppDataSource } from "../../helper/connectDB.js";
 import { MediaLibrary } from "../../components/cms/mediaLibrary.entity.js";
-import { uploadFile, deleteFile, deleteFiles, listFolders, ensureBucket } from "../../helper/storage.js";
+import { uploadFile, deleteFile, deleteFiles, listFolders, ensureBucket, normalizeStoredMediaUrl } from "../../helper/storage.js";
 import { logAudit } from "../../helper/auditLog.js";
 import { ILike, In } from "typeorm";
 
@@ -60,8 +60,8 @@ export async function getMediaFiles(req: Request, res: Response) {
       id: m.id,
       name: m.originalName,
       filename: m.filename,
-      url: m.url,
-      thumbnailUrl: m.thumbnailUrl,
+      url: normalizeStoredMediaUrl(m.url),
+      thumbnailUrl: m.thumbnailUrl ? normalizeStoredMediaUrl(m.thumbnailUrl) : m.thumbnailUrl,
       type: m.mimeType,
       size: m.size,
       width: m.width,
