@@ -14,7 +14,6 @@ export type PrayerTimesResponse = {
   islamicDate: string | null;
   timings: PrayerTimings;
   method: string;
-  coordinates?: { latitude: number; longitude: number };
 };
 
 export const PRAYER_ORDER = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"] as const;
