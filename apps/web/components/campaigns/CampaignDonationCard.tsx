@@ -43,17 +43,14 @@ export interface CampaignDonationCardProps {
   donorSchedule: DonorScheduleChoice;
   showCustomSchedule: boolean;
   quantity: number;
-  selectedUpsells: Set<string>;
   customFieldValues: Record<string, string>;
   finalAmount: number;
-  upsellTotal: number;
   onSelectAttribute: (idx: number) => void;
   onSetSelectedAmount: (a: number, description?: string) => void;
   onSetCustomAmount: (a: string) => void;
   onSetDonorSchedule: (schedule: DonorScheduleChoice) => void;
   onSetShowCustomSchedule: (show: boolean) => void;
   onSetQuantity: (q: number) => void;
-  onToggleUpsell: (id: string) => void;
   onSetCustomFieldValue: (id: string, val: string) => void;
 }
 
@@ -123,22 +120,18 @@ export function CampaignDonationCard({
   donorSchedule,
   showCustomSchedule,
   quantity,
-  selectedUpsells,
   customFieldValues,
   finalAmount,
-  upsellTotal,
   onSelectAttribute,
   onSetSelectedAmount,
   onSetCustomAmount,
   onSetDonorSchedule,
   onSetShowCustomSchedule,
   onSetQuantity,
-  onToggleUpsell,
   onSetCustomFieldValue,
 }: CampaignDonationCardProps) {
   const router = useRouter();
-  const cs = campaign.checkoutSettings;
-  const total = finalAmount + upsellTotal;
+  const total = finalAmount;
 
   const isRegular = paymentType === "regular" && selectedAttr?.enableRegularPayment;
   const isSingle = paymentType === "single" && selectedAttr?.enableSinglePayment;
@@ -196,7 +189,6 @@ export function CampaignDonationCard({
       recurringInterval: recurringStripeParams?.interval,
       recurringIntervalCount: recurringStripeParams?.intervalCount,
       recurringCancelAt: recurringStripeParams?.cancelAt,
-      selectedUpsellIds: Array.from(selectedUpsells),
       checkoutSettings: campaign.checkoutSettings,
       checkoutUpsells: campaign.upsells.filter((u) => u.isActive !== false),
     });
@@ -541,46 +533,6 @@ export function CampaignDonationCard({
               )}
             </div>
           ))}
-        </div>
-      )}
-
-      {cs?.enableUpsell && campaign.upsells.filter((u) => u.isActive !== false).length > 0 && (
-        <div className="space-y-2">
-          <Separator />
-          <p className="text-xs font-medium text-muted-foreground">Add to your donation</p>
-          {campaign.upsells
-            .filter((u) => u.isActive !== false)
-            .map((u) => (
-              <label
-                key={u.id}
-                className={cn(
-                  "flex items-center gap-3 rounded-xl border p-3 cursor-pointer transition-all",
-                  selectedUpsells.has(u.id) ? "border-primary bg-primary/5" : "border-border"
-                )}
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedUpsells.has(u.id)}
-                  onChange={() => onToggleUpsell(u.id)}
-                  className="h-4 w-4 rounded accent-primary"
-                />
-                {u.image ? (
-                  <img src={u.image} alt="" className="h-12 w-12 rounded-lg object-cover shrink-0 bg-muted" />
-                ) : (
-                  <div className="h-12 w-12 rounded-lg bg-muted shrink-0" />
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">{u.name || u.label}</p>
-                  {u.description && (
-                    <p className="text-xs text-muted-foreground">{u.description}</p>
-                  )}
-                </div>
-                <span className="text-sm font-semibold text-primary shrink-0">
-                  {sym}
-                  {Number(u.amount || 0).toFixed(2)}
-                </span>
-              </label>
-            ))}
         </div>
       )}
 

@@ -46,7 +46,6 @@ function CampaignDetailApi({ slug: slugProp }: { slug: string }) {
   const [donorSchedule, setDonorSchedule] = useState<DonorScheduleChoice>({ mode: "admin" });
   const [showCustomSchedule, setShowCustomSchedule] = useState(false);
   const [quantity, setQuantity] = useState(1);
-  const [selectedUpsells, setSelectedUpsells] = useState<Set<string>>(new Set());
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
 
   function initAttributeState(attr: CampaignData["attributes"][0]) {
@@ -145,13 +144,6 @@ function CampaignDetailApi({ slug: slugProp }: { slug: string }) {
     return base * (useQuantity ? quantity : 1);
   }, [selectedAmount, customAmount, quantity, selectedAttr]);
 
-  const upsellTotal = useMemo(() => {
-    if (!campaign) return 0;
-    return campaign.upsells
-      .filter((u) => u.isActive && selectedUpsells.has(u.id))
-      .reduce((sum, u) => sum + u.amount, 0);
-  }, [campaign, selectedUpsells]);
-
   const handleShare = useCallback(
     (platform: string) => {
       if (!campaign) return;
@@ -171,15 +163,6 @@ function CampaignDetailApi({ slug: slugProp }: { slug: string }) {
     },
     [campaign]
   );
-
-  const toggleUpsell = useCallback((id: string) => {
-    setSelectedUpsells((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }, []);
 
   if (loading) {
     return (
@@ -230,10 +213,8 @@ function CampaignDetailApi({ slug: slugProp }: { slug: string }) {
     donorSchedule,
     showCustomSchedule,
     quantity,
-    selectedUpsells,
     customFieldValues,
     finalAmount,
-    upsellTotal,
     onSelectAttribute: handleSelectAttribute,
     onSetSelectedAmount: (amount: number, description?: string) => {
       setSelectedAmount(amount);
@@ -243,7 +224,6 @@ function CampaignDetailApi({ slug: slugProp }: { slug: string }) {
     onSetDonorSchedule: setDonorSchedule,
     onSetShowCustomSchedule: setShowCustomSchedule,
     onSetQuantity: setQuantity,
-    onToggleUpsell: toggleUpsell,
     onSetCustomFieldValue: (id: string, val: string) =>
       setCustomFieldValues((prev) => ({ ...prev, [id]: val })),
   };
