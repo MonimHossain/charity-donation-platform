@@ -612,14 +612,17 @@ router.get("/admin/cms/sitemap-settings", requireAdmin, async (req, res) => {
 // ═══════════════════════════════════
 // ADMIN BLOG
 // ═══════════════════════════════════
-router.get("/admin/blog", requireAdmin, getAdminBlogPosts);
-router.get("/admin/blog/:id", requireAdmin, getAdminBlogPost);
-router.post("/admin/blog", requireAdmin, createBlogPost);
-router.put("/admin/blog/:id", requireAdmin, updateBlogPost);
-router.delete("/admin/blog/:id", requireAdmin, deleteBlogPost);
+router.get("/admin/blog/categories", requireAdmin, async (req, res) => {
+  const { getAdminBlogCategories } = await import("../modules/cms/cmsExtended.controller.js");
+  return getAdminBlogCategories(req, res);
+});
 router.post("/admin/blog/categories", requireAdmin, async (req, res) => {
   const { createBlogCategory } = await import("../modules/cms/cmsExtended.controller.js");
   return createBlogCategory(req, res);
+});
+router.post("/admin/blog/categories/reorder", requireAdmin, async (req, res) => {
+  const { reorderBlogCategories } = await import("../modules/cms/cmsExtended.controller.js");
+  return reorderBlogCategories(req, res);
 });
 router.put("/admin/blog/categories/:id", requireAdmin, async (req, res) => {
   const { updateBlogCategory } = await import("../modules/cms/cmsExtended.controller.js");
@@ -629,10 +632,11 @@ router.delete("/admin/blog/categories/:id", requireAdmin, async (req, res) => {
   const { deleteBlogCategory } = await import("../modules/cms/cmsExtended.controller.js");
   return deleteBlogCategory(req, res);
 });
-router.post("/admin/blog/categories/reorder", requireAdmin, async (req, res) => {
-  const { reorderBlogCategories } = await import("../modules/cms/cmsExtended.controller.js");
-  return reorderBlogCategories(req, res);
-});
+router.get("/admin/blog", requireAdmin, getAdminBlogPosts);
+router.get("/admin/blog/:id", requireAdmin, getAdminBlogPost);
+router.post("/admin/blog", requireAdmin, createBlogPost);
+router.put("/admin/blog/:id", requireAdmin, updateBlogPost);
+router.delete("/admin/blog/:id", requireAdmin, deleteBlogPost);
 
 // ═══════════════════════════════════
 // ADMIN RECURRING
