@@ -243,6 +243,11 @@ export async function fetchBlogCategories() {
   return data;
 }
 
+export async function fetchAdminBlogCategories() {
+  const { data } = await api.get("/admin/blog/categories");
+  return data.items || data || [];
+}
+
 // ═══════════════════════════════════
 // PUBLIC - NEWSLETTER
 // ═══════════════════════════════════

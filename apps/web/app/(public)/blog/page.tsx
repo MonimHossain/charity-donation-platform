@@ -6,7 +6,14 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Search, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import BlogCard from "@/components/blog/BlogCard";
-import { fetchBlogPosts } from "@/lib/api";
+import { fetchBlogPosts, fetchBlogCategories } from "@/lib/api";
+import { cn } from "@/lib/utils";
+
+interface BlogCategory {
+  id: string;
+  name: string;
+  slug: string;
+}
 
 interface BlogPost {
   id: string;
@@ -16,6 +23,8 @@ interface BlogPost {
   featuredImage?: string;
   author?: string;
   tags?: string[];
+  categoryId?: string | null;
+  categoryName?: string | null;
   publishedAt?: string;
   createdAt?: string;
 }
@@ -36,17 +45,26 @@ export default function BlogListingPage() {
 
 function BlogListingPageApi() {
   const [posts, setPosts] = useState<BlogPost[]>([]);
+  const [categories, setCategories] = useState<BlogCategory[]>([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
 
-  async function loadPosts(p: number, q?: string) {
+  useEffect(() => {
+    fetchBlogCategories()
+      .then((data) => setCategories(Array.isArray(data) ? data : data.items || []))
+      .catch(() => setCategories([]));
+  }, []);
+
+  async function loadPosts(p: number, q?: string, categoryId?: string | null) {
     setLoading(true);
     try {
-      const params: Record<string, string> = { page: String(p), limit: "12", published: "true" };
+      const params: Record<string, string> = { page: String(p), limit: "12" };
       if (q) params.search = q;
+      if (categoryId) params.categoryId = categoryId;
       const data = await fetchBlogPosts(params);
       setPosts(data.items || []);
       setTotal(data.total || 0);
@@ -58,9 +76,19 @@ function BlogListingPageApi() {
     }
   }
 
-  useEffect(() => { loadPosts(page); }, [page]);
+  useEffect(() => {
+    loadPosts(page, search, selectedCategoryId);
+  }, [page, selectedCategoryId]);
 
-  const handleSearch = () => { setPage(1); loadPosts(1, search); };
+  const handleSearch = () => {
+    setPage(1);
+    loadPosts(1, search, selectedCategoryId);
+  };
+
+  const handleCategoryChange = (categoryId: string | null) => {
+    setSelectedCategoryId(categoryId);
+    setPage(1);
+  };
 
   const [featured, ...rest] = posts;
 
@@ -102,6 +130,38 @@ function BlogListingPageApi() {
       </section>
 
       <section className="container mx-auto max-w-6xl px-4 py-12">
+        {categories.length > 0 && (
+          <div className="mb-8 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => handleCategoryChange(null)}
+              className={cn(
+                "rounded-full px-4 py-2 text-sm font-semibold transition-colors",
+                selectedCategoryId === null
+                  ? "bg-purple-600 text-white"
+                  : "border border-gray-200 bg-white text-gray-600 hover:border-purple-300 hover:text-purple-700"
+              )}
+            >
+              All
+            </button>
+            {categories.map((category) => (
+              <button
+                key={category.id}
+                type="button"
+                onClick={() => handleCategoryChange(category.id)}
+                className={cn(
+                  "rounded-full px-4 py-2 text-sm font-semibold transition-colors",
+                  selectedCategoryId === category.id
+                    ? "bg-purple-600 text-white"
+                    : "border border-gray-200 bg-white text-gray-600 hover:border-purple-300 hover:text-purple-700"
+                )}
+              >
+                {category.name}
+              </button>
+            ))}
+          </div>
+        )}
+
         {loading ? (
           <div className="flex items-center justify-center py-20 text-gray-400">
             <Loader2 className="h-6 w-6 animate-spin mr-2" /> Loading articles...
@@ -138,6 +198,14 @@ function BlogListingPageApi() {
                         <p className="mt-4 text-lg leading-relaxed text-gray-500">{clampText(featured.excerpt, 150)}</p>
                       )}
                       <div className="mt-6 flex items-center gap-3 text-sm text-gray-400">
+                        {featured.categoryName && (
+                          <>
+                            <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-purple-700">
+                              {featured.categoryName}
+                            </span>
+                            <span className="h-1 w-1 rounded-full bg-gray-300" />
+                          </>
+                        )}
                         {featured.author && <span>{featured.author}</span>}
                         {featured.publishedAt && (
                           <>

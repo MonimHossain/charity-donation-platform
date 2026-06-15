@@ -10,6 +10,7 @@ interface BlogPost {
   featuredImage?: string;
   author?: string;
   tags?: string[];
+  categoryName?: string | null;
   publishedAt?: string;
 }
 
@@ -49,6 +50,12 @@ export default function BlogCard({ post }: { post: BlogPost }) {
 
       <div className="flex flex-1 flex-col p-6">
         <div className="mb-3 h-0.5 w-16 rounded-full bg-purple-500" />
+
+        {post.categoryName && (
+          <span className="mb-2 inline-flex rounded-full bg-purple-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-purple-700">
+            {post.categoryName}
+          </span>
+        )}
 
         <h2 className="text-xl font-bold leading-tight text-gray-900">
           <Link href={`/blog/${post.slug}`} className="line-clamp-2 transition-colors duration-200 hover:text-purple-700">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import {
   Plus, Pencil, Trash2, Search, X, Save, Loader2, ArrowLeft, Eye, Calendar,
@@ -18,7 +18,14 @@ import {
   adminCreateBlogPost,
   adminUpdateBlogPost,
   adminDeleteBlogPost,
+  fetchAdminBlogCategories,
 } from "@/lib/api";
+
+interface BlogCategory {
+  id: string;
+  name: string;
+  slug: string;
+}
 
 interface BlogPost {
   id: string;
@@ -29,6 +36,8 @@ interface BlogPost {
   featuredImage?: string;
   author?: string;
   tags?: string[];
+  categoryId?: string | null;
+  categoryName?: string | null;
   status?: string;
   isFeatured?: boolean;
   metaTitle?: string;
@@ -75,6 +84,14 @@ export default function AdminBlogPage() {
   const [publishedAt, setPublishedAt] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [tagDraft, setTagDraft] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [categories, setCategories] = useState<BlogCategory[]>([]);
+
+  useEffect(() => {
+    fetchAdminBlogCategories()
+      .then((items) => setCategories(items))
+      .catch(() => setCategories([]));
+  }, []);
 
   async function loadPosts() {
     try {
@@ -98,6 +115,7 @@ export default function AdminBlogPage() {
     setTitle(""); setSlug(""); setSlugLocked(false); setExcerpt(""); setContent("");
     setAuthor("Editorial Team"); setFeaturedImage(""); setStatus("draft"); setIsFeatured(false);
     setMetaTitle(""); setMetaDescription(""); setPublishedAt(""); setTags([]); setTagDraft("");
+    setCategoryId("");
   }
 
   function openCreate() {
@@ -125,6 +143,7 @@ export default function AdminBlogPage() {
       setMetaDescription(p.metaDescription || "");
       setPublishedAt(p.publishedAt ? new Date(p.publishedAt).toISOString().slice(0, 16) : "");
       setTags(p.tags || []);
+      setCategoryId(p.categoryId || "");
     } catch {
       toast.error("Failed to load post");
       setView("list");
@@ -161,6 +180,7 @@ export default function AdminBlogPage() {
       featuredImage: featuredImage.trim() || undefined,
       author: author.trim() || "Editorial Team",
       tags: tags.length ? tags : [],
+      categoryId: categoryId || null,
       status,
       isFeatured,
       metaTitle: metaTitle.trim() || undefined,
@@ -251,6 +271,7 @@ export default function AdminBlogPage() {
                 <thead>
                   <tr className="border-b bg-muted/40">
                     <th className="px-5 py-3 text-left font-medium text-muted-foreground">Title</th>
+                    <th className="px-5 py-3 text-left font-medium text-muted-foreground">Category</th>
                     <th className="px-5 py-3 text-left font-medium text-muted-foreground">Status</th>
                     <th className="px-5 py-3 text-left font-medium text-muted-foreground">Author</th>
                     <th className="px-5 py-3 text-left font-medium text-muted-foreground">Tags</th>
@@ -266,6 +287,7 @@ export default function AdminBlogPage() {
                           {p.title}
                         </button>
                       </td>
+                      <td className="px-5 py-3 text-muted-foreground">{p.categoryName || "—"}</td>
                       <td className="px-5 py-3">
                         <span className={cn("inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize", statusStyles[p.status || "draft"] || "bg-slate-100 text-slate-600")}>
                           {p.status || "draft"}
@@ -292,7 +314,7 @@ export default function AdminBlogPage() {
                     </tr>
                   ))}
                   {posts.length === 0 && (
-                    <tr><td colSpan={6} className="px-5 py-10 text-center text-muted-foreground">No posts found</td></tr>
+                    <tr><td colSpan={7} className="px-5 py-10 text-center text-muted-foreground">No posts found</td></tr>
                   )}
                 </tbody>
               </table>
@@ -358,6 +380,24 @@ export default function AdminBlogPage() {
                 <Input value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Editorial Team" />
               </div>
               <div className="space-y-1">
+                <Label className="text-xs">Category</Label>
+                <select
+                  value={categoryId}
+                  onChange={(e) => setCategoryId(e.target.value)}
+                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="">No category</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-1">
                 <Label className="text-xs">Status</Label>
                 <select
                   value={status}
@@ -367,6 +407,11 @@ export default function AdminBlogPage() {
                   <option value="draft">Draft</option>
                   <option value="published">Published</option>
                 </select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Published Date</Label>
+                <Input type="datetime-local" value={publishedAt} onChange={(e) => setPublishedAt(e.target.value)} />
+                <p className="text-[11px] text-muted-foreground">Leave empty to auto-assign when publishing.</p>
               </div>
             </div>
 
@@ -385,11 +430,6 @@ export default function AdminBlogPage() {
               <div className="space-y-1">
                 <Label className="text-xs">Featured Image</Label>
                 <FilePicker value={featuredImage} onChange={setFeaturedImage} accept="image" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Published Date</Label>
-                <Input type="datetime-local" value={publishedAt} onChange={(e) => setPublishedAt(e.target.value)} />
-                <p className="text-[11px] text-muted-foreground">Leave empty to auto-assign when publishing.</p>
               </div>
             </div>
 
