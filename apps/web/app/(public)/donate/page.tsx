@@ -632,7 +632,7 @@ function DonatePageApi() {
                         setCustomAmount("");
                       }}
                       className={cn(
-                        "relative py-4 px-2 rounded-xl font-bold text-base transition-all group text-center",
+                        "relative py-3 px-2 rounded-xl font-bold text-base transition-all group text-center",
                         active
                           ? "bg-accent text-accent-foreground shadow-glow scale-[1.02]"
                           : "bg-secondary hover:bg-secondary/70"
@@ -642,20 +642,15 @@ function DonatePageApi() {
                         {currencyInfo.symbol}
                         {p.amount}
                       </span>
-                      <span
-                        className={cn(
-                          "block text-[11px] font-normal mt-0.5 leading-tight",
-                          active
-                            ? "text-accent-foreground/80"
-                            : "text-muted-foreground"
-                        )}
-                      >
-                        {p.impact}
-                      </span>
                     </button>
                   );
                 })}
               </div>
+              {hoveredPreset?.impact && (
+                <div className="mt-3 rounded-2xl border border-border bg-secondary/40 px-4 py-3">
+                  <p className="text-sm text-muted-foreground">{hoveredPreset.impact}</p>
+                </div>
+              )}
               <div className="mt-3 relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold">
                   {currencyInfo.symbol}
@@ -1146,12 +1141,6 @@ function DonatePageApi() {
               </span>
             )}
             <div className="mt-6 space-y-2.5 text-sm">
-              {hoveredPreset && (
-                <p className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-accent shrink-0" />{" "}
-                  {hoveredPreset.impact}
-                </p>
-              )}
               <p className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-accent shrink-0" /> Provides{" "}
                 {Math.max(1, Math.floor(finalAmount / 5))} hot meals
