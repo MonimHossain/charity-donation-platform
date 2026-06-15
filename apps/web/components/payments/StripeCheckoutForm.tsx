@@ -707,6 +707,8 @@ export function StripeCheckoutForm({
   const isRecurring = !isSetupMode && isRecurringFrequency(frequency);
   const hasCustomerSession = Boolean(stripeCustomerId && customerSessionClientSecret);
 
+  const needsOffSessionSetup = automatedScheduleIds.length > 0;
+
   const elementsOptions = useMemo(() => {
     const appearance = {
       theme: "stripe" as const,
@@ -769,10 +771,20 @@ export function StripeCheckoutForm({
       amount: Math.round(amount * 100),
       currency: currencyCode.toLowerCase(),
       paymentMethodTypes: ["card"],
+      ...(needsOffSessionSetup ? { setup_future_usage: "off_session" as const } : {}),
       ...customerOptions,
       appearance,
     };
-  }, [amount, currencyCode, customerSessionClientSecret, hasCustomerSession, isRecurring, isSetupMode, stripeCustomerId]);
+  }, [
+    amount,
+    currencyCode,
+    customerSessionClientSecret,
+    hasCustomerSession,
+    isRecurring,
+    isSetupMode,
+    needsOffSessionSetup,
+    stripeCustomerId,
+  ]);
 
   const elementsKey = `${donationId}-${paymentMode}-${stripeCustomerId ?? "guest"}-${customerSessionClientSecret ?? "none"}`;
 

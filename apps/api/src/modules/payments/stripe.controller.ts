@@ -93,11 +93,9 @@ export async function createPaymentIntent(req: Request, res: Response) {
       currency: (currency || "gbp").toLowerCase(),
       payment_method_types: ["card"],
       ...(installmentLabel ? { description: installmentLabel } : {}),
-      ...(customerId
-        ? {
-            customer: customerId,
-            setup_future_usage: "off_session",
-          }
+      ...(customerId ? { customer: customerId } : {}),
+      ...(customerId && scheduleIds.length > 0
+        ? { setup_future_usage: "off_session" }
         : {}),
       metadata: {
         donationId: donationId || "",
