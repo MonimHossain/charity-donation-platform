@@ -178,7 +178,7 @@ function DonatePageApi() {
   const [attributeSelections, setAttributeSelections] = useState<Record<string, string>>({});
   const [selectedUpsells, setSelectedUpsells] = useState<Set<number>>(new Set());
   const [activeCampaign, setActiveCampaign] = useState<Campaign | null>(null);
-  const { prefill, stripeCustomer } = useCheckoutDonorPrefill();
+  const { prefill, stripeCustomer, loading: donorPrefillLoading } = useCheckoutDonorPrefill();
   const prefillApplied = useRef(false);
 
   // Donation-page orders use /donation/checkout — never re-ask for amount/campaign on /donate.
@@ -1031,7 +1031,14 @@ function DonatePageApi() {
               <p className="text-sm text-destructive">{paymentError}</p>
             )}
 
-            {stripePublishableKey && pendingDonationId && selectedGateway === "stripe" && (
+            {stripePublishableKey && pendingDonationId && selectedGateway === "stripe" && donorPrefillLoading && (
+              <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
+                <Loader2 className="h-8 w-8 animate-spin text-accent-deep" />
+                <p className="text-sm text-muted-foreground">Loading your saved payment methods…</p>
+              </div>
+            )}
+
+            {stripePublishableKey && pendingDonationId && selectedGateway === "stripe" && !donorPrefillLoading && (
               <StripeCheckoutForm
                 publishableKey={stripePublishableKey}
                 donationId={pendingDonationId}

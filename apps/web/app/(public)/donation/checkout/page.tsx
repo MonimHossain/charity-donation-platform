@@ -53,7 +53,7 @@ const DEDICATION_TYPES = [
 function DonationCheckoutContent() {
   const router = useRouter();
   const { items, subtotal, currency, removeItem, clear } = useDonationCart();
-  const { prefill, stripeCustomer } = useCheckoutDonorPrefill();
+  const { prefill, stripeCustomer, loading: donorPrefillLoading } = useCheckoutDonorPrefill();
   const prefillApplied = useRef(false);
 
   const [campaignConfig, setCampaignConfig] = useState<CheckoutCampaignConfig>(DEFAULT_CAMPAIGN_CONFIG);
@@ -747,7 +747,16 @@ function DonationCheckoutContent() {
                 </div>
               )}
 
-              {effectivePublishableKey && pendingDonationId && (
+              {effectivePublishableKey && pendingDonationId && donorPrefillLoading && (
+                <div className="rounded-3xl bg-card border border-border p-6 lg:p-8 shadow-soft">
+                  <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-accent-deep" />
+                    <p className="text-sm text-muted-foreground">Loading your saved payment methods…</p>
+                  </div>
+                </div>
+              )}
+
+              {effectivePublishableKey && pendingDonationId && !donorPrefillLoading && (
                 <>
                   {paymentError && (
                     <p className="text-sm text-destructive text-center">{paymentError}</p>

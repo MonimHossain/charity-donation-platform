@@ -603,6 +603,7 @@ export function StripeCheckoutForm({
 }) {
   const stripePromise = useMemo(() => loadStripe(publishableKey), [publishableKey]);
   const isRecurring = isRecurringFrequency(frequency);
+  const hasCustomerSession = Boolean(stripeCustomerId && customerSessionClientSecret);
 
   const elementsOptions = useMemo(
     () => ({
@@ -610,7 +611,7 @@ export function StripeCheckoutForm({
       amount: Math.round(amount * 100),
       currency: currencyCode.toLowerCase(),
       paymentMethodTypes: ["card"],
-      ...(stripeCustomerId && customerSessionClientSecret
+      ...(hasCustomerSession
         ? {
             customer: stripeCustomerId,
             customerSessionClientSecret,
@@ -634,13 +635,19 @@ export function StripeCheckoutForm({
             border: "1px solid hsl(268 100% 51%)",
             boxShadow: "0 0 0 1px hsl(268 100% 51%)",
           },
-          ".Tab, .TabLabel, .p-TabList": {
-            display: "none",
-          },
+          // Hide the single "Card" method tab for guests only. Logged-in customers need
+          // tabs visible so Stripe can show saved cards vs. add a new card.
+          ...(!hasCustomerSession
+            ? {
+                ".Tab, .TabLabel, .p-TabList": {
+                  display: "none",
+                },
+              }
+            : {}),
         },
       },
     }),
-    [amount, currencyCode, customerSessionClientSecret, isRecurring, stripeCustomerId]
+    [amount, currencyCode, customerSessionClientSecret, hasCustomerSession, isRecurring, stripeCustomerId]
   );
 
   const elementsKey = `${donationId}-${stripeCustomerId ?? "guest"}-${customerSessionClientSecret ?? "none"}`;
