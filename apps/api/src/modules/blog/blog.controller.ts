@@ -224,7 +224,7 @@ export async function createBlogPost(req: Request, res: Response) {
       slug,
       excerpt: excerpt || "",
       content,
-      featuredImage: featuredImage ? normalizeStoredMediaUrl(featuredImage) : null,
+      featuredImage: featuredImage ? normalizeStoredMediaUrl(featuredImage) : undefined,
       author: author || "Editorial Team",
       tags: tags || [],
       categoryId: categoryId || null,
