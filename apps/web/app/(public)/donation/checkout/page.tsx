@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { statTotalClass } from "@/lib/home-buttons";
-import { CURRENCIES } from "@/lib/currency";
+import { CURRENCIES, convertAmount, normalizeCurrencyCode } from "@/lib/currency";
 import {
   createAutomatedSchedule,
   createDonation,
@@ -35,6 +35,11 @@ import CheckoutGiftAidStep from "@/components/donation/CheckoutGiftAidStep";
 import CheckoutUpsellList from "@/components/donation/CheckoutUpsellList";
 import CheckoutStepIndicator, { type CheckoutFlowStep } from "@/components/donation/CheckoutStepIndicator";
 import { useCheckoutDonorPrefill } from "@/lib/hooks/useCheckoutDonorPrefill";
+import {
+  getRamadanInstallmentsFromLine,
+  isRamadanSplitCartLine,
+  summarizeRamadanCheckout,
+} from "@/lib/ramadan-split";
 import {
   DEFAULT_CAMPAIGN_CONFIG,
   isGiftAidCheckoutEnabled,
@@ -78,6 +83,7 @@ function DonationCheckoutContent() {
   const [paymentError, setPaymentError] = useState("");
   const [pendingDonationId, setPendingDonationId] = useState<string | null>(null);
   const [pendingRecurringDonationId, setPendingRecurringDonationId] = useState<string | null>(null);
+  const [pendingAutomatedScheduleIds, setPendingAutomatedScheduleIds] = useState<string[]>([]);
   const [monthlyGift, setMonthlyGift] = useState(false);
   const [stripeReady, setStripeReady] = useState(false);
 
@@ -123,13 +129,34 @@ function DonationCheckoutContent() {
     [checkoutUpsellOptions, selectedUpsellIds]
   );
 
+  const ramadanSummary = useMemo(() => summarizeRamadanCheckout(items), [items]);
+
+  const nonRamadanSubtotal = useMemo(
+    () =>
+      items
+        .filter((i) => !isRamadanSplitCartLine(i))
+        .reduce(
+          (s, i) =>
+            s +
+            convertAmount(Number(i.amount || 0), normalizeCurrencyCode(i.currency), currency),
+          0
+        ),
+    [items, currency]
+  );
+
+  const ramadanCheckoutCharge = useMemo(
+    () => ramadanSummary.checkoutChargeAmount,
+    [ramadanSummary.checkoutChargeAmount]
+  );
+
   const donationAmount = subtotal + upsellTotal;
+  const chargeAmount = nonRamadanSubtotal + upsellTotal + ramadanCheckoutCharge;
+
   const giftAidBoost =
     giftAid && isGiftAidCheckoutEnabled(checkoutSettings)
-      ? +(donationAmount * 0.25).toFixed(2)
+      ? +(chargeAmount * 0.25).toFixed(2)
       : 0;
   const charityValue = donationAmount + giftAidBoost;
-  const chargeAmount = donationAmount;
 
   const showGiftAidStep = isGiftAidCheckoutEnabled(checkoutSettings);
 
@@ -209,6 +236,7 @@ function DonationCheckoutContent() {
     setFlowStep("details");
     setPendingDonationId(null);
     setPendingRecurringDonationId(null);
+    setPendingAutomatedScheduleIds([]);
     setPaymentError("");
     paymentPrepareAttempted.current = false;
   }
@@ -258,20 +286,26 @@ function DonationCheckoutContent() {
   const redirectToThankYou = (donationId?: string) => {
     clear();
     const summaryParams = new URLSearchParams({
-      amount: donationAmount.toString(),
+      amount: chargeAmount.toString(),
       currency,
-      frequency: checkoutFrequency,
+      frequency: ramadanSummary.hasRamadanSplit ? "ramadan_split" : checkoutFrequency,
       giftAid: giftAid.toString(),
     });
+    if (ramadanSummary.hasRamadanSplit) {
+      summaryParams.set("commitmentTotal", donationAmount.toString());
+      summaryParams.set("installmentCount", String(ramadanSummary.installmentCount));
+      summaryParams.set("installmentAmount", ramadanSummary.firstInstallmentAmount.toString());
+    }
     if (donationId) summaryParams.set("donationId", donationId);
     router.push(`/thank-you?${summaryParams.toString()}`);
   };
 
   const paymentPrepareAttempted = useRef(false);
 
-  const createRamadanSchedules = useCallback(async () => {
+  const createRamadanSchedules = useCallback(async (): Promise<string[]> => {
+    const scheduleIds: string[] = [];
     for (const line of items) {
-      if (line.kind !== "ramadan_split" || !line.ramadan) continue;
+      if (!isRamadanSplitCartLine(line) || !line.ramadan) continue;
       const r = line.ramadan;
       const startDate =
         r.ramadanStartDate ?? r.startDate ?? r.selectedDates?.[0] ?? new Date().toISOString().slice(0, 10);
@@ -286,7 +320,7 @@ function DonationCheckoutContent() {
           status: "pending",
         }));
 
-      await createAutomatedSchedule({
+      const schedule = await createAutomatedSchedule({
         donorName,
         donorEmail,
         donorPhone: donorPhone || undefined,
@@ -298,8 +332,11 @@ function DonationCheckoutContent() {
         recurringPlanId: r.recurringPlan?.id,
         currency: line.currency,
         notes: r.notes || `Ramadan split (${r.nights} nights)`,
+        status: "awaiting_payment_method",
       });
+      if (schedule?.id) scheduleIds.push(String(schedule.id));
     }
+    return scheduleIds;
   }, [donorEmail, donorName, donorPhone, items]);
 
   const formatPaymentError = (message: string) => {
@@ -332,6 +369,11 @@ function DonationCheckoutContent() {
 
       const cartSummary = items.map((i) => i.description).join("; ");
       const primary = items[0];
+
+      const scheduleIds = ramadanSummary.hasRamadanSplit ? await createRamadanSchedules() : [];
+      setPendingAutomatedScheduleIds(scheduleIds);
+      const primaryScheduleId = scheduleIds[0];
+
       let recurringId: string | undefined;
       if (isRecurringFrequency(checkoutFrequency)) {
         const recurring = await createRecurringDonation({
@@ -347,10 +389,17 @@ function DonationCheckoutContent() {
         recurringId = recurring.id as string;
       }
 
+      const ramadanMessage = ramadanSummary.hasRamadanSplit
+        ? `Ramadan split — ${currencyInfo.symbol}${donationAmount.toFixed(2)} across ${ramadanSummary.installmentCount} nights` +
+          (ramadanCheckoutCharge > 0
+            ? ` · First night ${currencyInfo.symbol}${ramadanCheckoutCharge.toFixed(2)}`
+            : " · Card saved for scheduled nights")
+        : "";
+
       const donation = await createDonation({
         amount: chargeAmount,
         currency,
-        frequency: checkoutFrequency,
+        frequency: ramadanSummary.hasRamadanSplit ? "ramadan_split" : checkoutFrequency,
         giftAid,
         donationType: primary?.donationType || primary?.category || "general",
         paymentMethod: "stripe",
@@ -360,8 +409,10 @@ function DonationCheckoutContent() {
         campaignId: primary?.campaignId,
         quantity: 1,
         unitPrice: chargeAmount,
+        automatedScheduleId: primaryScheduleId,
         message: [
           `Donation cart: ${cartSummary}`,
+          ramadanMessage,
           upsellSummary ? `Upsells: ${upsellSummary}` : "",
           donorComment.trim() ? `Comment: ${donorComment.trim()}` : "",
         ]
@@ -380,10 +431,6 @@ function DonationCheckoutContent() {
 
       setPendingDonationId(donation.id as string);
       setPendingRecurringDonationId(recurringId ?? null);
-
-      void createRamadanSchedules().catch((scheduleErr) => {
-        console.error("[checkout] Ramadan schedule could not be created:", scheduleErr);
-      });
     } catch (err: unknown) {
       paymentPrepareAttempted.current = false;
       setPaymentError(formatPaymentError(getApiErrorMessage(err, "Payment could not be started")));
@@ -397,6 +444,11 @@ function DonationCheckoutContent() {
     checkoutFrequency,
     checkoutUpsellOptions,
     createRamadanSchedules,
+    donationAmount,
+    ramadanCheckoutCharge,
+    ramadanSummary.hasRamadanSplit,
+    ramadanSummary.installmentCount,
+    ramadanSummary.installmentCount,
     currency,
     currencyInfo.symbol,
     dedicationEmail,
@@ -639,7 +691,7 @@ function DonationCheckoutContent() {
                 </div>
               )}
 
-              {!isCartRecurring && (
+              {!isCartRecurring && !ramadanSummary.hasRamadanSplit && (
                 <label className="flex items-start gap-3 rounded-2xl border border-border bg-secondary/30 px-4 py-3 cursor-pointer">
                   <input
                     type="checkbox"
@@ -777,6 +829,17 @@ function DonationCheckoutContent() {
                     campaignId={items[0]?.campaignId}
                     stripeCustomerId={stripeCustomer?.customerId}
                     customerSessionClientSecret={stripeCustomer?.customerSessionClientSecret}
+                    paymentMode="payment"
+                    automatedScheduleIds={pendingAutomatedScheduleIds}
+                    ramadanCommitmentTotal={ramadanSummary.hasRamadanSplit ? donationAmount : undefined}
+                    ramadanFirstInstallmentAmount={
+                      ramadanSummary.hasRamadanSplit
+                        ? ramadanSummary.firstInstallmentAmount
+                        : undefined
+                    }
+                    ramadanInstallmentCount={
+                      ramadanSummary.hasRamadanSplit ? ramadanSummary.installmentCount : undefined
+                    }
                     onSuccess={() => redirectToThankYou(pendingDonationId)}
                     onError={(msg) => setPaymentError(msg)}
                   />
@@ -811,8 +874,31 @@ function DonationCheckoutContent() {
                     <p className="font-semibold text-primary truncate">{line.title}</p>
                     <p className="text-sm text-muted-foreground mt-0.5">{line.description}</p>
                     <p className="text-sm font-bold text-accent-deep mt-1 tabular-nums">
-                      {currencyInfo.symbol}
-                      {Number(line.amount).toFixed(2)}
+                      {isRamadanSplitCartLine(line) ? (
+                        (() => {
+                          const installments = [...getRamadanInstallmentsFromLine(line)].sort(
+                            (a, b) => a.scheduledDate.localeCompare(b.scheduledDate)
+                          );
+                          const perNight = Number(installments[0]?.amount ?? 0);
+                          return (
+                            <>
+                              {currencyInfo.symbol}
+                              {perNight.toFixed(2)}
+                              <span className="text-muted-foreground font-normal"> / night</span>
+                              <span className="block text-[11px] font-normal text-muted-foreground">
+                                {currencyInfo.symbol}
+                                {Number(line.amount).toFixed(2)} total · {line.ramadan?.nights ?? 0}{" "}
+                                nights
+                              </span>
+                            </>
+                          );
+                        })()
+                      ) : (
+                        <>
+                          {currencyInfo.symbol}
+                          {Number(line.amount).toFixed(2)}
+                        </>
+                      )}
                     </p>
                   </div>
                   <button
@@ -857,11 +943,44 @@ function DonationCheckoutContent() {
           )}
 
           <div className="rounded-3xl gradient-plum text-primary-foreground p-6 lg:p-8 shadow-lift">
-            <p className="text-xs uppercase tracking-widest text-accent font-bold">You pay · {currency}</p>
-            <p className={`${statTotalClass} mt-1`}>
-              {currencyInfo.symbol}
-              {chargeAmount.toFixed(2)}
-            </p>
+            {ramadanSummary.hasRamadanSplit ? (
+              <>
+                <p className="text-xs uppercase tracking-widest text-accent font-bold">
+                  First night · {currency}
+                </p>
+                <p className={`${statTotalClass} mt-1`}>
+                  {currencyInfo.symbol}
+                  {ramadanSummary.firstInstallmentAmount.toFixed(2)}
+                </p>
+                <p className="text-sm text-primary-foreground/85 mt-2">
+                  {currencyInfo.symbol}
+                  {donationAmount.toFixed(2)} total across {ramadanSummary.installmentCount} nights
+                </p>
+                <p className="text-sm text-primary-foreground/90 mt-3 font-semibold">
+                  Due today: {currencyInfo.symbol}
+                  {chargeAmount.toFixed(2)}
+                  <span className="block text-xs font-normal text-primary-foreground/75 mt-0.5">
+                    Night 1 of {ramadanSummary.installmentCount} · saved card used for remaining
+                    nights
+                  </span>
+                </p>
+                {ramadanSummary.futureInstallmentTotal > 0 && (
+                  <p className="text-xs text-primary-foreground/75 mt-1">
+                    {currencyInfo.symbol}
+                    {ramadanSummary.futureInstallmentTotal.toFixed(2)} charged automatically on nights
+                    2–{ramadanSummary.installmentCount}
+                  </p>
+                )}
+              </>
+            ) : (
+              <>
+                <p className="text-xs uppercase tracking-widest text-accent font-bold">You pay · {currency}</p>
+                <p className={`${statTotalClass} mt-1`}>
+                  {currencyInfo.symbol}
+                  {chargeAmount.toFixed(2)}
+                </p>
+              </>
+            )}
             {giftAid && giftAidBoost > 0 && (
               <p className="text-sm text-primary-foreground/80 mt-2">
                 Charity receives {currencyInfo.symbol}

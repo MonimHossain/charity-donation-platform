@@ -72,11 +72,17 @@ export class AutomatedDonationSchedule {
   @Column({ type: "decimal", precision: 12, scale: 2, default: 0 })
   paidAmount!: number;
 
-  @Column({ type: "varchar", length: 20, default: "scheduled" })
+  @Column({ type: "varchar", length: 50, default: "scheduled" })
   status!: string;
 
   @Column({ type: "varchar", length: 255, nullable: true })
   stripeScheduleId?: string;
+
+  @Column({ type: "varchar", length: 255, nullable: true })
+  stripeCustomerId?: string;
+
+  @Column({ type: "varchar", length: 255, nullable: true })
+  stripePaymentMethodId?: string;
 
   @Column({ type: "varchar", length: 50, default: "stripe" })
   paymentMethod!: string;

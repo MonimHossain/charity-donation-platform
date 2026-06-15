@@ -93,14 +93,18 @@ export async function createAutomatedSchedule(req: Request, res: Response) {
         ? `${notes || ""} recurringPlanId=${recurringPlanId}`.trim()
         : notes,
       userId: (req as any).user?.id,
-      status: "scheduled",
+      status: req.body.status || (installmentRows?.length ? "awaiting_payment_method" : "scheduled"),
     });
 
     await repo().save(schedule);
     return res.status(201).json(schedule);
   } catch (error) {
     console.error("createAutomatedSchedule error:", error);
-    return res.status(500).json({ message: "Internal server error" });
+    const message =
+      error instanceof Error ? error.message : "Internal server error";
+    return res.status(500).json({
+      message: process.env.NODE_ENV === "production" ? "Internal server error" : message,
+    });
   }
 }
 

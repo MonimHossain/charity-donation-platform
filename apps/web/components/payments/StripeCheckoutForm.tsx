@@ -19,7 +19,9 @@ import { Label } from "@/components/ui/label";
 import { Heart, Loader2 } from "lucide-react";
 import {
   confirmStripePayment,
+  confirmStripeSetup,
   createStripePaymentIntent,
+  createStripeSetupIntent,
   createStripeSubscriptionCheckout,
 } from "@/lib/api";
 import {
@@ -209,6 +211,11 @@ function CheckoutForm({
   recurringCancelAt,
   recurringDonationId,
   campaignId,
+  paymentMode = "payment",
+  automatedScheduleIds = [],
+  ramadanCommitmentTotal,
+  ramadanFirstInstallmentAmount,
+  ramadanInstallmentCount,
   onSuccess,
   onError,
 }: {
@@ -224,10 +231,16 @@ function CheckoutForm({
   recurringCancelAt?: number;
   recurringDonationId?: string;
   campaignId?: string;
+  paymentMode?: "payment" | "setup";
+  automatedScheduleIds?: string[];
+  ramadanCommitmentTotal?: number;
+  ramadanFirstInstallmentAmount?: number;
+  ramadanInstallmentCount?: number;
   onSuccess: () => void;
   onError: (msg: string) => void;
 }) {
-  const isRecurring = isRecurringFrequency(frequency);
+  const isSetupMode = paymentMode === "setup";
+  const isRecurring = !isSetupMode && isRecurringFrequency(frequency);
   const stripe = useStripe();
   const elements = useElements();
   const [processing, setProcessing] = useState(false);
@@ -300,6 +313,56 @@ function CheckoutForm({
       throw new Error(submitError.message || "Please check your payment details.");
     }
 
+    if (isSetupMode) {
+      const primaryScheduleId = automatedScheduleIds[0];
+      if (!primaryScheduleId) {
+        throw new Error("Ramadan schedule is not ready yet.");
+      }
+      const setup = await createStripeSetupIntent({
+        automatedScheduleId: primaryScheduleId,
+        automatedScheduleIds,
+        donationId,
+        currency: currencyCode,
+      });
+      const { error, setupIntent } = await stripe.confirmSetup({
+        elements,
+        clientSecret: setup.clientSecret,
+        confirmParams: {
+          return_url: returnUrl,
+          payment_method_data: {
+            billing_details: {
+              name: donorName.trim(),
+              email: donorEmail.trim(),
+            },
+          },
+        },
+        redirect: "if_required",
+      });
+      if (error) {
+        throw new Error(error.message || "Could not save payment method");
+      }
+      if (!setupIntent?.id) {
+        throw new Error("Payment method could not be saved");
+      }
+      const result = await confirmStripeSetup({
+        setupIntentId: setupIntent.id,
+        automatedScheduleId: primaryScheduleId,
+        automatedScheduleIds,
+        donationId,
+      });
+      if (result.token) {
+        localStorage.setItem("user_token", result.token);
+        if (result.user) {
+          localStorage.setItem(
+            "user_profile",
+            JSON.stringify({ ...result.user, name: result.user.fullName || result.user.name })
+          );
+        }
+      }
+      onSuccess();
+      return;
+    }
+
     let clientSecret: string;
     let subscriptionId: string | undefined;
 
@@ -329,6 +392,16 @@ function CheckoutForm({
         amount,
         currency: currencyCode,
         donationId,
+        donorEmail: donorEmail.trim(),
+        donorName: donorName.trim(),
+        automatedScheduleId: automatedScheduleIds[0],
+        automatedScheduleIds,
+        metadata:
+          automatedScheduleIds.length > 0
+            ? {
+                installmentLabel: `Ramadan split — night 1 of ${ramadanInstallmentCount ?? "?"}`,
+              }
+            : undefined,
       });
       clientSecret = intent.clientSecret;
     }
@@ -359,6 +432,7 @@ function CheckoutForm({
     await finalizePayment(paymentIntent.id, subscriptionId);
   }, [
     amount,
+    automatedScheduleIds,
     campaignId,
     currencyCode,
     donationId,
@@ -368,12 +442,14 @@ function CheckoutForm({
     finalizePayment,
     frequency,
     isRecurring,
+    isSetupMode,
     recurringCancelAt,
     recurringDonationId,
     recurringInterval,
     recurringIntervalCount,
     returnUrl,
     stripe,
+    onSuccess,
   ]);
 
   const handleExpressConfirm = async (event: StripeExpressCheckoutElementConfirmEvent) => {
@@ -408,19 +484,34 @@ function CheckoutForm({
   const showWalletHint =
     expressReady && !expressWalletsAvailable && !fallbackWalletAvailable;
 
-  const payLabel = isRecurring
-    ? `Donate ${formattedAmount}/${intervalLabel} now`
-    : `Donate ${formattedAmount} now`;
+  const perNight = ramadanFirstInstallmentAmount ?? amount;
+  const nights = ramadanInstallmentCount ?? 0;
+  const totalGift = ramadanCommitmentTotal ?? amount;
+
+  const payLabel =
+    automatedScheduleIds.length > 0 && ramadanFirstInstallmentAmount
+      ? `Pay ${currencySymbol}${ramadanFirstInstallmentAmount.toFixed(2)} · night 1 of ${nights}`
+      : isRecurring
+        ? `Donate ${formattedAmount}/${intervalLabel} now`
+        : `Donate ${formattedAmount} now`;
 
   return (
     <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-soft space-y-5">
+      {automatedScheduleIds.length > 0 && ramadanCommitmentTotal && (
+        <p className="text-xs text-center text-accent-deep font-medium rounded-xl bg-secondary/60 px-3 py-2 leading-relaxed">
+          Paying <span className="font-bold">{currencySymbol}{perNight.toFixed(2)}</span> now (night 1
+          of {nights}). {currencySymbol}
+          {(totalGift - perNight).toFixed(2)} will be charged automatically on the remaining{" "}
+          {Math.max(0, nights - 1)} nights — each payment appears in Stripe on its scheduled date.
+        </p>
+      )}
       {isRecurring && (
         <p className="text-xs text-center text-accent-deep font-medium rounded-xl bg-secondary/60 px-3 py-2">
           Recurring gift — your card will be charged {formattedAmount} every{" "}
           {intervalLabel} (sandbox test mode).
         </p>
       )}
-      {!isRecurring && (
+      {!isRecurring && !isSetupMode && (
       <div className="space-y-3">
         <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-accent-deep">
           Express checkout
@@ -484,7 +575,7 @@ function CheckoutForm({
       </div>
       )}
 
-      {!isRecurring && <OrPayByCardDivider />}
+      {!isRecurring && !isSetupMode && <OrPayByCardDivider />}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
@@ -580,6 +671,11 @@ export function StripeCheckoutForm({
   campaignId,
   stripeCustomerId,
   customerSessionClientSecret,
+  paymentMode = "payment",
+  automatedScheduleIds = [],
+  ramadanCommitmentTotal,
+  ramadanFirstInstallmentAmount,
+  ramadanInstallmentCount,
   onSuccess,
   onError,
 }: {
@@ -598,59 +694,87 @@ export function StripeCheckoutForm({
   campaignId?: string;
   stripeCustomerId?: string;
   customerSessionClientSecret?: string;
+  paymentMode?: "payment" | "setup";
+  automatedScheduleIds?: string[];
+  ramadanCommitmentTotal?: number;
+  ramadanFirstInstallmentAmount?: number;
+  ramadanInstallmentCount?: number;
   onSuccess: () => void;
   onError: (msg: string) => void;
 }) {
   const stripePromise = useMemo(() => loadStripe(publishableKey), [publishableKey]);
-  const isRecurring = isRecurringFrequency(frequency);
+  const isSetupMode = paymentMode === "setup";
+  const isRecurring = !isSetupMode && isRecurringFrequency(frequency);
   const hasCustomerSession = Boolean(stripeCustomerId && customerSessionClientSecret);
 
-  const elementsOptions = useMemo(
-    () => ({
-      mode: (isRecurring ? "subscription" : "payment") as "subscription" | "payment",
+  const elementsOptions = useMemo(() => {
+    const appearance = {
+      theme: "stripe" as const,
+      variables: {
+        colorPrimary: "#84cc16",
+        borderRadius: "12px",
+        fontFamily: "Inter, system-ui, sans-serif",
+        colorText: "#1a1228",
+        colorTextPlaceholder: "#8b8499",
+      },
+      rules: {
+        ".Input": {
+          border: "1px solid hsl(270 25% 90%)",
+          boxShadow: "none",
+        },
+        ".Input:focus": {
+          border: "1px solid hsl(268 100% 51%)",
+          boxShadow: "0 0 0 1px hsl(268 100% 51%)",
+        },
+        ...(!hasCustomerSession
+          ? {
+              ".Tab, .TabLabel, .p-TabList": {
+                display: "none",
+              },
+            }
+          : {}),
+      },
+    };
+
+    const customerOptions = hasCustomerSession
+      ? {
+          customer: stripeCustomerId,
+          customerSessionClientSecret,
+        }
+      : {};
+
+    if (isSetupMode) {
+      return {
+        mode: "setup" as const,
+        currency: currencyCode.toLowerCase(),
+        paymentMethodTypes: ["card"],
+        ...customerOptions,
+        appearance,
+      };
+    }
+
+    if (isRecurring) {
+      return {
+        mode: "subscription" as const,
+        amount: Math.round(amount * 100),
+        currency: currencyCode.toLowerCase(),
+        paymentMethodTypes: ["card"],
+        ...customerOptions,
+        appearance,
+      };
+    }
+
+    return {
+      mode: "payment" as const,
       amount: Math.round(amount * 100),
       currency: currencyCode.toLowerCase(),
       paymentMethodTypes: ["card"],
-      ...(hasCustomerSession
-        ? {
-            customer: stripeCustomerId,
-            customerSessionClientSecret,
-          }
-        : {}),
-      appearance: {
-        theme: "stripe" as const,
-        variables: {
-          colorPrimary: "#84cc16",
-          borderRadius: "12px",
-          fontFamily: "Inter, system-ui, sans-serif",
-          colorText: "#1a1228",
-          colorTextPlaceholder: "#8b8499",
-        },
-        rules: {
-          ".Input": {
-            border: "1px solid hsl(270 25% 90%)",
-            boxShadow: "none",
-          },
-          ".Input:focus": {
-            border: "1px solid hsl(268 100% 51%)",
-            boxShadow: "0 0 0 1px hsl(268 100% 51%)",
-          },
-          // Hide the single "Card" method tab for guests only. Logged-in customers need
-          // tabs visible so Stripe can show saved cards vs. add a new card.
-          ...(!hasCustomerSession
-            ? {
-                ".Tab, .TabLabel, .p-TabList": {
-                  display: "none",
-                },
-              }
-            : {}),
-        },
-      },
-    }),
-    [amount, currencyCode, customerSessionClientSecret, hasCustomerSession, isRecurring, stripeCustomerId]
-  );
+      ...customerOptions,
+      appearance,
+    };
+  }, [amount, currencyCode, customerSessionClientSecret, hasCustomerSession, isRecurring, isSetupMode, stripeCustomerId]);
 
-  const elementsKey = `${donationId}-${stripeCustomerId ?? "guest"}-${customerSessionClientSecret ?? "none"}`;
+  const elementsKey = `${donationId}-${paymentMode}-${stripeCustomerId ?? "guest"}-${customerSessionClientSecret ?? "none"}`;
 
   return (
     <Elements key={elementsKey} stripe={stripePromise} options={elementsOptions}>
@@ -667,6 +791,11 @@ export function StripeCheckoutForm({
         recurringCancelAt={recurringCancelAt}
         recurringDonationId={recurringDonationId}
         campaignId={campaignId}
+        paymentMode={paymentMode}
+        automatedScheduleIds={automatedScheduleIds}
+        ramadanCommitmentTotal={ramadanCommitmentTotal}
+        ramadanFirstInstallmentAmount={ramadanFirstInstallmentAmount}
+        ramadanInstallmentCount={ramadanInstallmentCount}
         onSuccess={onSuccess}
         onError={onError}
       />

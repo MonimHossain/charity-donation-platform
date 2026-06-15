@@ -284,6 +284,20 @@ router.post("/payments/stripe/create-subscription-checkout", async (req, res) =>
     return createSubscriptionCheckout(req, res);
   });
 });
+router.post("/payments/stripe/create-setup-intent", async (req, res) => {
+  const { optionalUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  optionalUser(req, res, async () => {
+    const { createSetupIntent } = await import("../modules/payments/stripe.controller.js");
+    return createSetupIntent(req, res);
+  });
+});
+router.post("/payments/stripe/confirm-setup", async (req, res) => {
+  const { optionalUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  optionalUser(req, res, async () => {
+    const { confirmStripeSetup } = await import("../modules/payments/stripe.controller.js");
+    return confirmStripeSetup(req, res);
+  });
+});
 router.get("/payments/stripe/customer-session", async (req, res) => {
   const { requireUser } = await import("../modules/user-auth/userAuth.middleware.js");
   requireUser(req, res, async () => {

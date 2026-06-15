@@ -23,14 +23,19 @@ export async function createDonation(req: Request, res: Response) {
       giftAid, isAnonymous, message, donationType, paymentMethod,
       marketingConsent, smsConsent, dedication,
       quantity, unitPrice, attributeSelections, upsellAmounts, upsellTotal,
+      automatedScheduleId,
     } = req.body;
 
-    if (!amount || !donorName || !donorEmail) {
-      return res.status(400).json({ message: "Amount, name, and email are required" });
+    const numericAmount = Number(amount);
+    if ((!Number.isFinite(numericAmount) || numericAmount < 0) && !automatedScheduleId) {
+      return res.status(400).json({ message: "Amount is required" });
+    }
+    if (!donorName || !donorEmail) {
+      return res.status(400).json({ message: "Name and email are required" });
     }
 
-    const giftAidAmount = giftAid && currency === "GBP" ? +(amount * 0.25).toFixed(2) : 0;
-    const totalAmount = +(amount + giftAidAmount).toFixed(2);
+    const giftAidAmount = giftAid && currency === "GBP" ? +(numericAmount * 0.25).toFixed(2) : 0;
+    const totalAmount = +(numericAmount + giftAidAmount).toFixed(2);
 
     const authUserId = (req as any).user?.id as string | undefined;
     const donorUser = await ensureDonorUserForDonation({
@@ -43,7 +48,7 @@ export async function createDonation(req: Request, res: Response) {
     });
 
     const donation = repo().create({
-      amount,
+      amount: numericAmount,
       currency: currency || "GBP",
       frequency: frequency || "single",
       campaignId,
@@ -58,7 +63,7 @@ export async function createDonation(req: Request, res: Response) {
       message,
       donationType: donationType || "general",
       quantity: quantity || 1,
-      unitPrice: unitPrice || amount,
+      unitPrice: unitPrice ?? numericAmount,
       attributeSelections: attributeSelections || undefined,
       upsellAmounts: upsellAmounts || undefined,
       upsellTotal: upsellTotal || 0,
@@ -69,8 +74,9 @@ export async function createDonation(req: Request, res: Response) {
       dedicationRecipientName: dedication?.recipientName,
       dedicationRecipientEmail: dedication?.recipientEmail,
       dedicationMessage: dedication?.personalMessage,
+      automatedScheduleId: automatedScheduleId || undefined,
       receiptNumber: generateReceiptNumber(),
-      status: "pending",
+      status: numericAmount > 0 ? "pending" : "completed",
     });
 
     await repo().save(donation);

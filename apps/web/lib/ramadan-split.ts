@@ -132,6 +132,90 @@ export function buildRamadanNightPreview(
   }));
 }
 
+export function todayIsoDate(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+export type RamadanCheckoutSummary = {
+  hasRamadanSplit: boolean;
+  commitmentTotal: number;
+  /** Amount for the earliest scheduled installment */
+  firstInstallmentAmount: number;
+  /** Always charge the first installment at checkout */
+  checkoutChargeAmount: number;
+  futureInstallmentTotal: number;
+  installmentCount: number;
+  firstInstallmentDate: string;
+};
+
+type RamadanCartLine = {
+  kind?: string;
+  amount?: number;
+  currency?: string;
+  ramadan?: {
+    recurringPlan?: RecurringDonationPlan;
+    selectedDates?: string[];
+    dailyBreakdown?: number[];
+    weights?: number[];
+  };
+};
+
+export function isRamadanSplitCartLine(line: RamadanCartLine): boolean {
+  return line.kind === "ramadan_split" || Boolean(line.ramadan?.selectedDates?.length);
+}
+
+export function getRamadanInstallmentsFromLine(line: RamadanCartLine): RecurringInstallment[] {
+  if (!isRamadanSplitCartLine(line) || !line.ramadan) return [];
+  const r = line.ramadan;
+  if (r.recurringPlan?.installments?.length) {
+    return r.recurringPlan.installments;
+  }
+  return (r.selectedDates ?? []).map((date, i) => ({
+    id: `inst-${date}`,
+    scheduledDate: date,
+    amount: r.dailyBreakdown?.[i] ?? 0,
+    weight: r.weights?.[i] ?? 1,
+    currency: (line.currency || "GBP").toUpperCase(),
+    status: "pending" as const,
+  }));
+}
+
+export function summarizeRamadanCheckout(items: RamadanCartLine[]): RamadanCheckoutSummary {
+  let commitmentTotal = 0;
+  let firstInstallmentAmount = 0;
+  let installmentCount = 0;
+  let hasRamadanSplit = false;
+  let firstInstallmentDate = "";
+
+  for (const line of items) {
+    if (!isRamadanSplitCartLine(line)) continue;
+    hasRamadanSplit = true;
+    const installments = [...getRamadanInstallmentsFromLine(line)].sort((a, b) =>
+      a.scheduledDate.localeCompare(b.scheduledDate)
+    );
+    commitmentTotal += Number(line.amount || 0);
+    installmentCount += installments.length;
+    const first = installments[0];
+    if (!first) continue;
+    firstInstallmentAmount += Number(first.amount || 0);
+    if (!firstInstallmentDate || first.scheduledDate < firstInstallmentDate) {
+      firstInstallmentDate = first.scheduledDate;
+    }
+  }
+
+  const firstRounded = Math.round(firstInstallmentAmount * 100) / 100;
+
+  return {
+    hasRamadanSplit,
+    commitmentTotal,
+    firstInstallmentAmount: firstRounded,
+    checkoutChargeAmount: firstRounded,
+    futureInstallmentTotal: Math.round(Math.max(0, commitmentTotal - firstRounded) * 100) / 100,
+    installmentCount,
+    firstInstallmentDate,
+  };
+}
+
 export function buildRecurringDonationPlan(input: {
   donationPageId: string;
   donationPageSlug: string;

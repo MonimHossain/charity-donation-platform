@@ -15,6 +15,10 @@ import {
   getOrCreateStripeCustomerForUser,
   persistStripeCustomerFromPaymentIntent,
 } from "./stripeCustomer.js";
+import {
+  activateSchedulesFromStripePayment,
+  activateSchedulesFromStripeSetup,
+} from "../automated/automatedPayment.service.js";
 
 const getStripe = () => createStripeClient(process.env.STRIPE_SECRET_KEY!);
 
@@ -36,11 +40,19 @@ async function buildDonorSessionPayload(donationId?: string) {
 
 export async function createPaymentIntent(req: Request, res: Response) {
   try {
-    const { amount, currency, donationId, metadata } = req.body;
+    const { amount, currency, donationId, automatedScheduleId, automatedScheduleIds, donorEmail, donorName, metadata } = req.body;
 
-    if (!amount) {
+    if (!amount || Number(amount) <= 0) {
       return res.status(400).json({ message: "Amount is required" });
     }
+
+    const scheduleIds = (
+      Array.isArray(automatedScheduleIds)
+        ? automatedScheduleIds
+        : automatedScheduleId
+          ? [automatedScheduleId]
+          : []
+    ).filter(Boolean);
 
     const stripe = getStripe();
     const userId = (req as { user?: { id?: string } }).user?.id;
@@ -53,10 +65,34 @@ export async function createPaymentIntent(req: Request, res: Response) {
       }
     }
 
+    if (!customerId && scheduleIds.length) {
+      const donation = donationId
+        ? await donationRepo().findOne({ where: { id: donationId } })
+        : null;
+      const email = String(donorEmail || donation?.donorEmail || "").trim();
+      const name = String(donorName || donation?.donorName || "").trim();
+      if (email) {
+        const customer = await stripe.customers.create({
+          email,
+          name: name || undefined,
+          metadata: { userId: userId || "", donationId: donationId || "" },
+        });
+        customerId = customer.id;
+      }
+    }
+
+    const installmentLabel =
+      metadata && typeof metadata.installmentLabel === "string"
+        ? metadata.installmentLabel
+        : scheduleIds.length
+          ? "Ramadan split — night 1"
+          : undefined;
+
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100),
       currency: (currency || "gbp").toLowerCase(),
       payment_method_types: ["card"],
+      ...(installmentLabel ? { description: installmentLabel } : {}),
       ...(customerId
         ? {
             customer: customerId,
@@ -65,6 +101,8 @@ export async function createPaymentIntent(req: Request, res: Response) {
         : {}),
       metadata: {
         donationId: donationId || "",
+        automatedScheduleId: scheduleIds[0] || "",
+        automatedScheduleIds: scheduleIds.join(","),
         userId: userId || "",
         ...metadata,
       },
@@ -530,6 +568,16 @@ export async function confirmStripePayment(req: Request, res: Response) {
         (req as { user?: { id?: string } }).user?.id || paymentIntent.metadata?.userId;
       await persistStripeCustomerFromPaymentIntent(paymentIntent, userId);
 
+      const scheduleIds = String(
+        paymentIntent.metadata?.automatedScheduleIds || paymentIntent.metadata?.automatedScheduleId || ""
+      )
+        .split(",")
+        .map((id) => id.trim())
+        .filter(Boolean);
+      if (scheduleIds.length) {
+        await activateSchedulesFromStripePayment(scheduleIds, paymentIntent);
+      }
+
       if (resolvedDonationId) {
         await completeDonation(resolvedDonationId);
       }
@@ -587,6 +635,138 @@ export async function confirmStripePayment(req: Request, res: Response) {
   } catch (error: any) {
     console.error("confirmStripePayment error:", error);
     return res.status(500).json({ message: error.message || "Internal server error" });
+  }
+}
+
+export async function createSetupIntent(req: Request, res: Response) {
+  try {
+    const { automatedScheduleId, automatedScheduleIds, donationId, currency = "gbp" } = req.body;
+    const scheduleIds = (
+      Array.isArray(automatedScheduleIds)
+        ? automatedScheduleIds
+        : automatedScheduleId
+          ? [automatedScheduleId]
+          : []
+    ).filter(Boolean);
+    if (!scheduleIds.length) {
+      return res.status(400).json({ message: "automatedScheduleId is required" });
+    }
+
+    const stripe = getStripe();
+    const userId = (req as { user?: { id?: string } }).user?.id;
+    let customerId: string | undefined;
+
+    if (userId) {
+      const user = await AppDataSource.getRepository(User).findOne({ where: { id: userId } });
+      if (user) {
+        customerId = await getOrCreateStripeCustomerForUser(user);
+      }
+    }
+
+    if (!customerId) {
+      const customer = await stripe.customers.create({ metadata: { userId: userId || "" } });
+      customerId = customer.id;
+    }
+
+    const setupIntent = await stripe.setupIntents.create({
+      customer: customerId,
+      payment_method_types: ["card"],
+      usage: "off_session",
+      metadata: {
+        automatedScheduleId: scheduleIds[0],
+        automatedScheduleIds: scheduleIds.join(","),
+        donationId: donationId || "",
+        userId: userId || "",
+        currency: String(currency).toLowerCase(),
+      },
+    });
+
+    return res.json({
+      clientSecret: setupIntent.client_secret,
+      setupIntentId: setupIntent.id,
+      customerId,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Internal server error";
+    console.error("createSetupIntent error:", error);
+    return res.status(500).json({ message });
+  }
+}
+
+export async function confirmStripeSetup(req: Request, res: Response) {
+  try {
+    const { setupIntentId, automatedScheduleId, automatedScheduleIds, donationId } = req.body as {
+      setupIntentId?: string;
+      automatedScheduleId?: string;
+      automatedScheduleIds?: string[];
+      donationId?: string;
+    };
+
+    if (!setupIntentId) {
+      return res.status(400).json({ message: "setupIntentId is required" });
+    }
+
+    const stripe = getStripe();
+    const setupIntent = await stripe.setupIntents.retrieve(setupIntentId);
+    const resolvedScheduleIds = (
+      Array.isArray(automatedScheduleIds) && automatedScheduleIds.length
+        ? automatedScheduleIds
+        : String(automatedScheduleId || setupIntent.metadata?.automatedScheduleIds || setupIntent.metadata?.automatedScheduleId || "")
+            .split(",")
+            .map((id) => id.trim())
+            .filter(Boolean)
+    );
+    const resolvedDonationId = donationId || setupIntent.metadata?.donationId;
+
+    if (setupIntent.status !== "succeeded") {
+      return res.status(400).json({
+        status: setupIntent.status,
+        message: "Payment method was not saved",
+      });
+    }
+
+    const customerId =
+      typeof setupIntent.customer === "string"
+        ? setupIntent.customer
+        : setupIntent.customer?.id;
+    const paymentMethodId =
+      typeof setupIntent.payment_method === "string"
+        ? setupIntent.payment_method
+        : setupIntent.payment_method?.id;
+
+    if (resolvedScheduleIds.length && customerId && paymentMethodId) {
+      await activateSchedulesFromStripeSetup(resolvedScheduleIds, customerId, paymentMethodId);
+    }
+
+    if (resolvedDonationId) {
+      const donation = await donationRepo().findOne({ where: { id: resolvedDonationId } });
+      if (donation && donation.status !== "completed") {
+        donation.status = "completed";
+        await donationRepo().save(donation);
+      }
+    }
+
+    const userId = (req as { user?: { id?: string } }).user?.id || setupIntent.metadata?.userId;
+    if (userId && customerId) {
+      const user = await AppDataSource.getRepository(User).findOne({ where: { id: userId } });
+      if (user && user.stripeCustomerId !== customerId) {
+        user.stripeCustomerId = customerId;
+        await AppDataSource.getRepository(User).save(user);
+      }
+    }
+
+    return res.json({
+      status: "succeeded",
+      automatedScheduleId: resolvedScheduleIds[0],
+      automatedScheduleIds: resolvedScheduleIds,
+      donationId: resolvedDonationId,
+      setupIntentId: setupIntent.id,
+      ...(await buildDonorSessionPayload(resolvedDonationId)),
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Internal server error";
+    console.error("confirmStripeSetup error:", error);
+    return res.status(500).json({ message });
   }
 }
 

@@ -10,6 +10,11 @@ import {
 import type { RecurringDonationPlan } from "@icac/shared-types";
 import type { CheckoutSettings } from "@/components/campaigns/campaign-detail-types";
 import type { CampaignUpsell } from "@/lib/checkout-campaign-config";
+import {
+  getRamadanInstallmentsFromLine,
+  isRamadanSplitCartLine,
+  summarizeRamadanCheckout,
+} from "@/lib/ramadan-split";
 
 const STORAGE_KEY = "icac_donation_cart_v1";
 
@@ -170,9 +175,36 @@ export function useDonationCart() {
       ),
     [items, displayCode]
   );
+  const basketDisplayTotal = useMemo(() => {
+    const ramadan = summarizeRamadanCheckout(items);
+    if (!ramadan.hasRamadanSplit) return subtotal;
+    const nonRamadan = items
+      .filter((i) => !isRamadanSplitCartLine(i))
+      .reduce(
+        (s, i) =>
+          s +
+          convertAmount(Number(i.amount || 0), normalizeCurrencyCode(i.currency), displayCode),
+        0
+      );
+    const ramadanFirstNight = items
+      .filter((i) => isRamadanSplitCartLine(i))
+      .reduce((s, line) => {
+        const installments = [...getRamadanInstallmentsFromLine(line)].sort((a, b) =>
+          a.scheduledDate.localeCompare(b.scheduledDate)
+        );
+        const first = installments[0];
+        if (!first) return s;
+        return (
+          s +
+          convertAmount(Number(first.amount || 0), normalizeCurrencyCode(first.currency), displayCode)
+        );
+      }, 0);
+    return nonRamadan + ramadanFirstNight;
+  }, [items, subtotal, displayCode]);
   return {
     items,
     subtotal,
+    basketDisplayTotal,
     currency: displayCode,
     addItem: addDonationCartItem,
     removeItem: removeDonationCartItem,

@@ -43,9 +43,9 @@ export default function SiteHeader() {
   const { islamicDate, nextPrayer, location: prayerLocation } = usePrayerTimes();
   const aboutRef = useRef<HTMLDivElement>(null);
   const { data: headerCampaigns } = useHeaderNavCampaigns();
-  const { subtotal } = useDonationCart();
+  const { basketDisplayTotal } = useDonationCart();
   const { formatMoney } = useCurrency();
-  const basketLabel = formatMoney(subtotal, { decimals: 2 });
+  const basketLabel = formatMoney(basketDisplayTotal, { decimals: 2 });
 
   const nav = useMemo(() => {
     if (USE_MOCK_DATA) return mockNav;

@@ -133,6 +133,13 @@ const startServer = async () => {
     console.log(`Server running on http://localhost:${port}`);
   });
 
+  try {
+    const { startAutomatedPaymentWorker } = await import("./modules/automated/automatedPayment.service.js");
+    startAutomatedPaymentWorker();
+  } catch (error) {
+    console.warn("Automated payment worker not started:", (error as Error).message);
+  }
+
   process.on("SIGTERM", () => {
     httpServer.close(() => process.exit(0));
   });

@@ -31,6 +31,10 @@ export default function ThankYouPage() {
   const campaign = params.get("campaign") || "";
   const donationId = params.get("donationId") || "";
   const receiptNumber = params.get("receiptNumber") || "";
+  const commitmentTotal = params.get("commitmentTotal");
+  const installmentCount = params.get("installmentCount");
+  const installmentAmount = params.get("installmentAmount");
+  const isRamadanSplit = frequency === "ramadan_split";
   const [copied, setCopied] = useState(false);
   const [receiptLoading, setReceiptLoading] = useState(false);
 
@@ -129,8 +133,26 @@ export default function ThankYouPage() {
               </p>
             )}
             <p className="capitalize">
-              Frequency: {frequency === "single" ? "One-time" : frequency}
+              Frequency:{" "}
+              {isRamadanSplit
+                ? `Ramadan split (${installmentCount ?? "?"} nights)`
+                : frequency === "single"
+                  ? "One-time"
+                  : frequency}
             </p>
+            {isRamadanSplit && commitmentTotal && (
+              <p>
+                Total pledge: {currencyInfo.symbol}
+                {Number(commitmentTotal).toFixed(2)} ({currencyInfo.symbol}
+                {installmentAmount ?? amount} × {installmentCount} nights)
+              </p>
+            )}
+            {isRamadanSplit && (
+              <p className="text-xs opacity-90">
+                You paid night 1 today. Remaining nights are charged automatically on each scheduled
+                date.
+              </p>
+            )}
             {campaign && <p>Campaign: {campaign}</p>}
           </div>
         </div>

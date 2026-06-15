@@ -159,7 +159,7 @@ export function RamadanSplitForm({
       category: source.category,
       amount: Number(baseTotal),
       currency,
-      description: `Ramadan split — ${selectedOrdered.length} nights — ${sym}${Number(baseTotal).toFixed(2)}`,
+      description: `Ramadan split — ${selectedOrdered.length} nights — ${sym}${(nightPreview[0]?.amount ?? 0).toFixed(2)}/night (${sym}${Number(baseTotal).toFixed(2)} total)`,
       campaignId,
       donationType: "ramadan",
       checkoutSettings,

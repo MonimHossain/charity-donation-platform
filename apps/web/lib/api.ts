@@ -334,9 +334,45 @@ export async function createRecurringBillingPortal(id: string) {
 // ═══════════════════════════════════
 // PAYMENTS
 // ═══════════════════════════════════
-export async function createStripePaymentIntent(payload: { amount: number; currency: string; donationId?: string }) {
+export async function createStripePaymentIntent(payload: {
+  amount: number;
+  currency: string;
+  donationId?: string;
+  automatedScheduleId?: string;
+  automatedScheduleIds?: string[];
+  donorEmail?: string;
+  donorName?: string;
+  metadata?: Record<string, string>;
+}) {
   const { data } = await api.post("/payments/stripe/create-intent", payload);
   return data as { clientSecret: string; paymentIntentId: string };
+}
+
+export async function createStripeSetupIntent(payload: {
+  automatedScheduleId: string;
+  automatedScheduleIds?: string[];
+  donationId?: string;
+  currency?: string;
+}) {
+  const { data } = await api.post("/payments/stripe/create-setup-intent", payload);
+  return data as { clientSecret: string; setupIntentId: string; customerId: string };
+}
+
+export async function confirmStripeSetup(payload: {
+  setupIntentId: string;
+  automatedScheduleId?: string;
+  automatedScheduleIds?: string[];
+  donationId?: string;
+}) {
+  const { data } = await api.post("/payments/stripe/confirm-setup", payload);
+  return data as {
+    status: string;
+    automatedScheduleId?: string;
+    donationId?: string;
+    setupIntentId?: string;
+    token?: string;
+    user?: { id: string; email: string; fullName?: string; name?: string };
+  };
 }
 
 export async function fetchStripeCustomerSession() {
