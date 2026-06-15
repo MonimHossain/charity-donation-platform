@@ -30,7 +30,20 @@ export function csrfProtection(req: Request, res: Response, next: NextFunction) 
   const allowedOrigins = [
     process.env.APP_URL,
     process.env.NEXT_PUBLIC_APP_URL,
-  ].filter(Boolean).map((o) => new URL(o!).origin);
+    process.env.CORS_ORIGINS,
+  ]
+    .filter(Boolean)
+    .flatMap((value) => String(value).split(","))
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .map((value) => {
+      try {
+        return new URL(value).origin;
+      } catch {
+        return null;
+      }
+    })
+    .filter((value): value is string => Boolean(value));
 
   const requestOrigin = origin || (referer ? new URL(referer).origin : "");
 

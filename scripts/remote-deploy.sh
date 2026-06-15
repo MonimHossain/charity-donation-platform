@@ -10,9 +10,10 @@ test -f apps/web/.next/BUILD_ID
 
 echo "==> Writing production env"
 cat > .env <<'ENVEOF'
-APP_URL=http://82.29.190.206
-NEXT_PUBLIC_APP_URL=http://82.29.190.206
-NEXT_PUBLIC_API_URL=http://82.29.190.206/api/v1
+APP_URL=https://yourimpactdev.com
+NEXT_PUBLIC_APP_URL=https://yourimpactdev.com
+NEXT_PUBLIC_API_URL=https://yourimpactdev.com/api/v1
+CORS_ORIGINS=https://yourimpactdev.com,https://www.yourimpactdev.com
 BACKEND_API_URL=http://127.0.0.1:4000/api/v1
 NODE_ENV=production
 PORT=4000
@@ -46,7 +47,7 @@ MINIO_SECRET_KEY=minioadmin
 MINIO_BUCKET_MEDIA=charity-media
 MINIO_BUCKET_NAME=charity-media
 MINIO_PRESIGNED_EXPIRY=3600
-MINIO_PUBLIC_BASE_URL=http://82.29.190.206/charity-media
+MINIO_PUBLIC_BASE_URL=https://yourimpactdev.com/charity-media
 STRIPE_SECRET_KEY=sk_test_51TZlHBIH7vsFqc41LmrFjasd2Ab3TI5YQV2KbB3GTmnZHhaVRLohT6BDuBGC1lURS2E2Eqqn3n9HW4fk1UiHHAyI00RQJMwGBz
 STRIPE_WEBHOOK_SECRET=whsec_xxx
 STRIPE_WEBHOOK_SKIP_VERIFY=true
@@ -57,8 +58,8 @@ ENVEOF
 cp .env apps/api/.env
 
 cat > apps/web/.env.local <<'WEBEOF'
-NEXT_PUBLIC_API_URL=http://82.29.190.206/api/v1
-NEXT_PUBLIC_APP_URL=http://82.29.190.206
+NEXT_PUBLIC_API_URL=https://yourimpactdev.com/api/v1
+NEXT_PUBLIC_APP_URL=https://yourimpactdev.com
 NEXT_PUBLIC_USE_MOCK_DATA=false
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_51TZlHBIH7vsFqc41OqgNQk81CnXr0qj5GgOIys8jibXr88T13GhU7o4lNuJ1hoNUH9j222c76EezZXvN3vLz2iw60034bhZGcd
 PORT=3001
@@ -72,7 +73,7 @@ pnpm install --frozen-lockfile
 
 echo "==> Restarting pm2 (jenkins user — this is what nginx serves)"
 pm2 delete all 2>/dev/null || true
-sudo -u jenkins bash -lc "cd '$APP_ROOT' && pm2 restart all || (pm2 start bun dist/index.js --name your-impact-api-prod --cwd '$APP_ROOT/apps/api' && PORT=3001 pm2 start 'pnpm --filter frontend start' --name your-impact-web-prod --cwd '$APP_ROOT')"
+sudo -u jenkins bash -lc "cd '$APP_ROOT' && pm2 restart all || (pm2 start node dist/index.js --name your-impact-api-prod --cwd '$APP_ROOT/apps/api' && PORT=3001 pm2 start 'pnpm --filter frontend start' --name your-impact-web-prod --cwd '$APP_ROOT')"
 sudo -u jenkins pm2 save
 
 echo "==> Health checks"

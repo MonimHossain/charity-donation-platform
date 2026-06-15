@@ -9,8 +9,8 @@ REMOTE_DIR="/home/deployment/production/your-impact"
 cd "$ROOT"
 
 echo "==> Building locally..."
-export NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-http://82.29.190.206/api/v1}"
-export NEXT_PUBLIC_APP_URL="${NEXT_PUBLIC_APP_URL:-http://82.29.190.206}"
+export NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-https://yourimpactdev.com/api/v1}"
+export NEXT_PUBLIC_APP_URL="${NEXT_PUBLIC_APP_URL:-https://yourimpactdev.com}"
 export NEXT_PUBLIC_USE_MOCK_DATA=false
 pnpm build
 
@@ -35,4 +35,4 @@ else
   ssh "$HOST" "bash $REMOTE_DIR/scripts/remote-deploy.sh"
 fi
 
-echo "==> Done. Check http://yourimpactdev.com"
+echo "==> Done. Check https://yourimpactdev.com"
