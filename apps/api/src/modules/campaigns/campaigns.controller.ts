@@ -7,8 +7,25 @@ import { createEntity } from "../../helper/typeorm.js";
 import { logAudit } from "../../helper/auditLog.js";
 import { archiveExpiredCampaigns } from "./archiveExpiredCampaigns.js";
 import { withResolvedUpsells } from "../upsells/resolveCampaignUpsells.js";
+import { normalizeOptionalMediaUrl, normalizeStoredMediaUrl } from "../../helper/storage.js";
 
 const repo = () => AppDataSource.getRepository(Campaign);
+
+function normalizeCampaignMedia<T extends { thumbnail?: string | null; banner?: string | null }>(
+  campaign: T
+): T {
+  return {
+    ...campaign,
+    thumbnail: normalizeOptionalMediaUrl(campaign.thumbnail) ?? campaign.thumbnail,
+    banner: normalizeOptionalMediaUrl(campaign.banner) ?? campaign.banner,
+  };
+}
+
+function normalizeCampaignList<T extends { thumbnail?: string | null; banner?: string | null }>(
+  campaigns: T[]
+): T[] {
+  return campaigns.map(normalizeCampaignMedia);
+}
 
 export async function getCampaigns(req: Request, res: Response) {
   try {
@@ -37,7 +54,7 @@ export async function getCampaigns(req: Request, res: Response) {
       take: Number(limit),
     });
 
-    return res.json({ items, total, page: Number(page), limit: Number(limit) });
+    return res.json({ items: normalizeCampaignList(items), total, page: Number(page), limit: Number(limit) });
   } catch (error) {
     console.error("getCampaigns error:", error);
     return res.status(500).json({ message: "Internal server error" });
@@ -62,7 +79,7 @@ export async function getPublishedCampaigns(req: Request, res: Response) {
       take: Number(limit),
     });
 
-    return res.json({ items, total, page: Number(page), limit: Number(limit) });
+    return res.json({ items: normalizeCampaignList(items), total, page: Number(page), limit: Number(limit) });
   } catch (error) {
     console.error("getPublishedCampaigns error:", error);
     return res.status(500).json({ message: "Internal server error" });
@@ -77,7 +94,7 @@ export async function getCampaignBySlug(req: Request, res: Response) {
     if (!campaign || campaign.status !== "published") {
       return res.status(404).json({ message: "Campaign not found" });
     }
-    return res.json(await withResolvedUpsells(campaign));
+    return res.json(normalizeCampaignMedia(await withResolvedUpsells(campaign)));
   } catch (error) {
     return res.status(500).json({ message: "Internal server error" });
   }
@@ -87,7 +104,7 @@ export async function getCampaignById(req: Request, res: Response) {
   try {
     const campaign = await repo().findOne({ where: { id: routeParam(req, 'id') } });
     if (!campaign) return res.status(404).json({ message: "Campaign not found" });
-    return res.json(await withResolvedUpsells(campaign));
+    return res.json(normalizeCampaignMedia(await withResolvedUpsells(campaign)));
   } catch (error) {
     return res.status(500).json({ message: "Internal server error" });
   }
@@ -107,7 +124,12 @@ export async function createCampaign(req: Request, res: Response) {
       slug = `${slug}-${Date.now().toString(36)}`;
     }
 
-    const campaign = createEntity(repo(), { ...req.body, slug });
+    const campaign = createEntity(repo(), {
+      ...req.body,
+      slug,
+      thumbnail: req.body.thumbnail ? normalizeStoredMediaUrl(req.body.thumbnail) : req.body.thumbnail,
+      banner: req.body.banner ? normalizeStoredMediaUrl(req.body.banner) : req.body.banner,
+    });
     await repo().save(campaign);
     await logAudit(req, {
       action: "create",
@@ -115,7 +137,7 @@ export async function createCampaign(req: Request, res: Response) {
       entityId: campaign.id,
       details: { title: campaign.title },
     });
-    return res.status(201).json(await withResolvedUpsells(campaign));
+    return res.status(201).json(normalizeCampaignMedia(await withResolvedUpsells(campaign)));
   } catch (error) {
     console.error("createCampaign error:", error);
     return res.status(500).json({ message: "Internal server error" });
@@ -127,7 +149,15 @@ export async function updateCampaign(req: Request, res: Response) {
     const campaign = await repo().findOne({ where: { id: routeParam(req, 'id') } });
     if (!campaign) return res.status(404).json({ message: "Campaign not found" });
 
-    Object.assign(campaign, req.body);
+    Object.assign(campaign, {
+      ...req.body,
+      ...(req.body.thumbnail !== undefined
+        ? { thumbnail: req.body.thumbnail ? normalizeStoredMediaUrl(req.body.thumbnail) : null }
+        : {}),
+      ...(req.body.banner !== undefined
+        ? { banner: req.body.banner ? normalizeStoredMediaUrl(req.body.banner) : null }
+        : {}),
+    });
     await repo().save(campaign);
     await logAudit(req, {
       action: "update",
@@ -135,7 +165,7 @@ export async function updateCampaign(req: Request, res: Response) {
       entityId: campaign.id,
       details: { title: campaign.title },
     });
-    return res.json(await withResolvedUpsells(campaign));
+    return res.json(normalizeCampaignMedia(await withResolvedUpsells(campaign)));
   } catch (error) {
     console.error("updateCampaign error:", error);
     return res.status(500).json({ message: "Internal server error" });

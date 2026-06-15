@@ -20,6 +20,7 @@ import {
   adminDeleteBlogPost,
   fetchAdminBlogCategories,
 } from "@/lib/api";
+import { resolveMediaUrl } from "@/lib/campaign-media";
 
 interface BlogCategory {
   id: string;
@@ -435,7 +436,7 @@ export default function AdminBlogPage() {
 
             {featuredImage && (
               <div className="rounded-xl border bg-muted/30 p-3">
-                <img src={featuredImage} alt="Featured preview" className="max-h-60 w-full rounded-lg object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                <img src={resolveMediaUrl(featuredImage) ?? featuredImage} alt="Featured preview" className="max-h-60 w-full rounded-lg object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
               </div>
             )}
 

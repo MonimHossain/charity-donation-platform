@@ -8,6 +8,7 @@ import Link from "next/link";
 import { Loader2, Calendar, Clock, User, ChevronRight, Share2, Copy, Check } from "lucide-react";
 import MarkdownRenderer from "@/components/blog/MarkdownRenderer";
 import { fetchBlogPostBySlug, subscribeNewsletter } from "@/lib/api";
+import { resolveMediaUrl } from "@/lib/campaign-media";
 import { toast } from "sonner";
 
 interface BlogPost {
@@ -178,7 +179,7 @@ function BlogDetailPageApi({ slug }: { slug: string }) {
           <article className="min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-white p-6 shadow-sm md:p-8">
             {post.featuredImage && (
               <img
-                src={post.featuredImage}
+                src={resolveMediaUrl(post.featuredImage) ?? post.featuredImage}
                 alt={post.title}
                 className="h-80 w-full rounded-xl object-cover mb-8"
               />

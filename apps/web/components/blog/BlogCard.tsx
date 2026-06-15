@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { resolveMediaUrl } from "@/lib/campaign-media";
 
 interface BlogPost {
   id: string;
@@ -37,7 +38,7 @@ export default function BlogCard({ post }: { post: BlogPost }) {
       <div className="relative overflow-hidden">
         {post.featuredImage ? (
           <img
-            src={post.featuredImage}
+            src={resolveMediaUrl(post.featuredImage) ?? post.featuredImage}
             alt={post.title}
             className="h-56 w-full object-cover transition-transform duration-500 group-hover:scale-105"
             loading="lazy"

@@ -5,6 +5,7 @@ import { BlogPost } from "../../components/blog/blogPost.entity.js";
 import { BlogCategory } from "../../components/blog/blogCategory.entity.js";
 import { In } from "typeorm";
 import { logAudit } from "../../helper/auditLog.js";
+import { normalizeOptionalMediaUrl, normalizeStoredMediaUrl } from "../../helper/storage.js";
 
 const repo = () => AppDataSource.getRepository(BlogPost);
 const categoryRepo = () => AppDataSource.getRepository(BlogCategory);
@@ -25,7 +26,7 @@ function mapBlogListItem(post: BlogPost, category?: BlogCategory | null) {
     title: post.title,
     slug: post.slug,
     excerpt: post.excerpt,
-    featuredImage: post.featuredImage,
+    featuredImage: normalizeOptionalMediaUrl(post.featuredImage),
     author: post.author,
     tags: post.tags,
     categoryId: post.categoryId ?? null,
@@ -120,6 +121,7 @@ export async function getPublicBlogPost(req: Request, res: Response) {
 
     return res.json({
       ...post,
+      featuredImage: normalizeOptionalMediaUrl(post.featuredImage),
       categoryName: category?.name ?? null,
       categorySlug: category?.slug ?? null,
     });
@@ -176,7 +178,10 @@ export async function getAdminBlogPost(req: Request, res: Response) {
   try {
     const post = await repo().findOne({ where: { id: routeParam(req, 'id') } });
     if (!post) return res.status(404).json({ message: "Post not found" });
-    return res.json(post);
+    return res.json({
+      ...post,
+      featuredImage: normalizeOptionalMediaUrl(post.featuredImage),
+    });
   } catch (error) {
     console.error("getAdminBlogPost error:", error);
     return res.status(500).json({ message: "Internal server error" });
@@ -211,7 +216,7 @@ export async function createBlogPost(req: Request, res: Response) {
       slug,
       excerpt: excerpt || "",
       content,
-      featuredImage: featuredImage || null,
+      featuredImage: featuredImage ? normalizeStoredMediaUrl(featuredImage) : null,
       author: author || "Editorial Team",
       tags: tags || [],
       categoryId: categoryId || null,
@@ -267,7 +272,9 @@ export async function updateBlogPost(req: Request, res: Response) {
 
     if (excerpt !== undefined) post.excerpt = excerpt;
     if (content !== undefined) post.content = content;
-    if (featuredImage !== undefined) post.featuredImage = featuredImage;
+    if (featuredImage !== undefined) {
+      post.featuredImage = featuredImage ? normalizeStoredMediaUrl(featuredImage) : undefined;
+    }
     if (author !== undefined) post.author = author;
     if (tags !== undefined) post.tags = tags;
     if (metaTitle !== undefined) post.metaTitle = metaTitle;

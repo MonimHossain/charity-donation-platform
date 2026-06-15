@@ -9,17 +9,6 @@ const accessKey = process.env.MINIO_ACCESS_KEY || "minioadmin";
 const secretKey = process.env.MINIO_SECRET_KEY || "minioadmin";
 const bucket = process.env.MINIO_BUCKET_MEDIA || "charity-media";
 
-/** Public URL for browser access — prefer nginx proxy path, not direct MinIO port. */
-function resolvePublicBase(): string {
-  const configured = process.env.MINIO_PUBLIC_BASE_URL?.trim().replace(/\/$/, "");
-  if (configured) return configured;
-  const appUrl = (process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL)?.trim().replace(/\/$/, "");
-  if (appUrl) return `${appUrl}/charity-media`;
-  return `http://${endpoint}:${port}/${bucket}`;
-}
-
-const publicBase = resolvePublicBase();
-
 const BUCKET_POLICY = JSON.stringify({
   Version: "2012-10-17",
   Statement: [{
@@ -49,17 +38,23 @@ export async function ensureBucket(): Promise<void> {
   await client.setBucketPolicy(bucket, BUCKET_POLICY);
 }
 
-/** Rewrite legacy direct-MinIO URLs to the current public base (e.g. nginx /charity-media/). */
-export function normalizeStoredMediaUrl(url: string): string {
-  const trimmed = url.trim();
+/** Normalize any stored media URL to a same-origin `/charity-media/...` path. */
+export function normalizeStoredMediaUrl(url: string | null | undefined): string {
+  const trimmed = (url ?? "").trim();
   if (!trimmed) return trimmed;
+  if (trimmed.startsWith("/charity-media/")) return trimmed;
+
   const objectMatch = trimmed.match(/\/charity-media\/(.+)$/);
-  if (!objectMatch) return trimmed;
-  const legacyHost = /^https?:\/\/[^/]+:9002\/charity-media\//.test(trimmed)
-    || /^https?:\/\/127\.0\.0\.1:9002\/charity-media\//.test(trimmed)
-    || /^https?:\/\/localhost:9002\/charity-media\//.test(trimmed);
-  if (!legacyHost) return trimmed;
-  return `${publicBase}/${objectMatch[1]}`;
+  if (objectMatch?.[1]) {
+    return `/charity-media/${objectMatch[1]}`;
+  }
+
+  return trimmed;
+}
+
+export function normalizeOptionalMediaUrl(url?: string | null): string | undefined {
+  if (!url?.trim()) return undefined;
+  return normalizeStoredMediaUrl(url);
 }
 
 function uniqueName(originalName: string): string {
@@ -132,7 +127,8 @@ export async function listFolders(prefix: string = ""): Promise<string[]> {
 }
 
 export function getPublicUrl(objectName: string): string {
-  return `${publicBase}/${objectName}`;
+  const normalized = objectName.replace(/^\/+/, "");
+  return `/charity-media/${normalized}`;
 }
 
 export { bucket, getClient };

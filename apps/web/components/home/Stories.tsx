@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { fetchBlogPosts } from "@/lib/api";
+import { resolveMediaUrl } from "@/lib/campaign-media";
 
 interface StoryPost {
   slug: string;
@@ -77,7 +78,7 @@ export default function Stories() {
             <div className="aspect-[4/3] rounded-2xl overflow-hidden bg-secondary">
               {post.featuredImage ? (
                 <img
-                  src={post.featuredImage}
+                  src={resolveMediaUrl(post.featuredImage) ?? post.featuredImage}
                   alt={post.title}
                   loading="lazy"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
