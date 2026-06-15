@@ -120,6 +120,8 @@ export interface VisibilitySettings {
   showInHeader: boolean;
   showOnHomepage: boolean;
   pinToTop: boolean;
+  /** Label shown in header nav when showInHeader is enabled (falls back to campaign title). */
+  headerDisplayName?: string;
 }
 
 export interface SeoSettings {

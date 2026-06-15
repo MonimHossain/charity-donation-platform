@@ -9,7 +9,7 @@ import GlobalSearch from "./GlobalSearch";
 import CurrencySwitcher from "./CurrencySwitcher";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { USE_MOCK_DATA } from "@/lib/config";
-import { useHeaderNavCampaigns } from "@/lib/data/campaigns";
+import { useHeaderNavCampaigns, headerNavLabel } from "@/lib/data/campaigns";
 import { usePrayerTimes } from "@/lib/hooks/usePrayerTimes";
 import { useDonationCart } from "@/lib/stores/donationCartStore";
 import { useCurrency } from "@/lib/currency";
@@ -52,7 +52,7 @@ export default function SiteHeader() {
 
     const appealLinks = (headerCampaigns?.items ?? []).map((c: Record<string, unknown>) => ({
       href: `/causes/${String(c.slug)}`,
-      label: String(c.title),
+      label: headerNavLabel(c),
     }));
 
     return [...appealLinks, { href: "/zakat", label: "Zakat" }];

@@ -30,8 +30,20 @@ function isAppealCandidate(c: Record<string, unknown>) {
 
 function visibilitySettings(c: Record<string, unknown>) {
   return c.visibilitySettings as
-    | { showInHeader?: boolean; showOnHomepage?: boolean; pinToTop?: boolean }
+    | {
+        showInHeader?: boolean;
+        showOnHomepage?: boolean;
+        pinToTop?: boolean;
+        headerDisplayName?: string;
+      }
     | undefined;
+}
+
+/** Header nav label — custom display name when set, otherwise campaign title. */
+export function headerNavLabel(c: Record<string, unknown>) {
+  const custom = visibilitySettings(c)?.headerDisplayName?.trim();
+  if (custom) return custom;
+  return String(c.title ?? "");
 }
 
 /** Homepage sections only show campaigns with Show on Homepage enabled. */

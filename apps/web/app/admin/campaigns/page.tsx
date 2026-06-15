@@ -126,6 +126,7 @@ interface VisibilitySettings {
   showInHeader: boolean;
   showOnHomepage: boolean;
   pinToTop: boolean;
+  headerDisplayName?: string;
 }
 
 interface SeoSettings {
@@ -288,7 +289,7 @@ const defaultForm: CampaignForm = {
     enableUpsell: false,
     enableFeeCoverage: false,
   },
-  visibilitySettings: { showInHeader: false, showOnHomepage: false, pinToTop: false },
+  visibilitySettings: { showInHeader: false, showOnHomepage: false, pinToTop: false, headerDisplayName: "" },
   paymentGateways: ["stripe"],
   seoSettings: { metaTitle: "", metaDescription: "", ogTitle: "", ogDescription: "", ogImage: "" },
 };
@@ -1522,17 +1523,41 @@ export default function CampaignsPage() {
               <strong>published</strong> for any of these to take effect.
             </p>
             <div className="space-y-4 rounded-xl border bg-muted/30 p-4">
-              <SwitchRow
-                label="Show in Header Navigation"
-                description="Adds a link in the top site menu (desktop and mobile), next to Zakat."
-                checked={form.visibilitySettings.showInHeader}
-                onChange={(v) =>
-                  setForm((p) => ({
-                    ...p,
-                    visibilitySettings: { ...p.visibilitySettings, showInHeader: v },
-                  }))
-                }
-              />
+              <div className="space-y-3">
+                <SwitchRow
+                  label="Show in Header Navigation"
+                  description="Adds a link in the top site menu (desktop and mobile), next to Zakat."
+                  checked={form.visibilitySettings.showInHeader}
+                  onChange={(v) =>
+                    setForm((p) => ({
+                      ...p,
+                      visibilitySettings: { ...p.visibilitySettings, showInHeader: v },
+                    }))
+                  }
+                />
+                {form.visibilitySettings.showInHeader && (
+                  <div className="space-y-2 pl-0 sm:pl-1">
+                    <Label htmlFor="header-display-name">Display name</Label>
+                    <Input
+                      id="header-display-name"
+                      value={form.visibilitySettings.headerDisplayName ?? ""}
+                      onChange={(e) =>
+                        setForm((p) => ({
+                          ...p,
+                          visibilitySettings: {
+                            ...p.visibilitySettings,
+                            headerDisplayName: e.target.value,
+                          },
+                        }))
+                      }
+                      placeholder={form.title.trim() || "Short nav label"}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Shown in the header navigation instead of the campaign title.
+                    </p>
+                  </div>
+                )}
+              </div>
               <SwitchRow
                 label="Show on Homepage"
                 description='Includes this campaign in the homepage "Our Appeals" section (or "Live Fundraisers" for fundraiser campaigns).'
