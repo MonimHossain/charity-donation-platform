@@ -2,6 +2,7 @@ import { In } from "typeorm";
 import { AppDataSource } from "../../helper/connectDB.js";
 import { Upsell } from "../../components/upsell/upsell.entity.js";
 import type { Campaign } from "../../components/campaign/campaign.entity.js";
+import { normalizeOptionalMediaUrl } from "../../helper/storage.js";
 
 export interface ResolvedCampaignUpsell {
   id: string;
@@ -42,7 +43,7 @@ export async function resolveCampaignUpsells(campaign: Campaign): Promise<Resolv
         id: row.id,
         name: row.name,
         description: row.description,
-        image: row.image,
+        image: normalizeOptionalMediaUrl(row.image),
         amount: Number(row.amount ?? 0),
         sortOrder: row.sortOrder ?? index,
         isActive: row.isActive,

@@ -33,6 +33,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { resolveMediaUrl } from "@/lib/campaign-media";
 import { api } from "@/lib/api";
 
 interface MediaFile {
@@ -421,7 +422,7 @@ export default function MediaPage() {
                         </button>
                         <div className="aspect-square bg-muted/50 flex items-center justify-center overflow-hidden">
                           {isImage ? (
-                            <img src={file.url} alt={file.alt || file.name} className="w-full h-full object-cover" loading="lazy" />
+                            <img src={resolveMediaUrl(file.url) ?? file.url} alt={file.alt || file.name} className="w-full h-full object-cover" loading="lazy" />
                           ) : (
                             <div className="flex flex-col items-center gap-1">
                               <Icon className="h-8 w-8 text-muted-foreground" />
@@ -468,7 +469,7 @@ export default function MediaPage() {
                             <td className="px-3 py-2">
                               <div className="flex items-center gap-2">
                                 {file.type.startsWith("image/") ? (
-                                  <img src={file.url} alt="" className="h-8 w-8 rounded object-cover" />
+                                  <img src={resolveMediaUrl(file.url) ?? file.url} alt="" className="h-8 w-8 rounded object-cover" />
                                 ) : (
                                   <div className="h-8 w-8 rounded bg-muted flex items-center justify-center"><Icon className="h-4 w-4 text-muted-foreground" /></div>
                                 )}
@@ -521,7 +522,7 @@ export default function MediaPage() {
 
               <div className="aspect-square rounded-lg bg-muted/50 overflow-hidden flex items-center justify-center">
                 {selectedFile.type.startsWith("image/") ? (
-                  <img src={selectedFile.url} alt={selectedFile.alt || selectedFile.name} className="w-full h-full object-contain" />
+                  <img src={resolveMediaUrl(selectedFile.url) ?? selectedFile.url} alt={selectedFile.alt || selectedFile.name} className="w-full h-full object-contain" />
                 ) : selectedFile.type.startsWith("video/") ? (
                   <video src={selectedFile.url} controls className="w-full h-full object-contain" />
                 ) : (

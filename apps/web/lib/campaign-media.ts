@@ -8,18 +8,18 @@ export type CampaignImageSource = {
   image?: string | null;
 };
 
-const PUBLIC_APP = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, "");
-const PUBLIC_MEDIA_BASE =
-  process.env.NEXT_PUBLIC_MEDIA_BASE_URL?.trim().replace(/\/$/, "") ||
-  (PUBLIC_APP ? `${PUBLIC_APP}/charity-media` : "");
-
-/** Rewrite legacy direct MinIO URLs (port 9002) to nginx proxy path. */
+/** Normalize any stored media URL to a same-origin `/charity-media/...` path. */
 export function rewriteLegacyMediaUrl(url: string): string {
-  if (!PUBLIC_MEDIA_BASE) return url;
-  return url
-    .replace(/^https?:\/\/[^/]+:9002\/charity-media\//, `${PUBLIC_MEDIA_BASE}/`)
-    .replace(/^https?:\/\/127\.0\.0\.1:9002\/charity-media\//, `${PUBLIC_MEDIA_BASE}/`)
-    .replace(/^https?:\/\/localhost:9002\/charity-media\//, `${PUBLIC_MEDIA_BASE}/`);
+  const trimmed = url.trim();
+  if (!trimmed) return trimmed;
+  if (trimmed.startsWith("/charity-media/")) return trimmed;
+
+  const objectMatch = trimmed.match(/\/charity-media\/(.+)$/);
+  if (objectMatch?.[1]) {
+    return `/charity-media/${objectMatch[1]}`;
+  }
+
+  return trimmed;
 }
 
 /** Normalize stored media URLs for use in img src. */

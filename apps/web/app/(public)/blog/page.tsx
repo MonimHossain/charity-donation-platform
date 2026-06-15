@@ -6,7 +6,15 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Search, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import BlogCard from "@/components/blog/BlogCard";
-import { fetchBlogPosts } from "@/lib/api";
+import { fetchBlogPosts, fetchBlogCategories } from "@/lib/api";
+import { resolveMediaUrl } from "@/lib/campaign-media";
+import { cn } from "@/lib/utils";
+
+interface BlogCategory {
+  id: string;
+  name: string;
+  slug: string;
+}
 
 interface BlogPost {
   id: string;
@@ -16,6 +24,9 @@ interface BlogPost {
   featuredImage?: string;
   author?: string;
   tags?: string[];
+  categoryId?: string | null;
+  categoryName?: string | null;
+  isFeatured?: boolean;
   publishedAt?: string;
   createdAt?: string;
 }
@@ -36,33 +47,72 @@ export default function BlogListingPage() {
 
 function BlogListingPageApi() {
   const [posts, setPosts] = useState<BlogPost[]>([]);
+  const [featuredPost, setFeaturedPost] = useState<BlogPost | null>(null);
+  const [categories, setCategories] = useState<BlogCategory[]>([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
 
-  async function loadPosts(p: number, q?: string) {
+  useEffect(() => {
+    fetchBlogCategories()
+      .then((data) => setCategories(Array.isArray(data) ? data : data.items || []))
+      .catch(() => setCategories([]));
+  }, []);
+
+  async function loadPosts(p: number, q?: string, categoryId?: string | null) {
     setLoading(true);
     try {
-      const params: Record<string, string> = { page: String(p), limit: "12", published: "true" };
-      if (q) params.search = q;
-      const data = await fetchBlogPosts(params);
+      const sharedParams: Record<string, string> = {};
+      if (q) sharedParams.search = q;
+      if (categoryId) sharedParams.categoryId = categoryId;
+
+      let featured: BlogPost | null = null;
+      if (p === 1) {
+        const featuredData = await fetchBlogPosts({
+          ...sharedParams,
+          featured: "true",
+          limit: "1",
+          page: "1",
+        });
+        featured = featuredData.items?.[0] ?? null;
+      }
+
+      const listParams: Record<string, string> = {
+        ...sharedParams,
+        page: String(p),
+        limit: "12",
+      };
+      if (featured?.id) listParams.excludeId = featured.id;
+
+      const data = await fetchBlogPosts(listParams);
+      setFeaturedPost(p === 1 ? featured : null);
       setPosts(data.items || []);
       setTotal(data.total || 0);
       setTotalPages(data.totalPages || 1);
     } catch {
+      setFeaturedPost(null);
       setPosts([]);
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => { loadPosts(page); }, [page]);
+  useEffect(() => {
+    loadPosts(page, search, selectedCategoryId);
+  }, [page, selectedCategoryId]);
 
-  const handleSearch = () => { setPage(1); loadPosts(1, search); };
+  const handleSearch = () => {
+    setPage(1);
+    loadPosts(1, search, selectedCategoryId);
+  };
 
-  const [featured, ...rest] = posts;
+  const handleCategoryChange = (categoryId: string | null) => {
+    setSelectedCategoryId(categoryId);
+    setPage(1);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-50/50 to-white">
@@ -102,11 +152,43 @@ function BlogListingPageApi() {
       </section>
 
       <section className="container mx-auto max-w-6xl px-4 py-12">
+        {categories.length > 0 && (
+          <div className="mb-8 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => handleCategoryChange(null)}
+              className={cn(
+                "rounded-full px-4 py-2 text-sm font-semibold transition-colors",
+                selectedCategoryId === null
+                  ? "bg-purple-600 text-white"
+                  : "border border-gray-200 bg-white text-gray-600 hover:border-purple-300 hover:text-purple-700"
+              )}
+            >
+              All
+            </button>
+            {categories.map((category) => (
+              <button
+                key={category.id}
+                type="button"
+                onClick={() => handleCategoryChange(category.id)}
+                className={cn(
+                  "rounded-full px-4 py-2 text-sm font-semibold transition-colors",
+                  selectedCategoryId === category.id
+                    ? "bg-purple-600 text-white"
+                    : "border border-gray-200 bg-white text-gray-600 hover:border-purple-300 hover:text-purple-700"
+                )}
+              >
+                {category.name}
+              </button>
+            ))}
+          </div>
+        )}
+
         {loading ? (
           <div className="flex items-center justify-center py-20 text-gray-400">
             <Loader2 className="h-6 w-6 animate-spin mr-2" /> Loading articles...
           </div>
-        ) : posts.length === 0 ? (
+        ) : posts.length === 0 && !featuredPost ? (
           <div className="rounded-2xl border-2 border-dashed border-purple-200 bg-purple-50/50 p-12 text-center">
             <p className="text-lg text-gray-500">No articles have been published yet.</p>
             <p className="mt-2 text-sm text-gray-400">Check back soon for stories and updates.</p>
@@ -114,13 +196,13 @@ function BlogListingPageApi() {
         ) : (
           <>
             {/* Featured Post */}
-            {featured && page === 1 && (
+            {featuredPost && page === 1 && (
               <div className="mb-10">
                 <article className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-lg">
                   <div className="grid md:grid-cols-[1.1fr_1fr]">
                     <div className="relative min-h-[320px] overflow-hidden md:min-h-[400px]">
-                      {featured.featuredImage ? (
-                        <img src={featured.featuredImage} alt={featured.title} className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
+                      {featuredPost.featuredImage ? (
+                        <img src={resolveMediaUrl(featuredPost.featuredImage) ?? featuredPost.featuredImage} alt={featuredPost.title} className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
                       ) : (
                         <div className="absolute inset-0 bg-gradient-to-br from-purple-600 to-purple-900" />
                       )}
@@ -130,24 +212,32 @@ function BlogListingPageApi() {
                       <p className="text-sm font-medium uppercase tracking-[0.3em] text-purple-500">Featured Article</p>
                       <div className="mt-3 h-0.5 w-12 rounded-full bg-purple-500" />
                       <h2 className="mt-5 text-3xl font-bold leading-tight tracking-tight text-gray-900 md:text-4xl">
-                        <Link href={`/blog/${featured.slug}`} className="transition-colors hover:text-purple-700">
-                          {clampText(featured.title, 95)}
+                        <Link href={`/blog/${featuredPost.slug}`} className="transition-colors hover:text-purple-700">
+                          {clampText(featuredPost.title, 95)}
                         </Link>
                       </h2>
-                      {featured.excerpt && (
-                        <p className="mt-4 text-lg leading-relaxed text-gray-500">{clampText(featured.excerpt, 150)}</p>
+                      {featuredPost.excerpt && (
+                        <p className="mt-4 text-lg leading-relaxed text-gray-500">{clampText(featuredPost.excerpt, 150)}</p>
                       )}
                       <div className="mt-6 flex items-center gap-3 text-sm text-gray-400">
-                        {featured.author && <span>{featured.author}</span>}
-                        {featured.publishedAt && (
+                        {featuredPost.categoryName && (
+                          <>
+                            <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-purple-700">
+                              {featuredPost.categoryName}
+                            </span>
+                            <span className="h-1 w-1 rounded-full bg-gray-300" />
+                          </>
+                        )}
+                        {featuredPost.author && <span>{featuredPost.author}</span>}
+                        {featuredPost.publishedAt && (
                           <>
                             <span className="h-1 w-1 rounded-full bg-gray-300" />
-                            <span>{formatDate(featured.publishedAt)}</span>
+                            <span>{formatDate(featuredPost.publishedAt)}</span>
                           </>
                         )}
                       </div>
                       <div className="mt-6">
-                        <Link href={`/blog/${featured.slug}`} className="inline-flex items-center gap-3 text-sm font-semibold uppercase tracking-wider text-purple-700 transition-colors hover:text-purple-900">
+                        <Link href={`/blog/${featuredPost.slug}`} className="inline-flex items-center gap-3 text-sm font-semibold uppercase tracking-wider text-purple-700 transition-colors hover:text-purple-900">
                           Read Article
                           <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="2">
                             <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
@@ -160,20 +250,21 @@ function BlogListingPageApi() {
               </div>
             )}
 
-            {/* Posts Grid */}
-            <div className="flex items-end justify-between mb-6">
-              <div>
-                <p className="text-sm font-medium uppercase tracking-[0.3em] text-purple-500">Latest Posts</p>
-                <h2 className="mt-1 text-2xl font-bold text-gray-900">Newest articles</h2>
+            {(posts.length > 0 || featuredPost) && (
+              <div className="flex items-end justify-between mb-6">
+                <div>
+                  <p className="text-sm font-medium uppercase tracking-[0.3em] text-purple-500">Latest Posts</p>
+                  <h2 className="mt-1 text-2xl font-bold text-gray-900">Newest articles</h2>
+                </div>
+                {total > 0 && (
+                  <p className="text-sm text-gray-400">Page {page} of {totalPages}</p>
+                )}
               </div>
-              {total > 0 && (
-                <p className="text-sm text-gray-400">Page {page} of {totalPages}</p>
-              )}
-            </div>
+            )}
 
-            {rest.length > 0 ? (
+            {posts.length > 0 ? (
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {rest.map((post) => (
+                {posts.map((post) => (
                   <BlogCard key={post.id} post={post} />
                 ))}
               </div>

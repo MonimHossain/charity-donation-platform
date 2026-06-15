@@ -141,7 +141,7 @@ export async function uploadMediaFile(req: Request, res: Response) {
       id: media.id,
       name: media.originalName,
       filename: media.filename,
-      url: media.url,
+      url: normalizeStoredMediaUrl(media.url),
       type: media.mimeType,
       size: media.size,
       width: media.width,

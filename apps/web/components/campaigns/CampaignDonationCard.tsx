@@ -62,48 +62,51 @@ function PresetAmountButtons({
   presets,
   selectedAmount,
   customAmount,
+  selectedDescription,
   onSelect,
 }: {
   sym: string;
   presets: PresetAmount[];
   selectedAmount: number;
   customAmount: string;
+  selectedDescription: string;
   onSelect: (amount: number, description?: string) => void;
 }) {
+  const showDescription = Boolean(
+    selectedDescription.trim() && selectedAmount > 0 && !customAmount
+  );
+
   return (
-    <div className="flex flex-wrap gap-2.5">
-      {presets.map((preset) => {
-        const selected = selectedAmount === preset.amount && !customAmount;
-        const description = preset.description?.trim();
-        return (
-          <button
-            key={`${preset.amount}-${description ?? ""}`}
-            type="button"
-            onClick={() => onSelect(preset.amount, preset.description)}
-            className={cn(
-              "min-w-[88px] px-4 py-2.5 rounded-xl border-2 text-sm font-bold transition-all text-center",
-              selected
-                ? "bg-accent text-accent-foreground border-accent shadow-sm"
-                : "bg-background border-accent/40 text-foreground hover:border-accent hover:bg-accent/5"
-            )}
-          >
-            <span className="block text-base leading-none">
-              {sym}
-              {preset.amount.toFixed(2)}
-            </span>
-            {description && (
-              <span
-                className={cn(
-                  "block text-[11px] font-normal mt-1 leading-tight",
-                  selected ? "text-accent-foreground/80" : "text-muted-foreground"
-                )}
-              >
-                {description}
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2.5">
+        {presets.map((preset) => {
+          const selected = selectedAmount === preset.amount && !customAmount;
+          const description = preset.description?.trim();
+          return (
+            <button
+              key={`${preset.amount}-${description ?? ""}`}
+              type="button"
+              onClick={() => onSelect(preset.amount, preset.description)}
+              className={cn(
+                "min-w-[88px] px-4 py-2.5 rounded-xl border-2 text-sm font-bold transition-all text-center",
+                selected
+                  ? "bg-accent text-accent-foreground border-accent shadow-sm"
+                  : "bg-background border-accent/40 text-foreground hover:border-accent hover:bg-accent/5"
+              )}
+            >
+              <span className="block text-base leading-none">
+                {sym}
+                {preset.amount.toFixed(2)}
               </span>
-            )}
-          </button>
-        );
-      })}
+            </button>
+          );
+        })}
+      </div>
+      {showDescription && (
+        <div className="rounded-2xl border border-border bg-secondary/40 px-4 py-3">
+          <p className="text-sm text-muted-foreground">{selectedDescription}</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -116,7 +119,7 @@ export function CampaignDonationCard({
   paymentType,
   selectedAmount,
   customAmount,
-  selectedPresetDescription: _selectedPresetDescription,
+  selectedPresetDescription,
   donorSchedule,
   showCustomSchedule,
   quantity,
@@ -372,6 +375,7 @@ export function CampaignDonationCard({
               presets={presetAmounts}
               selectedAmount={selectedAmount}
               customAmount={customAmount}
+              selectedDescription={selectedPresetDescription}
               onSelect={(amount, description) => {
                 onSetSelectedAmount(amount, description);
                 onSetCustomAmount("");

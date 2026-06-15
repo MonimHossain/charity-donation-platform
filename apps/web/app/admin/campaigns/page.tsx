@@ -1721,6 +1721,12 @@ function AttributeEditor({
     update(configKey, { ...attribute[configKey], presetAmounts });
   }
 
+  function updateCustomFieldOptions(fieldIndex: number, options: string[]) {
+    const arr = [...attribute.customFields];
+    arr[fieldIndex] = { ...arr[fieldIndex], options };
+    update("customFields", arr);
+  }
+
   function renderPresetAmountEditor(
     configKey: "singlePaymentConfig" | "regularPaymentConfig",
     config: SinglePaymentConfig | RegularPaymentConfig
@@ -2162,31 +2168,49 @@ function AttributeEditor({
                   </Button>
                 </div>
                 {(cf.fieldType === "dropdown" || cf.fieldType === "radio") && (
-                  <div className="space-y-1 ml-2">
-                    <Label className="text-[10px]">Options (comma-separated)</Label>
-                    <Input
-                      value={cf.options.join(", ")}
-                      onChange={(e) => {
-                        const parts = e.target.value.split(",");
-                        const options = parts.map((part, index) =>
-                          index < parts.length - 1 ? part.trim() : part
-                        );
-                        const arr = [...attribute.customFields];
-                        arr[fi] = { ...arr[fi], options };
-                        update("customFields", arr);
-                      }}
-                      onBlur={(e) => {
-                        const options = e.target.value
-                          .split(",")
-                          .map((s) => s.trim())
-                          .filter(Boolean);
-                        const arr = [...attribute.customFields];
-                        arr[fi] = { ...arr[fi], options };
-                        update("customFields", arr);
-                      }}
+                  <div className="space-y-2 ml-2">
+                    <Label className="text-[10px]">Options</Label>
+                    <div className="space-y-2">
+                      {cf.options.map((option, oi) => (
+                        <div
+                          key={oi}
+                          className="flex items-center gap-2 rounded-lg border px-2 py-1.5 bg-muted/30"
+                        >
+                          <Input
+                            value={option}
+                            onChange={(e) => {
+                              const options = [...cf.options];
+                              options[oi] = e.target.value;
+                              updateCustomFieldOptions(fi, options);
+                            }}
+                            className="h-7 flex-1 text-xs"
+                            placeholder={`Option ${oi + 1}`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateCustomFieldOptions(
+                                fi,
+                                cf.options.filter((_, i) => i !== oi)
+                              )
+                            }
+                            className="text-destructive hover:text-destructive/80 p-1 shrink-0"
+                            aria-label={`Remove option ${oi + 1}`}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
                       className="h-7 text-xs"
-                      placeholder="Option 1, Option 2, Option 3"
-                    />
+                      onClick={() => updateCustomFieldOptions(fi, [...cf.options, ""])}
+                    >
+                      <Plus className="h-3 w-3 mr-1" /> Add option
+                    </Button>
                   </div>
                 )}
               </div>

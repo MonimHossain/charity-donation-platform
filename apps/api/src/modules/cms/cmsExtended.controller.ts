@@ -10,6 +10,7 @@ import { SeoSettings } from "../../components/cms/seoSettings.entity.js";
 import { PageBlock } from "../../components/cms/pageBuilder.entity.js";
 import { Translation } from "../../components/cms/translation.entity.js";
 import { BlogCategory } from "../../components/blog/blogCategory.entity.js";
+import { BlogPost } from "../../components/blog/blogPost.entity.js";
 import { SiteSettings } from "../../components/cms/siteSettings.entity.js";
 
 // ─── Navigation Menus ────────────────────────────────────────────────────────
@@ -361,6 +362,38 @@ export async function getBlogCategories(_req: Request, res: Response) {
       order: { sortOrder: "ASC" },
     });
     return res.json(categories);
+  } catch (error) {
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+export async function getAdminBlogCategories(_req: Request, res: Response) {
+  try {
+    const categoryRepo = AppDataSource.getRepository(BlogCategory);
+    const postRepo = AppDataSource.getRepository(BlogPost);
+
+    const categories = await categoryRepo.find({
+      order: { sortOrder: "ASC", name: "ASC" },
+    });
+
+    const counts = await postRepo
+      .createQueryBuilder("post")
+      .select("post.categoryId", "categoryId")
+      .addSelect("COUNT(*)", "count")
+      .where("post.categoryId IS NOT NULL")
+      .groupBy("post.categoryId")
+      .getRawMany<{ categoryId: string; count: string }>();
+
+    const countByCategory = new Map(
+      counts.map((row) => [row.categoryId, Number(row.count)])
+    );
+
+    const items = categories.map((category) => ({
+      ...category,
+      postCount: countByCategory.get(category.id) ?? 0,
+    }));
+
+    return res.json({ items });
   } catch (error) {
     return res.status(500).json({ message: "Internal server error" });
   }
