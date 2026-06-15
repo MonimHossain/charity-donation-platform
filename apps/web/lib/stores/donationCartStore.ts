@@ -65,6 +65,8 @@ export type DonationCartItem = {
 
 type CartSnapshot = DonationCartItem[];
 
+const SERVER_CART_SNAPSHOT: CartSnapshot = [];
+
 let snapshot: CartSnapshot = [];
 const listeners = new Set<() => void>();
 
@@ -144,7 +146,11 @@ export function getDonationCartTotal(currency = "GBP"): number {
 }
 
 export function useDonationCart() {
-  const items = useSyncExternalStore(subscribeDonationCart, getDonationCartSnapshot, () => []);
+  const items = useSyncExternalStore(
+    subscribeDonationCart,
+    getDonationCartSnapshot,
+    () => SERVER_CART_SNAPSHOT
+  );
   const displayCode = useSyncExternalStore(
     subscribeDisplayCurrency,
     getCurrencyCode,
