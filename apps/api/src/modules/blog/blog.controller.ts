@@ -64,7 +64,7 @@ async function ensureUniqueSlug(base: string, excludeId?: string): Promise<strin
 
 export async function getPublicBlogPosts(req: Request, res: Response) {
   try {
-    const { tag, search, categoryId, page = "1", limit = "12" } = req.query;
+    const { tag, search, categoryId, featured, excludeId, page = "1", limit = "12" } = req.query;
     const qb = repo()
       .createQueryBuilder("post")
       .where("post.status = :status", { status: "published" })
@@ -82,6 +82,14 @@ export async function getPublicBlogPosts(req: Request, res: Response) {
 
     if (categoryId && typeof categoryId === "string") {
       qb.andWhere("post.categoryId = :categoryId", { categoryId });
+    }
+
+    if (featured === "true") {
+      qb.andWhere("post.isFeatured = :isFeatured", { isFeatured: true });
+    }
+
+    if (excludeId && typeof excludeId === "string") {
+      qb.andWhere("post.id != :excludeId", { excludeId });
     }
 
     const pageNum = Math.max(1, Number(page));

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import {
-  Plus, Pencil, Trash2, Search, X, Save, Loader2, ArrowLeft, Eye, Calendar,
+  Plus, Pencil, Trash2, Search, X, Save, Loader2, ArrowLeft, Eye, Calendar, Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,6 @@ import {
   adminDeleteBlogPost,
   fetchAdminBlogCategories,
 } from "@/lib/api";
-import { resolveMediaUrl } from "@/lib/campaign-media";
 
 interface BlogCategory {
   id: string;
@@ -273,6 +272,7 @@ export default function AdminBlogPage() {
                   <tr className="border-b bg-muted/40">
                     <th className="px-5 py-3 text-left font-medium text-muted-foreground">Title</th>
                     <th className="px-5 py-3 text-left font-medium text-muted-foreground">Category</th>
+                    <th className="px-5 py-3 text-left font-medium text-muted-foreground">Featured</th>
                     <th className="px-5 py-3 text-left font-medium text-muted-foreground">Status</th>
                     <th className="px-5 py-3 text-left font-medium text-muted-foreground">Author</th>
                     <th className="px-5 py-3 text-left font-medium text-muted-foreground">Tags</th>
@@ -289,6 +289,16 @@ export default function AdminBlogPage() {
                         </button>
                       </td>
                       <td className="px-5 py-3 text-muted-foreground">{p.categoryName || "—"}</td>
+                      <td className="px-5 py-3">
+                        {p.isFeatured ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+                            <Star className="h-3 w-3 fill-current" />
+                            Featured
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
                       <td className="px-5 py-3">
                         <span className={cn("inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize", statusStyles[p.status || "draft"] || "bg-slate-100 text-slate-600")}>
                           {p.status || "draft"}
@@ -315,7 +325,7 @@ export default function AdminBlogPage() {
                     </tr>
                   ))}
                   {posts.length === 0 && (
-                    <tr><td colSpan={7} className="px-5 py-10 text-center text-muted-foreground">No posts found</td></tr>
+                    <tr><td colSpan={8} className="px-5 py-10 text-center text-muted-foreground">No posts found</td></tr>
                   )}
                 </tbody>
               </table>
@@ -433,12 +443,6 @@ export default function AdminBlogPage() {
                 <FilePicker value={featuredImage} onChange={setFeaturedImage} accept="image" />
               </div>
             </div>
-
-            {featuredImage && (
-              <div className="rounded-xl border bg-muted/30 p-3">
-                <img src={resolveMediaUrl(featuredImage) ?? featuredImage} alt="Featured preview" className="max-h-60 w-full rounded-lg object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
-              </div>
-            )}
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-1">
