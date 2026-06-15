@@ -260,20 +260,36 @@ router.post("/recurring/:id/billing-portal", async (req, res) => {
 // PAYMENT ROUTES (lazy-loaded)
 // ═══════════════════════════════════
 router.post("/payments/stripe/create-intent", async (req, res) => {
-  const { createPaymentIntent } = await import("../modules/payments/stripe.controller.js");
-  return createPaymentIntent(req, res);
+  const { optionalUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  optionalUser(req, res, async () => {
+    const { createPaymentIntent } = await import("../modules/payments/stripe.controller.js");
+    return createPaymentIntent(req, res);
+  });
 });
 router.post("/payments/stripe/confirm", async (req, res) => {
-  const { confirmStripePayment } = await import("../modules/payments/stripe.controller.js");
-  return confirmStripePayment(req, res);
+  const { optionalUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  optionalUser(req, res, async () => {
+    const { confirmStripePayment } = await import("../modules/payments/stripe.controller.js");
+    return confirmStripePayment(req, res);
+  });
 });
 router.post("/payments/stripe/create-subscription", async (req, res) => {
   const { createSubscription } = await import("../modules/payments/stripe.controller.js");
   return createSubscription(req, res);
 });
 router.post("/payments/stripe/create-subscription-checkout", async (req, res) => {
-  const { createSubscriptionCheckout } = await import("../modules/payments/stripe.controller.js");
-  return createSubscriptionCheckout(req, res);
+  const { optionalUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  optionalUser(req, res, async () => {
+    const { createSubscriptionCheckout } = await import("../modules/payments/stripe.controller.js");
+    return createSubscriptionCheckout(req, res);
+  });
+});
+router.get("/payments/stripe/customer-session", async (req, res) => {
+  const { requireUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  requireUser(req, res, async () => {
+    const { getStripeCustomerSession } = await import("../modules/payments/stripe.controller.js");
+    return getStripeCustomerSession(req, res);
+  });
 });
 router.get("/payments/stripe/status/:intentId", async (req, res) => {
   const { getPaymentStatus } = await import("../modules/payments/stripe.controller.js");

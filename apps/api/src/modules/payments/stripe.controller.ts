@@ -10,6 +10,11 @@ import { sendRecurringFailedPaymentEmail } from "../../helper/mailer.js";
 import { createStripeClient } from "../../helper/stripeClient.js";
 import { User } from "../../components/user/user.entity.js";
 import { issueUserSession, createUserToken } from "../user-auth/userAuth.service.js";
+import {
+  createStripeCustomerSession,
+  getOrCreateStripeCustomerForUser,
+  persistStripeCustomerFromPaymentIntent,
+} from "./stripeCustomer.js";
 
 const getStripe = () => createStripeClient(process.env.STRIPE_SECRET_KEY!);
 
@@ -38,12 +43,29 @@ export async function createPaymentIntent(req: Request, res: Response) {
     }
 
     const stripe = getStripe();
+    const userId = (req as { user?: { id?: string } }).user?.id;
+    let customerId: string | undefined;
+
+    if (userId) {
+      const user = await AppDataSource.getRepository(User).findOne({ where: { id: userId } });
+      if (user) {
+        customerId = await getOrCreateStripeCustomerForUser(user);
+      }
+    }
+
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100),
       currency: (currency || "gbp").toLowerCase(),
       payment_method_types: ["card"],
+      ...(customerId
+        ? {
+            customer: customerId,
+            setup_future_usage: "off_session",
+          }
+        : {}),
       metadata: {
         donationId: donationId || "",
+        userId: userId || "",
         ...metadata,
       },
     });
@@ -121,14 +143,34 @@ export async function createSubscriptionCheckout(req: Request, res: Response) {
     }
 
     const stripe = getStripe();
-    const customer = await stripe.customers.create({
-      email: donorEmail,
-      name: donorName,
-      metadata: {
-        recurringDonationId: recurringDonationId || "",
-        donationId: donationId || "",
-      },
-    });
+    const userId = (req as { user?: { id?: string } }).user?.id;
+    let customer: Stripe.Customer;
+
+    if (userId) {
+      const user = await AppDataSource.getRepository(User).findOne({ where: { id: userId } });
+      if (user) {
+        const customerId = await getOrCreateStripeCustomerForUser(user);
+        customer = (await stripe.customers.retrieve(customerId)) as Stripe.Customer;
+      } else {
+        customer = await stripe.customers.create({
+          email: donorEmail,
+          name: donorName,
+          metadata: {
+            recurringDonationId: recurringDonationId || "",
+            donationId: donationId || "",
+          },
+        });
+      }
+    } else {
+      customer = await stripe.customers.create({
+        email: donorEmail,
+        name: donorName,
+        metadata: {
+          recurringDonationId: recurringDonationId || "",
+          donationId: donationId || "",
+        },
+      });
+    }
 
     const price = await stripe.prices.create({
       unit_amount: Math.round(Number(amount) * 100),
@@ -182,6 +224,14 @@ export async function createSubscriptionCheckout(req: Request, res: Response) {
         stripeSubscriptionId: subscription.id,
         stripeCustomerId: customer.id,
       });
+    }
+
+    if (userId && customer.id) {
+      const linkedUser = await AppDataSource.getRepository(User).findOne({ where: { id: userId } });
+      if (linkedUser && linkedUser.stripeCustomerId !== customer.id) {
+        linkedUser.stripeCustomerId = customer.id;
+        await AppDataSource.getRepository(User).save(linkedUser);
+      }
     }
 
     if (donationId) {
@@ -476,6 +526,10 @@ export async function confirmStripePayment(req: Request, res: Response) {
       subscriptionId || paymentIntent.metadata?.subscriptionId;
 
     if (paymentIntent.status === "succeeded") {
+      const userId =
+        (req as { user?: { id?: string } }).user?.id || paymentIntent.metadata?.userId;
+      await persistStripeCustomerFromPaymentIntent(paymentIntent, userId);
+
       if (resolvedDonationId) {
         await completeDonation(resolvedDonationId);
       }
@@ -533,5 +587,28 @@ export async function confirmStripePayment(req: Request, res: Response) {
   } catch (error: any) {
     console.error("confirmStripePayment error:", error);
     return res.status(500).json({ message: error.message || "Internal server error" });
+  }
+}
+
+export async function getStripeCustomerSession(req: Request, res: Response) {
+  try {
+    const userId = (req as { user?: { id?: string } }).user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+
+    const user = await AppDataSource.getRepository(User).findOne({ where: { id: userId } });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const customerId = await getOrCreateStripeCustomerForUser(user);
+    const customerSessionClientSecret = await createStripeCustomerSession(customerId);
+
+    return res.json({ customerId, customerSessionClientSecret });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Internal server error";
+    console.error("getStripeCustomerSession error:", error);
+    return res.status(500).json({ message });
   }
 }

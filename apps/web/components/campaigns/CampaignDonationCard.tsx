@@ -74,20 +74,33 @@ function PresetAmountButtons({
     <div className="flex flex-wrap gap-2.5">
       {presets.map((preset) => {
         const selected = selectedAmount === preset.amount && !customAmount;
+        const description = preset.description?.trim();
         return (
           <button
-            key={`${preset.amount}-${preset.description ?? ""}`}
+            key={`${preset.amount}-${description ?? ""}`}
             type="button"
             onClick={() => onSelect(preset.amount, preset.description)}
             className={cn(
-              "px-5 py-2.5 rounded-full border-2 text-sm font-bold transition-all",
+              "min-w-[88px] px-4 py-2.5 rounded-xl border-2 text-sm font-bold transition-all text-center",
               selected
                 ? "bg-accent text-accent-foreground border-accent shadow-sm"
                 : "bg-background border-accent/40 text-foreground hover:border-accent hover:bg-accent/5"
             )}
           >
-            {sym}
-            {preset.amount.toFixed(2)}
+            <span className="block text-base leading-none">
+              {sym}
+              {preset.amount.toFixed(2)}
+            </span>
+            {description && (
+              <span
+                className={cn(
+                  "block text-[11px] font-normal mt-1 leading-tight",
+                  selected ? "text-accent-foreground/80" : "text-muted-foreground"
+                )}
+              >
+                {description}
+              </span>
+            )}
           </button>
         );
       })}
@@ -103,7 +116,7 @@ export function CampaignDonationCard({
   paymentType,
   selectedAmount,
   customAmount,
-  selectedPresetDescription,
+  selectedPresetDescription: _selectedPresetDescription,
   donorSchedule,
   showCustomSchedule,
   quantity,
@@ -186,12 +199,6 @@ export function CampaignDonationCard({
     });
     router.push("/donation/checkout");
   }
-
-  const impactLine =
-    selectedPresetDescription.trim() ||
-    (selectedAmount > 0 && !customAmount
-      ? presetAmounts.find((p) => p.amount === selectedAmount)?.description?.trim()
-      : "");
 
   const [customIntervalCount, setCustomIntervalCount] = useState(
     adminRecurrence?.intervalCount ?? 1
@@ -570,12 +577,6 @@ export function CampaignDonationCard({
                 </span>
               </label>
             ))}
-        </div>
-      )}
-
-      {impactLine && (
-        <div className="rounded-2xl bg-secondary/60 px-5 py-4 text-center">
-          <p className="text-sm font-medium text-foreground/85 leading-relaxed">{impactLine}</p>
         </div>
       )}
 

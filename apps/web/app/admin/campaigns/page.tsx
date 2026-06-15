@@ -2167,8 +2167,21 @@ function AttributeEditor({
                     <Input
                       value={cf.options.join(", ")}
                       onChange={(e) => {
+                        const parts = e.target.value.split(",");
+                        const options = parts.map((part, index) =>
+                          index < parts.length - 1 ? part.trim() : part
+                        );
                         const arr = [...attribute.customFields];
-                        arr[fi] = { ...arr[fi], options: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) };
+                        arr[fi] = { ...arr[fi], options };
+                        update("customFields", arr);
+                      }}
+                      onBlur={(e) => {
+                        const options = e.target.value
+                          .split(",")
+                          .map((s) => s.trim())
+                          .filter(Boolean);
+                        const arr = [...attribute.customFields];
+                        arr[fi] = { ...arr[fi], options };
                         update("customFields", arr);
                       }}
                       className="h-7 text-xs"

@@ -242,6 +242,11 @@ function CheckoutForm({
     setNeedsHttps(typeof window !== "undefined" && !window.isSecureContext);
   }, []);
 
+  useEffect(() => {
+    setDonorName(initialName);
+    setDonorEmail(initialEmail);
+  }, [initialName, initialEmail]);
+
   const formattedAmount = useMemo(
     () => `${currencySymbol}${amount.toFixed(2)}`,
     [amount, currencySymbol]
@@ -573,6 +578,8 @@ export function StripeCheckoutForm({
   recurringCancelAt,
   recurringDonationId,
   campaignId,
+  stripeCustomerId,
+  customerSessionClientSecret,
   onSuccess,
   onError,
 }: {
@@ -589,6 +596,8 @@ export function StripeCheckoutForm({
   recurringCancelAt?: number;
   recurringDonationId?: string;
   campaignId?: string;
+  stripeCustomerId?: string;
+  customerSessionClientSecret?: string;
   onSuccess: () => void;
   onError: (msg: string) => void;
 }) {
@@ -601,6 +610,12 @@ export function StripeCheckoutForm({
       amount: Math.round(amount * 100),
       currency: currencyCode.toLowerCase(),
       paymentMethodTypes: ["card"],
+      ...(stripeCustomerId && customerSessionClientSecret
+        ? {
+            customer: stripeCustomerId,
+            customerSessionClientSecret,
+          }
+        : {}),
       appearance: {
         theme: "stripe" as const,
         variables: {
@@ -625,11 +640,13 @@ export function StripeCheckoutForm({
         },
       },
     }),
-    [amount, currencyCode, isRecurring]
+    [amount, currencyCode, customerSessionClientSecret, isRecurring, stripeCustomerId]
   );
 
+  const elementsKey = `${donationId}-${stripeCustomerId ?? "guest"}-${customerSessionClientSecret ?? "none"}`;
+
   return (
-    <Elements stripe={stripePromise} options={elementsOptions}>
+    <Elements key={elementsKey} stripe={stripePromise} options={elementsOptions}>
       <CheckoutForm
         donationId={donationId}
         donorName={donorName}

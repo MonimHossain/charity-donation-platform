@@ -31,6 +31,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { statTotalClass } from "@/lib/home-buttons";
 import { CURRENCIES, CURRENCY_LIST, type CurrencyCode, getCurrency, getCurrencyCode, useCurrency } from "@/lib/currency";
+import { useCheckoutDonorPrefill } from "@/lib/hooks/useCheckoutDonorPrefill";
 import {
   fetchCampaigns,
   createDonation,
@@ -177,6 +178,8 @@ function DonatePageApi() {
   const [attributeSelections, setAttributeSelections] = useState<Record<string, string>>({});
   const [selectedUpsells, setSelectedUpsells] = useState<Set<number>>(new Set());
   const [activeCampaign, setActiveCampaign] = useState<Campaign | null>(null);
+  const { prefill, stripeCustomer } = useCheckoutDonorPrefill();
+  const prefillApplied = useRef(false);
 
   // Donation-page orders use /donation/checkout — never re-ask for amount/campaign on /donate.
   useEffect(() => {
@@ -252,6 +255,14 @@ function DonatePageApi() {
 
     setBootstrapping(false);
   }, [params, router]);
+
+  useEffect(() => {
+    if (!prefill || prefillApplied.current) return;
+    prefillApplied.current = true;
+    setDonorName((prev) => prev || prefill.name);
+    setDonorEmail((prev) => prev || prefill.email);
+    setDonorPhone((prev) => prev || prefill.phone);
+  }, [prefill]);
 
   useEffect(() => {
     fetchCampaigns({ status: "active" })
@@ -1037,6 +1048,8 @@ function DonatePageApi() {
                 frequency={frequency}
                 recurringDonationId={pendingRecurringDonationId ?? undefined}
                 campaignId={selectedCampaign || undefined}
+                stripeCustomerId={stripeCustomer?.customerId}
+                customerSessionClientSecret={stripeCustomer?.customerSessionClientSecret}
                 onSuccess={() => redirectToThankYou(pendingDonationId)}
                 onError={(msg) => setPaymentError(msg)}
               />

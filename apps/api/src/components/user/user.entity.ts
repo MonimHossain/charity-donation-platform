@@ -53,6 +53,9 @@ export class User {
   @Column({ type: "varchar", length: 500, nullable: true })
   avatarUrl?: string;
 
+  @Column({ type: "varchar", length: 255, nullable: true })
+  stripeCustomerId?: string;
+
   @Column({ type: "decimal", precision: 12, scale: 2, default: 0 })
   totalDonated!: number;
 

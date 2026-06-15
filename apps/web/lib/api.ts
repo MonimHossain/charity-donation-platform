@@ -46,18 +46,23 @@ api.interceptors.request.use((config) => {
       apiPath.startsWith("/my/") ||
       apiPath.startsWith("/recurring/my") ||
       apiPath.startsWith("/zakat/history") ||
-      apiPath.startsWith("/automated-donations/my");
+      apiPath.startsWith("/automated-donations/my") ||
+      apiPath.startsWith("/payments/stripe/customer-session");
 
     const adminToken = localStorage.getItem("admin_token");
     const apiAdminToken = canSendAdminTokenToApi(adminToken) ? adminToken : null;
 
     if (isAdminRoute) {
       if (apiAdminToken) setBearerToken(config, apiAdminToken);
-    } else if (isUserRoute) {
+    } else {
       const userToken = localStorage.getItem("user_token");
-      if (userToken && userToken !== "demo-token") setBearerToken(config, userToken);
-    } else if (apiAdminToken) {
-      setBearerToken(config, apiAdminToken);
+      if (userToken && userToken !== "demo-token") {
+        setBearerToken(config, userToken);
+      } else if (isUserRoute) {
+        /* unauthenticated user route — no token */
+      } else if (apiAdminToken) {
+        setBearerToken(config, apiAdminToken);
+      }
     }
   }
   return config;
@@ -327,6 +332,11 @@ export async function createRecurringBillingPortal(id: string) {
 export async function createStripePaymentIntent(payload: { amount: number; currency: string; donationId?: string }) {
   const { data } = await api.post("/payments/stripe/create-intent", payload);
   return data as { clientSecret: string; paymentIntentId: string };
+}
+
+export async function fetchStripeCustomerSession() {
+  const { data } = await api.get("/payments/stripe/customer-session");
+  return data as { customerId: string; customerSessionClientSecret: string };
 }
 
 export async function confirmStripePayment(payload: {

@@ -34,6 +34,7 @@ import { clearDonationCart, useDonationCart } from "@/lib/stores/donationCartSto
 import CheckoutGiftAidStep from "@/components/donation/CheckoutGiftAidStep";
 import CheckoutUpsellList from "@/components/donation/CheckoutUpsellList";
 import CheckoutStepIndicator, { type CheckoutFlowStep } from "@/components/donation/CheckoutStepIndicator";
+import { useCheckoutDonorPrefill } from "@/lib/hooks/useCheckoutDonorPrefill";
 import {
   DEFAULT_CAMPAIGN_CONFIG,
   isGiftAidCheckoutEnabled,
@@ -52,6 +53,8 @@ const DEDICATION_TYPES = [
 function DonationCheckoutContent() {
   const router = useRouter();
   const { items, subtotal, currency, removeItem, clear } = useDonationCart();
+  const { prefill, stripeCustomer } = useCheckoutDonorPrefill();
+  const prefillApplied = useRef(false);
 
   const [campaignConfig, setCampaignConfig] = useState<CheckoutCampaignConfig>(DEFAULT_CAMPAIGN_CONFIG);
   const [configLoading, setConfigLoading] = useState(true);
@@ -77,6 +80,14 @@ function DonationCheckoutContent() {
   const [pendingRecurringDonationId, setPendingRecurringDonationId] = useState<string | null>(null);
   const [monthlyGift, setMonthlyGift] = useState(false);
   const [stripeReady, setStripeReady] = useState(false);
+
+  useEffect(() => {
+    if (!prefill || prefillApplied.current) return;
+    prefillApplied.current = true;
+    setDonorName((prev) => prev || prefill.name);
+    setDonorEmail((prev) => prev || prefill.email);
+    setDonorPhone((prev) => prev || prefill.phone);
+  }, [prefill]);
 
   const currencyInfo = CURRENCIES[currency as keyof typeof CURRENCIES] ?? CURRENCIES.GBP;
   const { checkoutSettings, upsells } = campaignConfig;
@@ -755,6 +766,8 @@ function DonationCheckoutContent() {
                     recurringCancelAt={checkoutRecurringParams.cancelAt}
                     recurringDonationId={pendingRecurringDonationId ?? undefined}
                     campaignId={items[0]?.campaignId}
+                    stripeCustomerId={stripeCustomer?.customerId}
+                    customerSessionClientSecret={stripeCustomer?.customerSessionClientSecret}
                     onSuccess={() => redirectToThankYou(pendingDonationId)}
                     onError={(msg) => setPaymentError(msg)}
                   />
