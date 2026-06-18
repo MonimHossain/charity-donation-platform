@@ -1095,19 +1095,20 @@ export default function CampaignsPage() {
                     }
                   />
                   <div className="space-y-2 max-w-xs">
-                    <Label>Max nights</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={30}
-                      value={ramadanConfig.maxNights ?? 30}
+                    <Label>Total Ramadan Nights</Label>
+                    <select
+                      value={ramadanConfig.maxNights === 29 ? 29 : 30}
                       onChange={(e) =>
                         setForm((p) => ({
                           ...p,
                           experienceConfig: { ...ramadanConfig, maxNights: Number(e.target.value) },
                         }))
                       }
-                    />
+                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    >
+                      <option value={30}>30 days</option>
+                      <option value={29}>29 days</option>
+                    </select>
                   </div>
                 </div>
               )}
