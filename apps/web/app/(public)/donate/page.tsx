@@ -203,6 +203,7 @@ function DonatePageApi() {
       routedToCheckout.current = true;
       const cause = params.get("cause") || params.get("type") || "donation";
       const campaignId = params.get("campaign") || params.get("campaignId") || undefined;
+      const campaignSlugParam = params.get("campaignSlug") || undefined;
       const paymentType = params.get("type") || params.get("freq") || "single";
       const freq = params.get("freq") || params.get("interval") || undefined;
       const isQuickDonate = params.get("source") === "quick";
@@ -230,6 +231,8 @@ function DonatePageApi() {
           ? `Quick donation — ${getCurrency().symbol}${parsed.toFixed(2)}`
           : `Donation — ${getCurrency().symbol}${parsed.toFixed(2)}`,
         campaignId: campaignId || undefined,
+        campaignSlug:
+          campaignSlugParam || (!campaignId && isQuickDonate ? cause : undefined),
         category: donationCategory,
         donationType: isQuickDonate ? "quick_donation" : cause,
         quantity: qty ? Number(qty) : undefined,

@@ -33,6 +33,7 @@ export type DonationCartItem = {
   unitPrice?: number;
   description: string;
   campaignId?: string;
+  campaignSlug?: string;
   donationType?: string;
   /** Recurring checkout frequency (e.g. monthly, custom:28:day). */
   recurringFrequency?: string;

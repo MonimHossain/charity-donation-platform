@@ -88,6 +88,9 @@ export function useQuickDonateForm(initialCampaignSlug?: string) {
     if (selectedOption.campaignId) {
       params.set("campaign", selectedOption.campaignId);
     }
+    if (selectedOption.campaignSlug) {
+      params.set("campaignSlug", selectedOption.campaignSlug);
+    }
     router.push(`/donate?${params.toString()}`);
   };
 

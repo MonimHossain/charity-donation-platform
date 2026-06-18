@@ -398,6 +398,7 @@ function DonationCheckoutContent() {
           currency,
           frequency: checkoutFrequency,
           campaignId: primary?.campaignId,
+          campaignSlug: primary?.campaignSlug || (!primary?.campaignId ? primary?.donationPageSlug : undefined),
           paymentMethod: "stripe",
           giftAid,
         });
@@ -422,6 +423,8 @@ function DonationCheckoutContent() {
         donorEmail,
         donorPhone: donorPhone || undefined,
         campaignId: primary?.campaignId,
+        campaignSlug:
+          primary?.campaignSlug || (!primary?.campaignId ? primary?.donationPageSlug : undefined),
         quantity: 1,
         unitPrice: chargeAmount,
         automatedScheduleId: primaryScheduleId,

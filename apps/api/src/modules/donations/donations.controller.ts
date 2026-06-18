@@ -5,6 +5,7 @@ import { Donation } from "../../components/donation/donation.entity.js";
 import { Campaign } from "../../components/campaign/campaign.entity.js";
 import { logAudit } from "../../helper/auditLog.js";
 import { ensureDonorUserForDonation } from "../user-auth/userAuth.service.js";
+import { resolveCampaignId } from "../campaigns/resolveCampaignId.js";
 
 const repo = () => AppDataSource.getRepository(Donation);
 const campaignRepo = () => AppDataSource.getRepository(Campaign);
@@ -19,7 +20,7 @@ function generateReceiptNumber(): string {
 export async function createDonation(req: Request, res: Response) {
   try {
     const {
-      amount, currency, frequency, campaignId, donorName, donorEmail, donorPhone,
+      amount, currency, frequency, campaignId, campaignSlug, donorName, donorEmail, donorPhone,
       giftAid, isAnonymous, message, donationType, paymentMethod,
       marketingConsent, smsConsent, dedication,
       quantity, unitPrice, attributeSelections, upsellAmounts, upsellTotal,
@@ -47,11 +48,13 @@ export async function createDonation(req: Request, res: Response) {
       existingUserId: authUserId,
     });
 
+    const resolvedCampaignId = await resolveCampaignId(campaignId, campaignSlug);
+
     const donation = repo().create({
       amount: numericAmount,
       currency: currency || "GBP",
       frequency: frequency || "single",
-      campaignId,
+      campaignId: resolvedCampaignId,
       userId: donorUser.id,
       donorName,
       donorEmail,
