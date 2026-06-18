@@ -20,14 +20,6 @@ const CTA = () => (
             <Button asChild size="lg" className="rounded-full bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground px-8 py-6 text-lg">
               <Link href="/donate">Donate Now <ArrowRight className="w-5 h-5" /></Link>
             </Button>
-            <Button
-              asChild
-              size="lg"
-              variant="outline"
-              className="rounded-full border-primary-foreground/35 bg-transparent text-primary-foreground hover:bg-primary-foreground/10 px-8 py-6 text-lg"
-            >
-              <Link href="/zakat">Calculate Zakat</Link>
-            </Button>
           </div>
         </div>
         <div className="lg:col-span-5 flex justify-center lg:justify-end">
