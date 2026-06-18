@@ -283,6 +283,21 @@ function DonationCheckoutContent() {
 
   const isCartRecurring = isRecurringFrequency(checkoutFrequency);
 
+  const stripePaymentMode = useMemo((): "payment" | "setup" => {
+    if (
+      ramadanSummary.hasRamadanSplit &&
+      pendingAutomatedScheduleIds.length > 0 &&
+      ramadanSummary.checkoutChargeAmount <= 0
+    ) {
+      return "setup";
+    }
+    return "payment";
+  }, [
+    pendingAutomatedScheduleIds.length,
+    ramadanSummary.checkoutChargeAmount,
+    ramadanSummary.hasRamadanSplit,
+  ]);
+
   const redirectToThankYou = (donationId?: string) => {
     clear();
     const summaryParams = new URLSearchParams({
@@ -829,7 +844,7 @@ function DonationCheckoutContent() {
                     campaignId={items[0]?.campaignId}
                     stripeCustomerId={stripeCustomer?.customerId}
                     customerSessionClientSecret={stripeCustomer?.customerSessionClientSecret}
-                    paymentMode="payment"
+                    paymentMode={stripePaymentMode}
                     automatedScheduleIds={pendingAutomatedScheduleIds}
                     ramadanCommitmentTotal={ramadanSummary.hasRamadanSplit ? donationAmount : undefined}
                     ramadanFirstInstallmentAmount={
