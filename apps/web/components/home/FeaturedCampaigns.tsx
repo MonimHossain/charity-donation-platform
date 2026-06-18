@@ -13,6 +13,10 @@ import {
   CAMPAIGN_MODE_LABELS,
   isExperienceCampaignMode,
 } from "@/lib/campaign-experience";
+import {
+  getCampaignGoalAmount,
+  getCampaignRaisedAmount,
+} from "@/lib/campaign-fundraising";
 
 type Appeal = {
   slug: string;
@@ -82,8 +86,8 @@ function mapCampaigns(items: Array<Record<string, unknown>>): Appeal[] {
     }),
     urgent: Boolean(c.isUrgent ?? c.urgent),
     featured: Boolean(c.isFeatured ?? c.featured),
-    raised: Number(c.raisedAmount ?? c.raised ?? 0),
-    goal: Number(c.goalAmount ?? c.goal ?? 1),
+    raised: getCampaignRaisedAmount(c),
+    goal: Math.max(getCampaignGoalAmount(c), 1),
     donors: Number(c.donorCount ?? c.donors ?? 0),
     impact: appealImpact(c),
     expirationEnabled: Boolean(c.expirationEnabled),

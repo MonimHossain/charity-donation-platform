@@ -21,10 +21,19 @@ function normalizeCampaignMedia<T extends { thumbnail?: string | null; banner?: 
   };
 }
 
-function normalizeCampaignList<T extends { thumbnail?: string | null; banner?: string | null }>(
-  campaigns: T[]
-): T[] {
-  return campaigns.map(normalizeCampaignMedia);
+function serializeCampaignForClient<T extends Campaign>(campaign: T) {
+  const media = normalizeCampaignMedia(campaign);
+  const fs = media.fundraiserSettings ?? { targetAmount: 0, raisedAmount: 0, endDate: "" };
+  return {
+    ...media,
+    raisedAmount: Number(fs.raisedAmount ?? 0),
+    goalAmount: Number(fs.targetAmount ?? 0),
+    endDate: fs.endDate || undefined,
+  };
+}
+
+function normalizeCampaignList(campaigns: Campaign[]): ReturnType<typeof serializeCampaignForClient>[] {
+  return campaigns.map(serializeCampaignForClient);
 }
 
 export async function getCampaigns(req: Request, res: Response) {
@@ -94,7 +103,7 @@ export async function getCampaignBySlug(req: Request, res: Response) {
     if (!campaign || campaign.status !== "published") {
       return res.status(404).json({ message: "Campaign not found" });
     }
-    return res.json(normalizeCampaignMedia(await withResolvedUpsells(campaign)));
+    return res.json(serializeCampaignForClient(await withResolvedUpsells(campaign)));
   } catch (error) {
     return res.status(500).json({ message: "Internal server error" });
   }
@@ -104,7 +113,7 @@ export async function getCampaignById(req: Request, res: Response) {
   try {
     const campaign = await repo().findOne({ where: { id: routeParam(req, 'id') } });
     if (!campaign) return res.status(404).json({ message: "Campaign not found" });
-    return res.json(normalizeCampaignMedia(await withResolvedUpsells(campaign)));
+    return res.json(serializeCampaignForClient(await withResolvedUpsells(campaign)));
   } catch (error) {
     return res.status(500).json({ message: "Internal server error" });
   }
@@ -137,7 +146,7 @@ export async function createCampaign(req: Request, res: Response) {
       entityId: campaign.id,
       details: { title: campaign.title },
     });
-    return res.status(201).json(normalizeCampaignMedia(await withResolvedUpsells(campaign)));
+    return res.status(201).json(serializeCampaignForClient(await withResolvedUpsells(campaign)));
   } catch (error) {
     console.error("createCampaign error:", error);
     return res.status(500).json({ message: "Internal server error" });
@@ -165,7 +174,7 @@ export async function updateCampaign(req: Request, res: Response) {
       entityId: campaign.id,
       details: { title: campaign.title },
     });
-    return res.json(normalizeCampaignMedia(await withResolvedUpsells(campaign)));
+    return res.json(serializeCampaignForClient(await withResolvedUpsells(campaign)));
   } catch (error) {
     console.error("updateCampaign error:", error);
     return res.status(500).json({ message: "Internal server error" });

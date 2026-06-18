@@ -11,6 +11,12 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { fetchCampaigns } from "@/lib/api";
 import { getCampaignCardImage } from "@/lib/campaign-media";
+import {
+  getCampaignEndDate,
+  getCampaignFundraisingProgress,
+  getCampaignGoalAmount,
+  getCampaignRaisedAmount,
+} from "@/lib/campaign-fundraising";
 import { CampaignFeaturedBadge } from "@/components/campaigns/CampaignFeaturedBadge";
 import { useCurrency } from "@/lib/currency";
 
@@ -40,8 +46,9 @@ interface Campaign {
   banner?: string;
   featuredImage?: string;
   image?: string;
-  raisedAmount: number;
-  goalAmount: number;
+  fundraiserSettings?: { raisedAmount?: number; targetAmount?: number; endDate?: string };
+  raisedAmount?: number;
+  goalAmount?: number;
   currency: string;
   donorCount: number;
   isFeatured: boolean;
@@ -178,11 +185,12 @@ function CampaignsPageApi() {
           ) : (
             <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
               {sorted.map((campaign) => {
-                const percentage = campaign.goalAmount > 0
-                  ? Math.min(Math.round((Number(campaign.raisedAmount) / Number(campaign.goalAmount)) * 100), 100)
-                  : 0;
-                const daysLeft = campaign.endDate
-                  ? Math.max(0, Math.ceil((new Date(campaign.endDate).getTime() - Date.now()) / 86400000))
+                const raisedAmount = getCampaignRaisedAmount(campaign);
+                const goalAmount = getCampaignGoalAmount(campaign);
+                const percentage = getCampaignFundraisingProgress(campaign);
+                const endDate = getCampaignEndDate(campaign);
+                const daysLeft = endDate
+                  ? Math.max(0, Math.ceil((new Date(endDate).getTime() - Date.now()) / 86400000))
                   : null;
 
                 return (
@@ -240,10 +248,10 @@ function CampaignsPageApi() {
                         <Progress value={percentage} className="h-2" />
                         <div className="mt-2 flex items-center justify-between text-sm">
                           <span className="font-semibold text-primary">
-                            {formatMoney(Number(campaign.raisedAmount), { from: campaign.currency, compact: true })} raised
+                            {formatMoney(raisedAmount, { from: campaign.currency, compact: true })} raised
                           </span>
                           <span className="text-muted-foreground">
-                            of {formatMoney(Number(campaign.goalAmount), { from: campaign.currency, compact: true })}
+                            of {formatMoney(goalAmount, { from: campaign.currency, compact: true })}
                           </span>
                         </div>
                         <div className="mt-1.5 flex items-center justify-between text-xs text-muted-foreground">
