@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
+import { AdminChangePasswordForm } from "@/components/admin/AdminChangePasswordForm";
 
 interface SettingsData {
   general: {
@@ -412,10 +413,21 @@ export default function AdminSettingsPage() {
       )}
 
       {tab === "security" && (
-        <div className="rounded-2xl border bg-card shadow-soft p-6 space-y-6">
-          <h2 className="text-lg font-serif font-bold">Security Settings</h2>
-          <div className="space-y-4">
-            <h3 className="font-medium text-sm">Password Policy</h3>
+        <div className="space-y-6">
+          <div className="rounded-2xl border bg-card shadow-soft p-6 space-y-4">
+            <div>
+              <h2 className="text-lg font-serif font-bold">Change password</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Update your admin account password. You will stay signed in after saving.
+              </p>
+            </div>
+            <AdminChangePasswordForm />
+          </div>
+
+          <div className="rounded-2xl border bg-card shadow-soft p-6 space-y-6">
+            <h2 className="text-lg font-serif font-bold">Security Settings</h2>
+            <div className="space-y-4">
+              <h3 className="font-medium text-sm">Password Policy</h3>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Minimum Password Length</Label>
@@ -442,6 +454,7 @@ export default function AdminSettingsPage() {
                   <span className="text-sm">{item.label}</span>
                 </label>
               ))}
+            </div>
             </div>
           </div>
         </div>
