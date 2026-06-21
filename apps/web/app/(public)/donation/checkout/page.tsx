@@ -71,6 +71,7 @@ function DonationCheckoutContent() {
   const [donorComment, setDonorComment] = useState("");
   const [giftAid, setGiftAid] = useState(false);
   const [selectedUpsellIds, setSelectedUpsellIds] = useState<Set<string>>(new Set());
+  const [adminSavesLife, setAdminSavesLife] = useState(false);
   const [showDedication, setShowDedication] = useState(false);
   const [dedicationType, setDedicationType] = useState(DEDICATION_TYPES[2]);
   const [dedicationName, setDedicationName] = useState("");
@@ -129,6 +130,15 @@ function DonationCheckoutContent() {
     [checkoutUpsellOptions, selectedUpsellIds]
   );
 
+  const adminSavesLifeAmount = useMemo(() => {
+    if (!checkoutSettings.enableAdminSavesLife) return 0;
+    return Math.max(0, Number(checkoutSettings.adminSavesLifeAmount) || 0);
+  }, [checkoutSettings.enableAdminSavesLife, checkoutSettings.adminSavesLifeAmount]);
+
+  const showAdminSavesLife = adminSavesLifeAmount > 0;
+
+  const adminSavesLifeTotal = adminSavesLife && showAdminSavesLife ? adminSavesLifeAmount : 0;
+
   const ramadanSummary = useMemo(() => summarizeRamadanCheckout(items), [items]);
 
   const nonRamadanSubtotal = useMemo(
@@ -149,8 +159,8 @@ function DonationCheckoutContent() {
     [ramadanSummary.checkoutChargeAmount]
   );
 
-  const donationAmount = subtotal + upsellTotal;
-  const chargeAmount = nonRamadanSubtotal + upsellTotal + ramadanCheckoutCharge;
+  const donationAmount = subtotal + upsellTotal + adminSavesLifeTotal;
+  const chargeAmount = nonRamadanSubtotal + upsellTotal + adminSavesLifeTotal + ramadanCheckoutCharge;
 
   const giftAidBoost =
     giftAid && isGiftAidCheckoutEnabled(checkoutSettings)
@@ -192,6 +202,10 @@ function DonationCheckoutContent() {
       cancelled = true;
     };
   }, [cartConfigKey, items]);
+
+  useEffect(() => {
+    if (!showAdminSavesLife) setAdminSavesLife(false);
+  }, [showAdminSavesLife]);
 
   useEffect(() => {
     if (configLoading) return;
@@ -432,6 +446,9 @@ function DonationCheckoutContent() {
           `Donation cart: ${cartSummary}`,
           ramadanMessage,
           upsellSummary ? `Upsells: ${upsellSummary}` : "",
+          adminSavesLifeTotal > 0
+            ? `Admin Saves Life: ${currencyInfo.symbol}${adminSavesLifeTotal.toFixed(2)}`
+            : "",
           donorComment.trim() ? `Comment: ${donorComment.trim()}` : "",
         ]
           .filter(Boolean)
@@ -456,6 +473,7 @@ function DonationCheckoutContent() {
       setSubmitting(false);
     }
   }, [
+    adminSavesLifeTotal,
     cartSelectedUpsells,
     chargeAmount,
     checkoutSettings.enableDedication,
@@ -632,6 +650,28 @@ function DonationCheckoutContent() {
                     onToggleUpsell={toggleUpsell}
                   />
                 </div>
+              )}
+
+              {showAdminSavesLife && (
+                <label className="flex items-start gap-3 rounded-2xl border border-border bg-secondary/30 px-4 py-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={adminSavesLife}
+                    onChange={(e) => setAdminSavesLife(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 accent-accent rounded shrink-0"
+                  />
+                  <span className="text-sm flex-1">
+                    <span className="font-semibold text-primary">Admin Saves Life</span>
+                    <span className="block text-xs text-muted-foreground mt-0.5">
+                      Add {currencyInfo.symbol}
+                      {adminSavesLifeAmount.toFixed(2)} to your donation.
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-sm font-bold text-accent tabular-nums">
+                    {currencyInfo.symbol}
+                    {adminSavesLifeAmount.toFixed(2)}
+                  </span>
+                </label>
               )}
 
               {checkoutSettings.enableDedication && (
@@ -948,6 +988,15 @@ function DonationCheckoutContent() {
                   </span>
                 </div>
               )
+            )}
+            {adminSavesLifeTotal > 0 && (
+              <div className="flex items-center justify-between rounded-xl border border-border px-4 py-3 text-sm gap-3">
+                <p className="font-medium">Admin Saves Life</p>
+                <span className="font-semibold tabular-nums shrink-0">
+                  {currencyInfo.symbol}
+                  {adminSavesLifeTotal.toFixed(2)}
+                </span>
+              </div>
             )}
           </div>
 
