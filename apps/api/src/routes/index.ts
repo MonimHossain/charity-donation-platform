@@ -857,6 +857,10 @@ router.get("/admin/permissions", requireAdmin, async (req, res) => {
 // ═══════════════════════════════════
 // ZAKAT CALCULATOR (public)
 // ═══════════════════════════════════
+router.get("/zakat/metal-prices", async (req, res) => {
+  const { getZakatMetalPrices } = await import("../modules/zakat/zakat.controller.js");
+  return getZakatMetalPrices(req, res);
+});
 router.post("/zakat/calculate", async (req, res) => {
   const { calculateZakat } = await import("../modules/zakat/zakat.controller.js");
   return calculateZakat(req, res);

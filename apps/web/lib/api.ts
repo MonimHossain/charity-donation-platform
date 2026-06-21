@@ -489,6 +489,11 @@ export async function calculateZakat(payload: Record<string, unknown>) {
   return data;
 }
 
+export async function fetchZakatMetalPrices(currency = "GBP") {
+  const { data } = await api.get("/zakat/metal-prices", { params: { currency } });
+  return data;
+}
+
 export async function saveZakatCalculation(payload: Record<string, unknown>) {
   const { data } = await api.post("/zakat/save", payload);
   return data;

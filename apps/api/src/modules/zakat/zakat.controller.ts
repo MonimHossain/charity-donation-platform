@@ -2,12 +2,32 @@ import { Request, Response } from "express";
 import { createEntity } from "../../helper/typeorm.js";
 import { AppDataSource } from "../../helper/connectDB.js";
 import { ZakatCalculation } from "../../components/zakat/zakatCalculation.entity.js";
+import {
+  getMetalPrices,
+  NISAB_GOLD_GRAMS,
+  NISAB_SILVER_GRAMS,
+} from "./metalPrices.service.js";
 
 const repo = () => AppDataSource.getRepository(ZakatCalculation);
 
-const NISAB_GOLD_GRAMS = 87.48;
-const NISAB_SILVER_GRAMS = 612.36;
 const ZAKAT_RATE = 0.025;
+
+export async function getZakatMetalPrices(req: Request, res: Response) {
+  try {
+    const currency = typeof req.query.currency === "string" ? req.query.currency : "GBP";
+    const prices = await getMetalPrices(currency);
+    return res.json({
+      ...prices,
+      nisabGoldGrams: NISAB_GOLD_GRAMS,
+      nisabSilverGrams: NISAB_SILVER_GRAMS,
+      goldNisabValue: Math.round(prices.goldPricePerGram * NISAB_GOLD_GRAMS * 100) / 100,
+      silverNisabValue: Math.round(prices.silverPricePerGram * NISAB_SILVER_GRAMS * 100) / 100,
+    });
+  } catch (error) {
+    console.error("getZakatMetalPrices error:", error);
+    return res.status(500).json({ message: "Unable to fetch metal prices" });
+  }
+}
 
 export async function calculateZakat(req: Request, res: Response) {
   try {
@@ -26,11 +46,31 @@ export async function calculateZakat(req: Request, res: Response) {
       currency = "GBP",
       goldPricePerGram,
       silverPricePerGram,
+      goldGrams,
+      silverGrams,
     } = req.body;
 
+    let resolvedGoldPrice = Number(goldPricePerGram) || 0;
+    let resolvedSilverPrice = Number(silverPricePerGram) || 0;
+
+    if (!resolvedGoldPrice || !resolvedSilverPrice) {
+      const live = await getMetalPrices(currency);
+      resolvedGoldPrice = resolvedGoldPrice || live.goldPricePerGram;
+      resolvedSilverPrice = resolvedSilverPrice || live.silverPricePerGram;
+    }
+
+    const computedGoldValue =
+      Number(goldGrams) > 0
+        ? Number(goldGrams) * resolvedGoldPrice
+        : Number(goldValue);
+    const computedSilverValue =
+      Number(silverGrams) > 0
+        ? Number(silverGrams) * resolvedSilverPrice
+        : Number(silverValue);
+
     const totalAssets =
-      Number(goldValue) +
-      Number(silverValue) +
+      computedGoldValue +
+      computedSilverValue +
       Number(cashInHand) +
       Number(cashInBank) +
       Number(investments) +
@@ -42,12 +82,8 @@ export async function calculateZakat(req: Request, res: Response) {
     const totalLiabilities = Number(personalDebt) + Number(otherLiabilities);
     const netWealth = totalAssets - totalLiabilities;
 
-    const goldNisab = goldPricePerGram
-      ? Number(goldPricePerGram) * NISAB_GOLD_GRAMS
-      : 5000;
-    const silverNisab = silverPricePerGram
-      ? Number(silverPricePerGram) * NISAB_SILVER_GRAMS
-      : 350;
+    const goldNisab = resolvedGoldPrice * NISAB_GOLD_GRAMS;
+    const silverNisab = resolvedSilverPrice * NISAB_SILVER_GRAMS;
     const nisabThreshold = Math.min(goldNisab, silverNisab);
 
     const isAboveNisab = netWealth >= nisabThreshold;
@@ -63,9 +99,19 @@ export async function calculateZakat(req: Request, res: Response) {
       isAboveNisab,
       zakatPayable,
       currency,
+      metalPrices: {
+        goldPricePerGram: resolvedGoldPrice,
+        silverPricePerGram: resolvedSilverPrice,
+        goldNisabValue: Math.round(goldNisab * 100) / 100,
+        silverNisabValue: Math.round(silverNisab * 100) / 100,
+        nisabGoldGrams: NISAB_GOLD_GRAMS,
+        nisabSilverGrams: NISAB_SILVER_GRAMS,
+      },
       breakdown: {
-        goldValue: Number(goldValue),
-        silverValue: Number(silverValue),
+        goldValue: computedGoldValue,
+        silverValue: computedSilverValue,
+        goldGrams: Number(goldGrams) || 0,
+        silverGrams: Number(silverGrams) || 0,
         cashInHand: Number(cashInHand),
         cashInBank: Number(cashInBank),
         investments: Number(investments),

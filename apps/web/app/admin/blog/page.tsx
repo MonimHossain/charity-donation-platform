@@ -165,6 +165,8 @@ export default function AdminBlogPage() {
 
   async function handleSave() {
     if (!title.trim()) { toast.error("Title is required"); return; }
+    const normalizedSlug = slugify(slug.trim() || title.trim());
+    if (!normalizedSlug) { toast.error("Slug is required"); return; }
     const plainContent = content.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, "").trim();
     if (!plainContent) { toast.error("Content is required"); return; }
 
@@ -175,6 +177,7 @@ export default function AdminBlogPage() {
 
     const payload = {
       title: title.trim(),
+      slug: normalizedSlug,
       excerpt: excerpt.trim() || undefined,
       content,
       featuredImage: featuredImage.trim() || undefined,
@@ -382,6 +385,24 @@ export default function AdminBlogPage() {
                   onChange={(e) => { setSlugLocked(true); setSlug(slugify(e.target.value)); }}
                   placeholder="my-amazing-article"
                 />
+                <p className="text-[11px] text-muted-foreground">
+                  Public URL: /blog/{slug || "your-slug"}
+                  {!slugLocked && title && (
+                    <span className="ml-1 text-accent-deep">· auto-generated from title</span>
+                  )}
+                </p>
+                {slugLocked && (
+                  <button
+                    type="button"
+                    className="text-[11px] text-primary hover:underline"
+                    onClick={() => {
+                      setSlugLocked(false);
+                      setSlug(slugify(title));
+                    }}
+                  >
+                    Regenerate from title
+                  </button>
+                )}
               </div>
             </div>
 
