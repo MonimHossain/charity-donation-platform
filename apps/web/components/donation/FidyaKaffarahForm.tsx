@@ -11,6 +11,7 @@ import type { DonationExperienceFidyaKaffarah } from "@icac/shared-types";
 import type { DonationSource } from "@/lib/donation-source";
 import type { CheckoutSettings } from "@/components/campaigns/campaign-detail-types";
 import type { CampaignUpsell } from "@/lib/checkout-campaign-config";
+import { useCurrency } from "@/lib/currency";
 
 export default function FidyaKaffarahForm({
   source,
@@ -26,6 +27,7 @@ export default function FidyaKaffarahForm({
   checkoutUpsells?: CampaignUpsell[];
 }) {
   const router = useRouter();
+  const { formatFromSource, symbol, convertToDisplay, fromDisplayToSource } = useCurrency();
   const options = experience.options ?? [];
   const initialKey = options[0]?.key ?? "fidya";
   const [selectedKey, setSelectedKey] = useState<string>(initialKey);
@@ -41,12 +43,17 @@ export default function FidyaKaffarahForm({
   const allowCustom = Boolean(experience.allowCustomAmount);
   const customMin = Number(experience.customAmount?.min ?? 1);
   const customMax = Number(experience.customAmount?.max ?? 100000);
+  const sourceCurrency = (source.currency ?? "GBP").toUpperCase();
   const customTotal = customAmount ? Number(customAmount) : NaN;
+  const displayCustomMin = convertToDisplay(customMin, sourceCurrency);
+  const displayCustomMax = convertToDisplay(customMax, sourceCurrency);
   const total =
     allowCustom && Number.isFinite(customTotal)
-      ? Math.max(customMin, Math.min(customMax, customTotal))
+      ? fromDisplayToSource(
+          Math.max(displayCustomMin, Math.min(displayCustomMax, customTotal)),
+          sourceCurrency
+        )
       : computedTotal;
-  const currency = (source.currency ?? "GBP").toUpperCase();
 
   return (
     <div className={cn("space-y-5", embedded ? "" : "rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-soft")}>
@@ -70,7 +77,7 @@ export default function FidyaKaffarahForm({
       </div>
 
       <div className="rounded-full bg-accent text-accent-foreground text-center py-4 text-2xl font-bold tabular-nums">
-        £ {Number.isFinite(total) ? total.toFixed(0) : "0"}
+        {formatFromSource(Number.isFinite(total) ? total : 0, sourceCurrency)}
       </div>
 
       <div className="flex items-center gap-3">
@@ -91,16 +98,21 @@ export default function FidyaKaffarahForm({
           <p className="text-xs uppercase tracking-widest text-accent-deep font-bold">
             {experience.customAmount?.label ?? "Custom amount"}
           </p>
-          <Input
-            type="number"
-            inputMode="numeric"
-            min={customMin}
-            max={customMax}
-            value={customAmount}
-            onChange={(e) => setCustomAmount(e.target.value)}
-            placeholder={String(experience.customAmount?.placeholder ?? "Enter amount")}
-            className="rounded-xl h-11"
-          />
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">
+              {symbol}
+            </span>
+            <Input
+              type="number"
+              inputMode="numeric"
+              min={customMin}
+              max={customMax}
+              value={customAmount}
+              onChange={(e) => setCustomAmount(e.target.value)}
+              placeholder={String(experience.customAmount?.placeholder ?? "Enter amount")}
+              className="rounded-xl h-11 pl-8"
+            />
+          </div>
           <p className="text-xs text-muted-foreground">If filled, this overrides the calculated total.</p>
         </div>
       )}
@@ -118,10 +130,10 @@ export default function FidyaKaffarahForm({
             title: source.title,
             category: source.category,
             amount: total,
-            currency,
+            currency: sourceCurrency,
             quantity: boundedQty,
             unitPrice: allowCustom && Number.isFinite(customTotal) ? total / boundedQty : unitPrice,
-            description: `${label} × ${boundedQty} — £${total.toFixed(2)}`,
+            description: `${label} × ${boundedQty} — ${formatFromSource(total, sourceCurrency)}`,
             campaignId: source.campaignId ?? source.id,
             donationType: selectedKey,
             checkoutSettings,

@@ -141,7 +141,7 @@ function DonatePageApi() {
   );
   const [amount, setAmount] = useState(Number(params.get("amount")) || 50);
   const [customAmount, setCustomAmount] = useState("");
-  const { code: currency, currency: currencyInfo, setCurrency } = useCurrency();
+  const { code: currency, currency: currencyInfo, setCurrency, formatMoney, convertToDisplay, formatFromSource } = useCurrency();
   const [giftAid, setGiftAid] = useState(false);
   const [zakatType, setZakatType] = useState<ZakatType>(
     (params.get("zakat") as ZakatType) || "general"
@@ -323,7 +323,9 @@ function DonatePageApi() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCampaign]);
 
-  const baseAmount = Number(customAmount) || amount;
+  const presetSourceCurrency = activeCampaign?.currency ?? "GBP";
+
+  const baseAmount = Number(customAmount) || convertToDisplay(amount, presetSourceCurrency);
   const effectiveQuantity = activeCampaign?.hasQuantity ? quantity : 1;
 
   const attributePriceAdj = useMemo(() => {
@@ -334,11 +336,13 @@ function DonatePageApi() {
       const sel = attributeSelections[attr.name];
       if (sel) {
         const opt = attr.options.find((o) => o.label === sel);
-        if (opt?.priceAdjustment) adj += opt.priceAdjustment;
+        if (opt?.priceAdjustment) {
+          adj += convertToDisplay(opt.priceAdjustment, presetSourceCurrency);
+        }
       }
     }
     return adj;
-  }, [activeCampaign, attributeSelections]);
+  }, [activeCampaign, attributeSelections, convertToDisplay, presetSourceCurrency]);
 
   const upsellTotal = useMemo(() => {
     if (!activeCampaign?.upsellEnabled || !activeCampaign.upsellOptions) return 0;
@@ -346,15 +350,15 @@ function DonatePageApi() {
     selectedUpsells.forEach((idx) => {
       const u = activeCampaign.upsellOptions![idx];
       if (!u) return;
-      if (u.type === "fixed") total += u.value;
+      if (u.type === "fixed") total += convertToDisplay(u.value, presetSourceCurrency);
       else if (u.type === "percentage") total += (baseAmount * u.value) / 100;
       else if (u.type === "round-up") {
         const rounded = Math.ceil(baseAmount / u.value) * u.value;
         total += rounded - baseAmount;
       }
     });
-    return Math.round(total * 100) / 100;
-  }, [activeCampaign, selectedUpsells, baseAmount]);
+    return Math.ceil(total);
+  }, [activeCampaign, selectedUpsells, baseAmount, convertToDisplay, presetSourceCurrency]);
 
   const finalAmount = (baseAmount + attributePriceAdj) * effectiveQuantity + upsellTotal;
   const giftAidExtra = useMemo(
@@ -642,8 +646,7 @@ function DonatePageApi() {
                       )}
                     >
                       <span className="text-lg">
-                        {currencyInfo.symbol}
-                        {p.amount}
+                        {formatFromSource(p.amount, presetSourceCurrency)}
                       </span>
                     </button>
                   );
@@ -715,8 +718,7 @@ function DonatePageApi() {
                 </span>
                 {giftAid && (
                   <span className="block text-accent-deep font-semibold mt-1">
-                    +{currencyInfo.symbol}
-                    {giftAidExtra.toFixed(2)} extra at no cost to you!
+                    +{formatMoney(giftAidExtra, { code: currency })} extra at no cost to you!
                   </span>
                 )}
               </span>
@@ -734,7 +736,10 @@ function DonatePageApi() {
                 <Input type="number" value={quantity} onChange={(e) => setQuantity(Math.max(activeCampaign.minQuantity || 1, Math.min(activeCampaign.maxQuantity || 100, Number(e.target.value))))} className="h-10 w-20 text-center rounded-xl text-lg font-bold" />
                 <button type="button" onClick={() => setQuantity(Math.min(activeCampaign.maxQuantity || 100, quantity + 1))} className="h-10 w-10 rounded-xl bg-secondary flex items-center justify-center text-lg font-bold hover:bg-secondary/70 transition-colors">+</button>
                 <span className="text-sm text-muted-foreground">
-                  × {currencyInfo.symbol}{baseAmount.toFixed(2)} = <span className="font-bold text-foreground">{currencyInfo.symbol}{(baseAmount * quantity).toFixed(2)}</span>
+                  × {formatMoney(baseAmount, { code: currency })} ={" "}
+                  <span className="font-bold text-foreground">
+                    {formatMoney(baseAmount * quantity, { code: currency })}
+                  </span>
                 </span>
               </div>
             </div>
@@ -752,7 +757,9 @@ function DonatePageApi() {
                     {(attr.options ?? []).map((opt) => (
                       <button key={opt.label} type="button" onClick={() => setAttributeSelections((prev) => ({ ...prev, [attr.name]: opt.label }))} className={cn("px-4 py-2 rounded-xl text-sm border transition-all font-medium", attributeSelections[attr.name] === opt.label ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border hover:border-primary/40")}>
                         {opt.label}
-                        {opt.priceAdjustment ? ` (+${currencyInfo.symbol}${opt.priceAdjustment})` : ""}
+                        {opt.priceAdjustment
+                          ? ` (+${formatFromSource(opt.priceAdjustment, presetSourceCurrency)})`
+                          : ""}
                       </button>
                     ))}
                   </div>
@@ -770,9 +777,11 @@ function DonatePageApi() {
               {activeCampaign.upsellOptions.map((u, i) => {
                 const checked = selectedUpsells.has(i);
                 let extraText = "";
-                if (u.type === "fixed") extraText = `+${currencyInfo.symbol}${u.value}`;
+                if (u.type === "fixed") extraText = `+${formatFromSource(u.value, presetSourceCurrency)}`;
                 else if (u.type === "percentage") extraText = `+${u.value}%`;
-                else if (u.type === "round-up") extraText = `Round up to nearest ${currencyInfo.symbol}${u.value}`;
+                else if (u.type === "round-up") {
+                  extraText = `Round up to nearest ${formatFromSource(u.value, presetSourceCurrency)}`;
+                }
                 return (
                   <label key={i} className={cn("flex items-start gap-3 p-4 rounded-2xl border cursor-pointer transition-all", checked ? "border-accent bg-accent/10" : "border-border hover:border-accent/30")}>
                     <input type="checkbox" checked={checked} onChange={() => {
@@ -1114,8 +1123,7 @@ function DonatePageApi() {
               ) : (
                 <>
                   <Heart className="w-5 h-5" /> Complete Donation &mdash;{" "}
-                  {currencyInfo.symbol}
-                  {totalWithGiftAid.toFixed(2)}
+                  {formatMoney(totalWithGiftAid, { code: currency })}
                   {frequency !== "single" && `/${frequency === "monthly" ? "mo" : frequency === "quarterly" ? "qtr" : "yr"}`}
                 </>
               )}
@@ -1134,15 +1142,14 @@ function DonatePageApi() {
               Your Gift &middot; {currency}
             </p>
             <p className={`${statTotalClass} mt-1`}>
-              {currencyInfo.symbol}
-              {totalWithGiftAid.toFixed(2)}
+              {formatMoney(totalWithGiftAid, { code: currency })}
             </p>
             <p className="text-sm text-primary-foreground/75 mt-1">
               {effectiveQuantity > 1 && `${effectiveQuantity} × `}
-              {currencyInfo.symbol}{baseAmount.toFixed(2)}
-              {attributePriceAdj > 0 && ` (+${currencyInfo.symbol}${attributePriceAdj})`}
-              {upsellTotal > 0 && ` + ${currencyInfo.symbol}${upsellTotal.toFixed(2)} extras`}
-              {giftAid && ` + ${currencyInfo.symbol}${giftAidExtra.toFixed(2)} Gift Aid`}
+              {formatMoney(baseAmount, { code: currency })}
+              {attributePriceAdj > 0 && ` (+${formatMoney(attributePriceAdj, { code: currency })})`}
+              {upsellTotal > 0 && ` + ${formatMoney(upsellTotal, { code: currency })} extras`}
+              {giftAid && ` + ${formatMoney(giftAidExtra, { code: currency })} Gift Aid`}
               {frequency !== "single" && ` · ${frequency}`}
             </p>
             {zakatType !== "general" && (

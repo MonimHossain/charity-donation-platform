@@ -34,7 +34,8 @@ const StickyDonationBar = () => {
     category,
     freq,
     amount,
-    prices,
+    displayPrices,
+    displayAmount,
     finalAmount,
     setCategory,
     setFreq,
@@ -62,7 +63,6 @@ const StickyDonationBar = () => {
   );
 
   const currentImpact = IMPACT[amount] ?? "Your gift makes an immediate difference";
-  const presetAmounts = prices.length > 0 ? prices.map((p) => p.amount) : [10, 25, 50, 100];
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 pointer-events-none">
@@ -114,18 +114,18 @@ const StickyDonationBar = () => {
               )}
             </div>
 
-            <div className={`grid gap-2 ${presetAmounts.length <= 4 ? "grid-cols-4" : "grid-cols-5"}`}>
-              {presetAmounts.map((p) => (
+            <div className={`grid gap-2 ${displayPrices.length <= 4 ? "grid-cols-4" : "grid-cols-5"}`}>
+              {displayPrices.map((p) => (
                 <button
-                  key={p}
-                  onClick={() => selectAmount(p)}
+                  key={p.gbpAmount}
+                  onClick={() => selectAmount(p.gbpAmount)}
                   className={`py-2.5 rounded-xl text-sm font-bold transition-all ${
-                    amount === p
+                    amount === p.gbpAmount
                       ? "bg-accent text-accent-foreground"
                       : "bg-primary-foreground/10 hover:bg-primary-foreground/20"
                   }`}
                 >
-                  {symbol}{p}
+                  {symbol}{p.displayAmount}
                 </button>
               ))}
             </div>

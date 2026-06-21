@@ -22,7 +22,7 @@ import {
 import RamadanPreviewModal from "@/components/donation/RamadanPreviewModal";
 import type { DonationExperienceRamadanSplit, DonationPageDto } from "@icac/shared-types";
 import type { DonationSource } from "@/lib/donation-source";
-import { CURRENCIES, type CurrencyCode } from "@/lib/currency";
+import { useCurrency } from "@/lib/currency";
 import {
   useRamadanRegion,
   type RamadanRegionId,
@@ -64,6 +64,7 @@ export function RamadanSplitForm({
   checkoutUpsells?: CampaignUpsell[];
 }) {
   const router = useRouter();
+  const { formatFromSource, convertToDisplay, fromDisplayToSource } = useCurrency();
   const { regionId, regionLabel, setRegionId } = useRamadanRegion();
   const { ramadanStartDate, maxNights, startChoices } = getRamadanAdminConfig(experience, regionId);
   const calendarDates = useMemo(
@@ -80,9 +81,10 @@ export function RamadanSplitForm({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewNights, setPreviewNights] = useState<ReturnType<typeof buildEqualRamadanNightPreview>>([]);
 
-  const currency = (experience.currency ?? source.currency ?? "GBP").toUpperCase();
-  const sym = CURRENCIES[(currency as CurrencyCode) || "GBP"]?.symbol ?? "£";
-  const baseTotal = customAmount ? Number(customAmount) : amount;
+  const sourceCurrency = (experience.currency ?? source.currency ?? "GBP").toUpperCase();
+  const baseTotal = customAmount
+    ? fromDisplayToSource(Number(customAmount), sourceCurrency)
+    : amount;
   const campaignId = experience.campaignId ?? source.campaignId ?? source.id;
 
   useEffect(() => {
@@ -146,7 +148,7 @@ export function RamadanSplitForm({
       donationPageId: source.id,
       donationPageSlug: source.slug,
       campaignId,
-      currency,
+      currency: sourceCurrency,
       totalAmount: Number(baseTotal),
       nights: nightPreview,
     });
@@ -158,8 +160,8 @@ export function RamadanSplitForm({
       title: source.title,
       category: source.category,
       amount: Number(baseTotal),
-      currency,
-      description: `Ramadan split — ${selectedOrdered.length} nights — ${sym}${(nightPreview[0]?.amount ?? 0).toFixed(2)}/night (${sym}${Number(baseTotal).toFixed(2)} total)`,
+      currency: sourceCurrency,
+      description: `Ramadan split — ${selectedOrdered.length} nights — ${formatFromSource(nightPreview[0]?.amount ?? 0, sourceCurrency)}/night (${formatFromSource(Number(baseTotal), sourceCurrency)} total)`,
       campaignId,
       donationType: "ramadan",
       checkoutSettings,
@@ -202,13 +204,15 @@ export function RamadanSplitForm({
                 }}
                 className={pillClass(active)}
               >
-                {sym} {a}
+                {formatFromSource(a, sourceCurrency)}
               </button>
             );
           })}
           <button
             type="button"
-            onClick={() => setCustomAmount(customAmount || String(amount))}
+            onClick={() =>
+              setCustomAmount(customAmount || String(convertToDisplay(amount, sourceCurrency)))
+            }
             className={pillClass(Boolean(customAmount))}
           >
             Other
@@ -333,7 +337,7 @@ export function RamadanSplitForm({
         onOpenChange={setPreviewOpen}
         nights={previewOpen ? previewNights : nightPreview}
         total={Number(baseTotal) || 0}
-        currency={currency}
+        currency={sourceCurrency}
       />
     </>
   );

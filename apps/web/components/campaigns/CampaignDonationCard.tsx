@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { useCurrency } from "@/lib/currency";
 import {
   formatRecurrenceLabel,
   DEFAULT_RECURRENCE,
@@ -55,20 +56,21 @@ export interface CampaignDonationCardProps {
 }
 
 function PresetAmountButtons({
-  sym,
+  sourceCurrency,
   presets,
   selectedAmount,
   customAmount,
   selectedDescription,
   onSelect,
 }: {
-  sym: string;
+  sourceCurrency: string;
   presets: PresetAmount[];
   selectedAmount: number;
   customAmount: string;
   selectedDescription: string;
   onSelect: (amount: number, description?: string) => void;
 }) {
+  const { formatFromSource } = useCurrency();
   const showDescription = Boolean(
     selectedDescription.trim() && selectedAmount > 0 && !customAmount
   );
@@ -92,8 +94,7 @@ function PresetAmountButtons({
               )}
             >
               <span className="block text-base leading-none">
-                {sym}
-                {preset.amount.toFixed(2)}
+                {formatFromSource(preset.amount, sourceCurrency)}
               </span>
             </button>
           );
@@ -131,6 +132,8 @@ export function CampaignDonationCard({
   onSetCustomFieldValue,
 }: CampaignDonationCardProps) {
   const router = useRouter();
+  const { symbol, formatFromSource } = useCurrency();
+  const sourceCurrency = campaign.currency || "GBP";
   const total = finalAmount;
 
   const isRegular = paymentType === "regular" && selectedAttr?.enableRegularPayment;
@@ -181,7 +184,7 @@ export function CampaignDonationCard({
       title: campaign.title,
       amount: total,
       currency: campaign.currency,
-      description: `${selectedAttr?.name || campaign.title} — ${sym}${total.toFixed(2)}`,
+      description: `${selectedAttr?.name || campaign.title} — ${formatFromSource(total, sourceCurrency)}`,
       campaignId: campaign.id,
       donationType: selectedAttr?.name || campaign.category,
       quantity: selectedAttr?.enableQuantity && quantity > 1 ? quantity : undefined,
@@ -363,7 +366,7 @@ export function CampaignDonationCard({
         <div className="space-y-3">
           {showPresets && (
             <PresetAmountButtons
-              sym={sym}
+              sourceCurrency={sourceCurrency}
               presets={presetAmounts}
               selectedAmount={selectedAmount}
               customAmount={customAmount}
@@ -392,7 +395,7 @@ export function CampaignDonationCard({
               )}
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">
-                  {sym}
+                  {symbol}
                 </span>
                 <Input
                   type="number"
@@ -541,8 +544,7 @@ export function CampaignDonationCard({
         onClick={handleProceedToCheckout}
         className="w-full rounded-full text-base font-bold h-14 bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground shadow-soft hover:shadow-glow px-10"
       >
-        Donate {sym}
-        {total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        Donate {formatFromSource(total, sourceCurrency)}
         {isRegular && intervalLabel ? `/${intervalLabel}` : ""}
       </Button>
 

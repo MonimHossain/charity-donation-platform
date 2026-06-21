@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { formatRamadanDate, type RamadanNightPreview } from "@/lib/ramadan-split";
-import { CURRENCIES, type CurrencyCode } from "@/lib/currency";
+import { useCurrency } from "@/lib/currency";
 
 type Props = {
   open: boolean;
@@ -24,7 +24,8 @@ export default function RamadanPreviewModal({
   total,
   currency,
 }: Props) {
-  const sym = CURRENCIES[(currency as CurrencyCode) || "GBP"]?.symbol ?? "£";
+  const { formatFromSource } = useCurrency();
+  const sourceCurrency = currency || "GBP";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -51,8 +52,7 @@ export default function RamadanPreviewModal({
                 <tr key={n.date} className="border-t border-border">
                   <td className="px-4 py-2.5">{formatRamadanDate(n.date)}</td>
                   <td className="px-4 py-2.5 text-right font-semibold tabular-nums">
-                    {sym}
-                    {n.amount.toFixed(2)}
+                    {formatFromSource(n.amount, sourceCurrency)}
                   </td>
                 </tr>
               ))}
@@ -61,8 +61,7 @@ export default function RamadanPreviewModal({
               <tr>
                 <td className="px-4 py-2.5 font-semibold text-primary">Total</td>
                 <td className="px-4 py-2.5 text-right font-bold tabular-nums text-accent-deep">
-                  {sym}
-                  {total.toFixed(2)}
+                  {formatFromSource(total, sourceCurrency)}
                 </td>
               </tr>
             </tfoot>

@@ -189,6 +189,22 @@ export function toDisplayAmount(
   return convertAmount(amount, normalizeCurrencyCode(fromCurrency), getSnapshot());
 }
 
+/** Convert a source-currency amount (usually GBP) to the user's selected display currency. */
+export function displayFromSource(
+  amount: number,
+  sourceCurrency: CurrencyCode | string = "GBP"
+): number {
+  return convertAmount(amount, normalizeCurrencyCode(sourceCurrency), getSnapshot());
+}
+
+/** Convert a user-entered display amount back to source currency (usually GBP). */
+export function sourceFromDisplay(
+  displayAmount: number,
+  sourceCurrency: CurrencyCode | string = "GBP"
+): number {
+  return convertAmount(displayAmount, getSnapshot(), normalizeCurrencyCode(sourceCurrency));
+}
+
 export function formatMoney(
   amount: number,
   options?: {
@@ -241,8 +257,20 @@ export function useCurrency() {
 
   const convertToDisplay = useCallback(
     (amount: number, from?: CurrencyCode | string) =>
-      convertAmount(amount, normalizeCurrencyCode(from), code),
+      convertAmount(amount, normalizeCurrencyCode(from ?? "GBP"), code),
     [code]
+  );
+
+  const fromDisplayToSource = useCallback(
+    (displayAmount: number, source: CurrencyCode | string = "GBP") =>
+      convertAmount(displayAmount, code, normalizeCurrencyCode(source)),
+    [code]
+  );
+
+  const formatFromSource = useCallback(
+    (amount: number, source: CurrencyCode | string = "GBP") =>
+      formatMoney(amount, { from: source, code }),
+    [code, format]
   );
 
   return {
@@ -252,6 +280,8 @@ export function useCurrency() {
     setCurrency,
     formatMoney: format,
     convertToDisplay,
+    fromDisplayToSource,
+    formatFromSource,
     getRate: (target: CurrencyCode | string) => getCurrencyRate(target),
   };
 }

@@ -20,6 +20,7 @@ import {
   type RelatedCampaign,
 } from "@/components/campaigns/campaign-detail-types";
 import type { DonorScheduleChoice } from "@/lib/campaign-payment-config";
+import { sourceFromDisplay } from "@/lib/currency";
 
 export default function CampaignDetailPage() {
   const params = useParams<{ slug: string }>();
@@ -139,10 +140,13 @@ function CampaignDetailApi({ slug: slugProp }: { slug: string }) {
   );
 
   const finalAmount = useMemo(() => {
-    const base = customAmount ? Number(customAmount) : selectedAmount;
+    const sourceCurrency = campaign?.currency ?? "GBP";
+    const base = customAmount
+      ? sourceFromDisplay(Number(customAmount), sourceCurrency)
+      : selectedAmount;
     const useQuantity = selectedAttr?.enableQuantity;
     return base * (useQuantity ? quantity : 1);
-  }, [selectedAmount, customAmount, quantity, selectedAttr]);
+  }, [selectedAmount, customAmount, quantity, selectedAttr, campaign?.currency]);
 
   const handleShare = useCallback(
     (platform: string) => {
