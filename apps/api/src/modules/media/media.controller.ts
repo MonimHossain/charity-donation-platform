@@ -220,6 +220,13 @@ export async function updateMediaFile(req: Request, res: Response) {
 
     await repo().save(media);
 
+    await logAudit(req, {
+      action: "update",
+      entityType: "media",
+      entityId: media.id,
+      details: { filename: media.originalName },
+    });
+
     return res.json({
       id: media.id,
       name: media.originalName,

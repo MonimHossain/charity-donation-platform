@@ -97,7 +97,7 @@ export async function createAdminDonationPage(req: Request, res: Response) {
       config: config || defaultConfig(),
     });
     await repo().save(page);
-    await logAudit(req, { action: "create", entityType: "donation_page", entityId: page.id });
+    await logAudit(req, { action: "create", entityType: "donation_page", entityId: page.id, details: { title: page.title } });
     return res.status(201).json(page);
   } catch (error) {
     console.error("createAdminDonationPage error:", error);
@@ -111,6 +111,12 @@ export async function updateAdminDonationPage(req: Request, res: Response) {
     if (!page) return res.status(404).json({ message: "Not found" });
     Object.assign(page, req.body);
     await repo().save(page);
+    await logAudit(req, {
+      action: "update",
+      entityType: "donation_page",
+      entityId: page.id,
+      details: { title: page.title },
+    });
     return res.json(page);
   } catch {
     return res.status(500).json({ message: "Internal server error" });
@@ -119,8 +125,15 @@ export async function updateAdminDonationPage(req: Request, res: Response) {
 
 export async function deleteAdminDonationPage(req: Request, res: Response) {
   try {
-    const result = await repo().delete({ id: routeParam(req, 'id') });
-    if (!result.affected) return res.status(404).json({ message: "Not found" });
+    const page = await repo().findOne({ where: { id: routeParam(req, 'id') } });
+    if (!page) return res.status(404).json({ message: "Not found" });
+    await repo().delete({ id: page.id });
+    await logAudit(req, {
+      action: "delete",
+      entityType: "donation_page",
+      entityId: page.id,
+      details: { title: page.title },
+    });
     return res.json({ message: "Deleted" });
   } catch {
     return res.status(500).json({ message: "Internal server error" });

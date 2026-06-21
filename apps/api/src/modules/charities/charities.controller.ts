@@ -297,7 +297,7 @@ export async function createAdminCharity(req: Request, res: Response) {
   try {
     const charity = createEntity(charityRepo(), req.body);
     await charityRepo().save(charity);
-    await logAudit(req, { action: "create", entityType: "charity", entityId: String(charity.id) });
+    await logAudit(req, { action: "create", entityType: "charity", entityId: String(charity.id), details: { name: charity.name } });
     return res.status(201).json(charity);
   } catch {
     return res.status(500).json({ message: "Internal server error" });
@@ -310,6 +310,12 @@ export async function updateAdminCharity(req: Request, res: Response) {
     if (!charity) return res.status(404).json({ message: "Not found" });
     Object.assign(charity, req.body);
     await charityRepo().save(charity);
+    await logAudit(req, {
+      action: "update",
+      entityType: "charity",
+      entityId: String(charity.id),
+      details: { name: charity.name },
+    });
     return res.json(charity);
   } catch {
     return res.status(500).json({ message: "Internal server error" });
@@ -318,7 +324,15 @@ export async function updateAdminCharity(req: Request, res: Response) {
 
 export async function deleteAdminCharity(req: Request, res: Response) {
   try {
-    await charityRepo().delete({ id: Number(routeParam(req, 'id')) });
+    const charity = await charityRepo().findOne({ where: { id: Number(routeParam(req, 'id')) } });
+    if (!charity) return res.status(404).json({ message: "Not found" });
+    await charityRepo().delete({ id: charity.id });
+    await logAudit(req, {
+      action: "delete",
+      entityType: "charity",
+      entityId: String(charity.id),
+      details: { name: charity.name },
+    });
     return res.json({ message: "Deleted" });
   } catch {
     return res.status(500).json({ message: "Internal server error" });
@@ -361,6 +375,12 @@ export async function createAdminCertification(req: Request, res: Response) {
   try {
     const cert = createEntity(certRepo(), req.body);
     await certRepo().save(cert);
+    await logAudit(req, {
+      action: "create",
+      entityType: "certification",
+      entityId: String(cert.id),
+      details: { name: cert.certificateId || `Cert #${cert.id}` },
+    });
     return res.status(201).json(cert);
   } catch {
     return res.status(500).json({ message: "Internal server error" });
@@ -373,6 +393,12 @@ export async function updateAdminCertification(req: Request, res: Response) {
     if (!cert) return res.status(404).json({ message: "Not found" });
     Object.assign(cert, req.body);
     await certRepo().save(cert);
+    await logAudit(req, {
+      action: "update",
+      entityType: "certification",
+      entityId: String(cert.id),
+      details: { name: cert.certificateId || `Cert #${cert.id}` },
+    });
     return res.json(cert);
   } catch {
     return res.status(500).json({ message: "Internal server error" });
@@ -381,7 +407,15 @@ export async function updateAdminCertification(req: Request, res: Response) {
 
 export async function deleteAdminCertification(req: Request, res: Response) {
   try {
-    await certRepo().delete({ id: Number(routeParam(req, 'id')) });
+    const cert = await certRepo().findOne({ where: { id: Number(routeParam(req, 'id')) } });
+    if (!cert) return res.status(404).json({ message: "Not found" });
+    await certRepo().delete({ id: cert.id });
+    await logAudit(req, {
+      action: "delete",
+      entityType: "certification",
+      entityId: String(cert.id),
+      details: { name: cert.certificateId || `Cert #${cert.id}` },
+    });
     return res.json({ message: "Deleted" });
   } catch {
     return res.status(500).json({ message: "Internal server error" });
@@ -419,6 +453,12 @@ export async function updateAdminApplyReview(req: Request, res: Response) {
     if (!row) return res.status(404).json({ message: "Not found" });
     Object.assign(row, req.body);
     await repo.save(row);
+    await logAudit(req, {
+      action: "update",
+      entityType: "apply_review",
+      entityId: String(row.id),
+      details: { name: row.charityName || row.contactName || `Submission #${row.id}` },
+    });
     return res.json(row);
   } catch {
     return res.status(500).json({ message: "Internal server error" });
@@ -427,7 +467,16 @@ export async function updateAdminApplyReview(req: Request, res: Response) {
 
 export async function deleteAdminApplyReview(req: Request, res: Response) {
   try {
-    await AppDataSource.getRepository(ApplyReviewSubmission).delete({ id: Number(routeParam(req, 'id')) });
+    const repo = AppDataSource.getRepository(ApplyReviewSubmission);
+    const row = await repo.findOne({ where: { id: Number(routeParam(req, 'id')) } });
+    if (!row) return res.status(404).json({ message: "Not found" });
+    await repo.delete({ id: row.id });
+    await logAudit(req, {
+      action: "delete",
+      entityType: "apply_review",
+      entityId: String(row.id),
+      details: { name: row.charityName || row.contactName || `Submission #${row.id}` },
+    });
     return res.json({ message: "Deleted" });
   } catch {
     return res.status(500).json({ message: "Internal server error" });

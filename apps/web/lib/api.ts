@@ -908,7 +908,7 @@ export async function exportDonations(params?: Record<string, string>) {
 // ADMIN ACTIVITY / AUDIT LOGS
 // ═══════════════════════════════════
 export async function fetchActivityLogs(params?: Record<string, string>) {
-  const { data } = await api.get("/admin/activity-logs", { params });
+  const { data } = await api.get("/admin/audit-logs", { params });
   return data;
 }
 

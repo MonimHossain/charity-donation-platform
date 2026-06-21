@@ -130,11 +130,20 @@ export async function getMyAutomatedSchedules(req: Request, res: Response) {
 
 export async function cancelAutomatedSchedule(req: Request, res: Response) {
   try {
-    const schedule = await repo().findOne({ where: { id: routeParam(req, 'id') } });
+    const schedule = await repo().findOne({
+      where: { id: routeParam(req, 'id') },
+      relations: ["campaign"],
+    });
     if (!schedule) return res.status(404).json({ message: "Schedule not found" });
 
     schedule.status = "cancelled";
     await repo().save(schedule);
+    await logAudit(req, {
+      action: "cancel",
+      entityType: "automated_schedule",
+      entityId: schedule.id,
+      details: { donorEmail: schedule.donorEmail, title: schedule.campaign?.title },
+    });
     return res.json(schedule);
   } catch (error) {
     return res.status(500).json({ message: "Internal server error" });
