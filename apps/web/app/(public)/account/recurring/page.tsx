@@ -186,7 +186,7 @@ export default function RecurringDonationsPage() {
                     </div>
                     <div>
                       <p className="font-semibold text-lg">
-                        {formatMoney(don.amount, { from: don.currency, decimals: 2 })}
+                        {formatMoney(don.amount, { from: don.currency })}
                         <span className="text-muted-foreground text-sm font-normal">
                           /{don.frequency}
                         </span>

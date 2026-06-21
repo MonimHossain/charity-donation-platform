@@ -232,7 +232,7 @@ export default function DonationHistoryPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 font-semibold tabular-nums">
-                      {formatMoney(don.amount, { from: don.currency, decimals: 2 })}
+                      {formatMoney(don.amount, { from: don.currency })}
                       {don.giftAid && (
                         <span className="text-xs text-accent-deep ml-1">+GA</span>
                       )}

@@ -1,25 +1,35 @@
+"use client";
+
 import type { CampaignUpsell } from "@/lib/checkout-campaign-config";
+import { convertAmount, formatMoney, normalizeCurrencyCode, type CurrencyCode } from "@/lib/currency";
 
 type Props = {
   upsells: CampaignUpsell[];
   selectedUpsellIds: Set<string>;
   currencySymbol: string;
+  displayCurrency: CurrencyCode | string;
+  sourceCurrency?: CurrencyCode | string;
   onToggleUpsell: (id: string) => void;
 };
 
 export default function CheckoutUpsellList({
   upsells,
   selectedUpsellIds,
-  currencySymbol,
+  displayCurrency,
+  sourceCurrency = "GBP",
   onToggleUpsell,
 }: Props) {
   if (!upsells.length) return null;
+
+  const displayCode = normalizeCurrencyCode(displayCurrency);
+  const fromCode = normalizeCurrencyCode(sourceCurrency);
 
   return (
     <div className="grid gap-3">
       {upsells.map((upsell) => {
         const selected = selectedUpsellIds.has(upsell.id);
         const title = upsell.name || upsell.label || "Upsell";
+        const displayAmount = convertAmount(Number(upsell.amount || 0), fromCode, displayCode);
         return (
           <label
             key={upsell.id}
@@ -51,8 +61,7 @@ export default function CheckoutUpsellList({
               )}
             </span>
             <span className="shrink-0 text-sm font-bold text-accent tabular-nums">
-              {currencySymbol}
-              {Number(upsell.amount || 0).toFixed(2)}
+              {formatMoney(displayAmount, { code: displayCode })}
             </span>
           </label>
         );

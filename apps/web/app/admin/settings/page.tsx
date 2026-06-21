@@ -11,7 +11,7 @@ import {
   Shield,
   Database,
   Download,
-  Settings,
+  Coins,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,13 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
+import {
+  applyCurrencyRates,
+  CURRENCY_LIST,
+  DEFAULT_CURRENCY_RATES,
+  normalizeCurrencyRates,
+  type CurrencyCode,
+} from "@/lib/currency";
 import { AdminChangePasswordForm } from "@/components/admin/AdminChangePasswordForm";
 
 interface SettingsData {
@@ -64,6 +71,9 @@ interface SettingsData {
     sessionTimeout: number;
     twoFactorEnabled: boolean;
   };
+  currency: {
+    rates: Record<CurrencyCode, number>;
+  };
 }
 
 interface Backup {
@@ -101,9 +111,12 @@ const defaultSettings: SettingsData = {
     sessionTimeout: 30,
     twoFactorEnabled: false,
   },
+  currency: {
+    rates: { ...DEFAULT_CURRENCY_RATES },
+  },
 };
 
-type Tab = "general" | "email" | "payment" | "security" | "backup";
+type Tab = "general" | "email" | "payment" | "currency" | "security" | "backup";
 
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState<SettingsData>(defaultSettings);
@@ -128,6 +141,9 @@ export default function AdminSettingsPage() {
             email: { ...prev.email, ...settingsRes.data.email },
             payment: { ...prev.payment, ...settingsRes.data.payment },
             security: { ...prev.security, ...settingsRes.data.security },
+            currency: {
+              rates: normalizeCurrencyRates(settingsRes.data.currencyRates),
+            },
           }));
         }
         setBackups(backupsRes.data?.items || backupsRes.data || []);
@@ -153,7 +169,9 @@ export default function AdminSettingsPage() {
         address: settings.contact.address,
         socialLinks: settings.social,
         payment: settings.payment,
+        currencyRates: settings.currency.rates,
       });
+      applyCurrencyRates(settings.currency.rates);
       toast.success("Settings saved");
     } catch {
       toast.error("Failed to save settings");
@@ -189,6 +207,17 @@ export default function AdminSettingsPage() {
   function updatePayment(field: keyof SettingsData["payment"], value: string | number | string[]) {
     setSettings((s) => ({ ...s, payment: { ...s.payment, [field]: value } }));
   }
+  function updateCurrencyRate(code: CurrencyCode, value: number) {
+    setSettings((s) => ({
+      ...s,
+      currency: {
+        rates: {
+          ...s.currency.rates,
+          [code]: code === "GBP" ? 1 : Math.max(0.0001, value),
+        },
+      },
+    }));
+  }
 
   const PAYMENT_PROVIDERS = [
     { id: "stripe", label: "Stripe" },
@@ -214,6 +243,7 @@ export default function AdminSettingsPage() {
     { key: "general", label: "General", icon: Globe },
     { key: "email", label: "Email", icon: Mail },
     { key: "payment", label: "Payment", icon: CreditCard },
+    { key: "currency", label: "Currency", icon: Coins },
     { key: "security", label: "Security", icon: Shield },
     { key: "backup", label: "Backup", icon: Database },
   ];
@@ -408,6 +438,63 @@ export default function AdminSettingsPage() {
               <Label>Minimum Donation</Label>
               <Input type="number" value={settings.payment.minimumDonation} onChange={(e) => updatePayment("minimumDonation", Number(e.target.value))} min={1} />
             </div>
+          </div>
+        </div>
+      )}
+
+      {tab === "currency" && (
+        <div className="rounded-2xl border bg-card shadow-soft p-6 space-y-6">
+          <div>
+            <h2 className="text-lg font-serif font-bold">Currency Conversion</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Set exchange rates relative to GBP (1 GBP = rate in target currency). Amounts shown across
+              the site are converted using these rates and always rounded up to whole numbers.
+            </p>
+          </div>
+          <div className="overflow-x-auto rounded-xl border">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/40">
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Currency</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Name</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Rate (1 GBP =)</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Example (£10 →)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {CURRENCY_LIST.map((c) => {
+                  const rate = settings.currency.rates[c.code] ?? c.rate;
+                  const example = c.code === "GBP" ? 10 : Math.ceil(10 * rate);
+                  return (
+                    <tr key={c.code} className="border-b last:border-0">
+                      <td className="px-4 py-3 font-medium">
+                        <span className="mr-2">{c.flag}</span>
+                        {c.code} ({c.symbol})
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground">{c.name}</td>
+                      <td className="px-4 py-3">
+                        {c.code === "GBP" ? (
+                          <span className="text-muted-foreground">1 (base)</span>
+                        ) : (
+                          <Input
+                            type="number"
+                            min={0.0001}
+                            step={0.01}
+                            value={rate}
+                            onChange={(e) => updateCurrencyRate(c.code, Number(e.target.value))}
+                            className="h-9 max-w-[140px]"
+                          />
+                        )}
+                      </td>
+                      <td className="px-4 py-3 tabular-nums text-muted-foreground">
+                        {c.symbol}
+                        {example.toLocaleString()}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

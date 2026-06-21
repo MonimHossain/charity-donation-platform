@@ -17,7 +17,7 @@ export interface CurrencyInfo {
   symbol: string;
   name: string;
   flag: string;
-  /** Exchange rate from GBP (1 GBP = rate in target currency) */
+  /** Default exchange rate from GBP (1 GBP = rate in target currency) */
   rate: number;
 }
 
@@ -34,10 +34,15 @@ export const CURRENCIES: Record<CurrencyCode, CurrencyInfo> = {
 
 export const CURRENCY_LIST = Object.values(CURRENCIES);
 
+export const DEFAULT_CURRENCY_RATES: Record<CurrencyCode, number> = Object.fromEntries(
+  CURRENCY_LIST.map((c) => [c.code, c.rate])
+) as Record<CurrencyCode, number>;
+
 const STORAGE_KEY = "yif-display-currency-v1";
 const DEFAULT_CURRENCY: CurrencyCode = "GBP";
 
 let currentCurrency: CurrencyCode = DEFAULT_CURRENCY;
+let runtimeRates: Record<CurrencyCode, number> = { ...DEFAULT_CURRENCY_RATES };
 const listeners = new Set<() => void>();
 
 function emit() {
@@ -85,9 +90,11 @@ function subscribe(listener: () => void) {
   if (typeof window !== "undefined") {
     const onChange = () => listener();
     window.addEventListener("currency-changed", onChange);
+    window.addEventListener("currency-rates-changed", onChange);
     return () => {
       listeners.delete(listener);
       window.removeEventListener("currency-changed", onChange);
+      window.removeEventListener("currency-rates-changed", onChange);
     };
   }
   return () => listeners.delete(listener);
@@ -103,6 +110,39 @@ export function normalizeCurrencyCode(code?: string | null): CurrencyCode {
   return isCurrencyCode(upper) ? upper : DEFAULT_CURRENCY;
 }
 
+export function normalizeCurrencyRates(
+  raw?: Partial<Record<string, number>> | null
+): Record<CurrencyCode, number> {
+  const rates = { ...DEFAULT_CURRENCY_RATES };
+  if (!raw || typeof raw !== "object") return rates;
+  for (const [code, value] of Object.entries(raw)) {
+    const upper = code.toUpperCase();
+    const num = Number(value);
+    if (isCurrencyCode(upper) && Number.isFinite(num) && num > 0) {
+      rates[upper] = num;
+    }
+  }
+  rates.GBP = 1;
+  return rates;
+}
+
+export function getCurrencyRate(code: CurrencyCode | string): number {
+  const normalized = normalizeCurrencyCode(code);
+  return runtimeRates[normalized] ?? DEFAULT_CURRENCY_RATES[normalized];
+}
+
+export function getCurrencyRates(): Record<CurrencyCode, number> {
+  return { ...runtimeRates };
+}
+
+export function applyCurrencyRates(raw?: Partial<Record<string, number>> | null) {
+  runtimeRates = normalizeCurrencyRates(raw);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("currency-rates-changed"));
+  }
+  emit();
+}
+
 export function getCurrency(): CurrencyInfo {
   return CURRENCIES[getSnapshot()];
 }
@@ -116,7 +156,13 @@ export function setCurrency(code: CurrencyCode) {
   persistCurrency(code);
 }
 
-/** Convert amount between any two supported currencies */
+/** Round up to a whole number (no decimals). */
+export function ceilAmount(amount: number): number {
+  if (!Number.isFinite(amount)) return 0;
+  return Math.ceil(amount);
+}
+
+/** Convert amount between any two supported currencies; result is always rounded up. */
 export function convertAmount(
   amount: number,
   from: CurrencyCode | string,
@@ -124,9 +170,11 @@ export function convertAmount(
 ): number {
   const fromCode = normalizeCurrencyCode(from);
   const toCode = normalizeCurrencyCode(to);
-  if (fromCode === toCode) return amount;
-  const gbp = amount / CURRENCIES[fromCode].rate;
-  return Math.round(gbp * CURRENCIES[toCode].rate * 100) / 100;
+  if (fromCode === toCode) return ceilAmount(amount);
+  const rateFrom = getCurrencyRate(fromCode);
+  const rateTo = getCurrencyRate(toCode);
+  const gbp = amount / rateFrom;
+  return ceilAmount(gbp * rateTo);
 }
 
 /** @deprecated Use convertAmount(amount, "GBP", getCurrencyCode()) */
@@ -146,6 +194,7 @@ export function formatMoney(
   options?: {
     from?: CurrencyCode | string;
     code?: CurrencyCode;
+    /** @deprecated Amounts are always shown as whole numbers. */
     decimals?: number;
     compact?: boolean;
   }
@@ -153,26 +202,16 @@ export function formatMoney(
   const displayCode = options?.code ?? getSnapshot();
   const displayAmount = options?.from
     ? convertAmount(amount, options.from, displayCode)
-    : amount;
+    : ceilAmount(amount);
   const info = CURRENCIES[displayCode];
-  const decimals = options?.decimals ?? (displayAmount % 1 === 0 ? 0 : 2);
 
   if (options?.compact && displayAmount >= 1000) {
     const k = displayAmount / 1000;
-    const formatted =
-      k % 1 === 0 ? `${k.toFixed(0)}` : `${k.toFixed(1)}`;
+    const formatted = k % 1 === 0 ? `${k.toFixed(0)}` : `${Math.ceil(k * 10) / 10}`;
     return `${info.symbol}${formatted}k`;
   }
 
-  const formatted =
-    decimals === 0
-      ? Math.round(displayAmount).toLocaleString()
-      : displayAmount.toLocaleString(undefined, {
-          minimumFractionDigits: decimals,
-          maximumFractionDigits: decimals,
-        });
-
-  return `${info.symbol}${formatted}`;
+  return `${info.symbol}${displayAmount.toLocaleString()}`;
 }
 
 /** @deprecated Use formatMoney */
@@ -213,5 +252,6 @@ export function useCurrency() {
     setCurrency,
     formatMoney: format,
     convertToDisplay,
+    getRate: (target: CurrencyCode | string) => getCurrencyRate(target),
   };
 }

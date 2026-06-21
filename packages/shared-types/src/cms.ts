@@ -74,6 +74,8 @@ export interface SiteSettings {
     defaultCurrency?: string;
     minimumDonation?: number;
   };
+  /** 1 GBP = rate in target currency (e.g. USD: 1.27). */
+  currencyRates?: Record<string, number>;
 }
 
 export interface BlogPostDto {

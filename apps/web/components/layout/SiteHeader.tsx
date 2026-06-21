@@ -45,7 +45,7 @@ export default function SiteHeader() {
   const { data: headerCampaigns } = useHeaderNavCampaigns();
   const { basketDisplayTotal } = useDonationCart();
   const { formatMoney } = useCurrency();
-  const basketLabel = formatMoney(basketDisplayTotal, { decimals: 2 });
+  const basketLabel = formatMoney(basketDisplayTotal);
 
   const nav = useMemo(() => {
     if (USE_MOCK_DATA) return mockNav;

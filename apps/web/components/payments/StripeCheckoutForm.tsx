@@ -342,7 +342,7 @@ function CheckoutForm({
   }, [initialName, initialEmail]);
 
   const formattedAmount = useMemo(
-    () => `${currencySymbol}${amount.toFixed(2)}`,
+    () => `${currencySymbol}${Math.ceil(amount).toLocaleString()}`,
     [amount, currencySymbol]
   );
 
@@ -575,7 +575,7 @@ function CheckoutForm({
     isSetupMode
       ? "Save payment method"
       : automatedScheduleIds.length > 0 && ramadanFirstInstallmentAmount
-      ? `Pay ${currencySymbol}${ramadanFirstInstallmentAmount.toFixed(2)} · night 1 of ${nights}`
+      ? `Pay ${currencySymbol}${Math.ceil(ramadanFirstInstallmentAmount).toLocaleString()} · night 1 of ${nights}`
       : isRecurring
         ? `Donate ${formattedAmount}/${intervalLabel} now`
         : `Donate ${formattedAmount} now`;
@@ -584,9 +584,9 @@ function CheckoutForm({
     <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-soft space-y-5">
       {automatedScheduleIds.length > 0 && ramadanCommitmentTotal && (
         <p className="text-xs text-center text-accent-deep font-medium rounded-xl bg-secondary/60 px-3 py-2 leading-relaxed">
-          Paying <span className="font-bold">{currencySymbol}{perNight.toFixed(2)}</span> now (night 1
+          Paying <span className="font-bold">{currencySymbol}{Math.ceil(perNight).toLocaleString()}</span> now (night 1
           of {nights}). {currencySymbol}
-          {(totalGift - perNight).toFixed(2)} will be charged automatically on the remaining{" "}
+          {Math.ceil(totalGift - perNight).toLocaleString()} will be charged automatically on the remaining{" "}
           {Math.max(0, nights - 1)} nights — each payment appears in Stripe on its scheduled date.
         </p>
       )}
