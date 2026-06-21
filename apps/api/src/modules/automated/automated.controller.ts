@@ -2,9 +2,13 @@ import { Request, Response } from "express";
 import { routeParam } from "../../helper/requestParams.js";
 import { AppDataSource } from "../../helper/connectDB.js";
 import { AutomatedDonationSchedule } from "../../components/automatedDonation/automatedDonation.entity.js";
+import { Donation } from "../../components/donation/donation.entity.js";
+import { PaymentLog } from "../../components/paymentLog/paymentLog.entity.js";
 import { logAudit } from "../../helper/auditLog.js";
 
 const repo = () => AppDataSource.getRepository(AutomatedDonationSchedule);
+const donationRepo = () => AppDataSource.getRepository(Donation);
+const paymentLogRepo = () => AppDataSource.getRepository(PaymentLog);
 
 export async function createAutomatedSchedule(req: Request, res: Response) {
   try {
@@ -139,9 +143,9 @@ export async function cancelAutomatedSchedule(req: Request, res: Response) {
 
 export async function getAdminAutomatedSchedules(req: Request, res: Response) {
   try {
-    const { status, page = "1", limit = "20" } = req.query;
-    const where: any = {};
-    if (status) where.status = status;
+    const { status, page = "1", limit = "20", failedOnly } = req.query;
+    const where: Record<string, string> = {};
+    if (status) where.status = String(status);
 
     const [items, total] = await repo().findAndCount({
       where,
@@ -151,7 +155,157 @@ export async function getAdminAutomatedSchedules(req: Request, res: Response) {
       relations: ["campaign"],
     });
 
-    return res.json({ items, total, page: Number(page), limit: Number(limit) });
+    let filtered = items;
+    if (failedOnly === "true" || failedOnly === "1") {
+      const scheduleIds = items.map((s) => s.id);
+      if (scheduleIds.length) {
+        const failedDonations = await donationRepo()
+          .createQueryBuilder("d")
+          .select("d.automatedScheduleId", "scheduleId")
+          .where("d.automatedScheduleId IN (:...ids)", { ids: scheduleIds })
+          .andWhere("d.status IN (:...bad)", { bad: ["failed", "pending"] })
+          .getRawMany();
+        const failedSet = new Set(
+          failedDonations.map((r: { scheduleId?: string }) => r.scheduleId).filter(Boolean)
+        );
+        filtered = items.filter(
+          (s) =>
+            failedSet.has(s.id) ||
+            s.status === "awaiting_payment_method" ||
+            s.status === "paused"
+        );
+      } else {
+        filtered = [];
+      }
+    }
+
+    return res.json({
+      items: filtered.map((s) => ({
+        ...s,
+        totalAmount: Number(s.totalAmount),
+        dailyAmount: Number(s.dailyAmount),
+        paidAmount: Number(s.paidAmount),
+      })),
+      total: failedOnly ? filtered.length : total,
+      page: Number(page),
+      limit: Number(limit),
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+export async function getAdminAutomatedScheduleById(req: Request, res: Response) {
+  try {
+    const schedule = await repo().findOne({
+      where: { id: routeParam(req, "id") },
+      relations: ["campaign"],
+    });
+    if (!schedule) return res.status(404).json({ message: "Schedule not found" });
+
+    const donations = await donationRepo().find({
+      where: { automatedScheduleId: schedule.id },
+      order: { createdAt: "DESC" },
+      relations: ["campaign"],
+    });
+
+    const donationIds = donations.map((d) => d.id);
+    const paymentLogs = donationIds.length
+      ? await paymentLogRepo()
+          .createQueryBuilder("p")
+          .where("p.donationId IN (:...ids)", { ids: donationIds })
+          .orderBy("p.createdAt", "DESC")
+          .getMany()
+      : [];
+
+    return res.json({
+      ...schedule,
+      totalAmount: Number(schedule.totalAmount),
+      dailyAmount: Number(schedule.dailyAmount),
+      paidAmount: Number(schedule.paidAmount),
+      campaignTitle: schedule.campaign?.title,
+      donations: donations.map((d) => ({
+        id: d.id,
+        amount: Number(d.amount),
+        totalAmount: Number(d.totalAmount),
+        currency: d.currency,
+        status: d.status,
+        receiptNumber: d.receiptNumber,
+        stripePaymentIntentId: d.stripePaymentIntentId,
+        createdAt: d.createdAt,
+      })),
+      paymentLogs: paymentLogs.map((p) => ({
+        id: p.id,
+        donationId: p.donationId,
+        type: p.type,
+        provider: p.provider,
+        providerTransactionId: p.providerTransactionId,
+        amount: Number(p.amount),
+        currency: p.currency,
+        status: p.status,
+        errorMessage: p.errorMessage,
+        createdAt: p.createdAt,
+      })),
+    });
+  } catch (error) {
+    console.error("getAdminAutomatedScheduleById error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+export async function getMyAutomatedScheduleById(req: Request, res: Response) {
+  try {
+    const user = (req as { user?: { id?: string } }).user;
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    const schedule = await repo().findOne({
+      where: { id: routeParam(req, "id"), userId: user.id },
+      relations: ["campaign"],
+    });
+    if (!schedule) return res.status(404).json({ message: "Schedule not found" });
+
+    const donations = await donationRepo().find({
+      where: { automatedScheduleId: schedule.id },
+      order: { createdAt: "DESC" },
+    });
+
+    const donationIds = donations.map((d) => d.id);
+    const paymentLogs = donationIds.length
+      ? await paymentLogRepo()
+          .createQueryBuilder("p")
+          .where("p.donationId IN (:...ids)", { ids: donationIds })
+          .orderBy("p.createdAt", "DESC")
+          .getMany()
+      : [];
+
+    return res.json({
+      ...schedule,
+      totalAmount: Number(schedule.totalAmount),
+      dailyAmount: Number(schedule.dailyAmount),
+      paidAmount: Number(schedule.paidAmount),
+      campaignTitle: schedule.campaign?.title,
+      donations: donations.map((d) => ({
+        id: d.id,
+        amount: Number(d.amount),
+        totalAmount: Number(d.totalAmount),
+        currency: d.currency,
+        status: d.status,
+        receiptNumber: d.receiptNumber,
+        createdAt: d.createdAt,
+      })),
+      paymentLogs: paymentLogs.map((p) => ({
+        id: p.id,
+        donationId: p.donationId,
+        type: p.type,
+        provider: p.provider,
+        providerTransactionId: p.providerTransactionId,
+        amount: Number(p.amount),
+        currency: p.currency,
+        status: p.status,
+        errorMessage: p.errorMessage,
+        createdAt: p.createdAt,
+      })),
+    });
   } catch (error) {
     return res.status(500).json({ message: "Internal server error" });
   }

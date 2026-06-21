@@ -522,6 +522,16 @@ export async function fetchAdminAutomatedSchedules(params?: Record<string, strin
   return data;
 }
 
+export async function fetchAdminAutomatedScheduleById(id: string) {
+  const { data } = await api.get(`/admin/automated-donations/${id}`);
+  return data;
+}
+
+export async function fetchMyAutomatedScheduleById(id: string) {
+  const { data } = await api.get(`/automated-donations/my/${id}`);
+  return data;
+}
+
 // ═══════════════════════════════════
 // ACTIVITY TRACKING
 // ═══════════════════════════════════
@@ -564,6 +574,21 @@ export async function adminChangePassword(currentPassword: string, newPassword: 
 // ═══════════════════════════════════
 export async function fetchAdminDonations(params?: Record<string, string>) {
   const { data } = await api.get("/admin/donations", { params });
+  return data;
+}
+
+export async function fetchAdminDonationById(id: string) {
+  const { data } = await api.get(`/admin/donations/${id}`);
+  return data;
+}
+
+export async function fetchAdminPaymentLogs(params?: Record<string, string>) {
+  const { data } = await api.get("/admin/payment-logs", { params });
+  return data;
+}
+
+export async function fetchUserDonationById(id: string) {
+  const { data } = await api.get(`/my/donations/${id}`);
   return data;
 }
 

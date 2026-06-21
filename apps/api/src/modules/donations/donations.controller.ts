@@ -3,12 +3,38 @@ import { routeParam } from "../../helper/requestParams.js";
 import { AppDataSource } from "../../helper/connectDB.js";
 import { Donation } from "../../components/donation/donation.entity.js";
 import { Campaign } from "../../components/campaign/campaign.entity.js";
+import { PaymentLog } from "../../components/paymentLog/paymentLog.entity.js";
 import { logAudit } from "../../helper/auditLog.js";
 import { ensureDonorUserForDonation } from "../user-auth/userAuth.service.js";
 import { resolveCampaignId } from "../campaigns/resolveCampaignId.js";
 
 const repo = () => AppDataSource.getRepository(Donation);
 const campaignRepo = () => AppDataSource.getRepository(Campaign);
+const paymentLogRepo = () => AppDataSource.getRepository(PaymentLog);
+
+function mapDonationDetail(donation: Donation, paymentLogs: PaymentLog[] = []) {
+  return {
+    ...donation,
+    amount: Number(donation.amount),
+    totalAmount: Number(donation.totalAmount),
+    giftAidAmount: Number(donation.giftAidAmount),
+    upsellTotal: Number(donation.upsellTotal),
+    unitPrice: donation.unitPrice != null ? Number(donation.unitPrice) : undefined,
+    campaignTitle: donation.campaign?.title,
+    paymentLogs: paymentLogs.map((p) => ({
+      id: p.id,
+      type: p.type,
+      provider: p.provider,
+      providerTransactionId: p.providerTransactionId,
+      amount: Number(p.amount),
+      currency: p.currency,
+      status: p.status,
+      errorMessage: p.errorMessage,
+      metadata: p.metadata,
+      createdAt: p.createdAt,
+    })),
+  };
+}
 
 function generateReceiptNumber(): string {
   const date = new Date();
@@ -93,7 +119,7 @@ export async function createDonation(req: Request, res: Response) {
 
 export async function getDonations(req: Request, res: Response) {
   try {
-    const { status, frequency, campaign, page = "1", limit = "20", search } = req.query;
+    const { status, frequency, campaign, page = "1", limit = "20", search, failedOnly } = req.query;
     const qb = repo().createQueryBuilder("d")
       .leftJoinAndSelect("d.campaign", "campaign")
       .orderBy("d.createdAt", "DESC")
@@ -101,6 +127,9 @@ export async function getDonations(req: Request, res: Response) {
       .take(Number(limit));
 
     if (status) qb.andWhere("d.status = :status", { status });
+    if (failedOnly === "true" || failedOnly === "1") {
+      qb.andWhere("d.status IN (:...badStatuses)", { badStatuses: ["failed", "pending"] });
+    }
     if (frequency) qb.andWhere("d.frequency = :frequency", { frequency });
     if (campaign) qb.andWhere("d.campaignId = :campaign", { campaign });
     if (search) {
@@ -266,7 +295,35 @@ export async function getDonationById(req: Request, res: Response) {
       relations: ["campaign"],
     });
     if (!donation) return res.status(404).json({ message: "Donation not found" });
-    return res.json(donation);
+
+    const paymentLogs = await paymentLogRepo().find({
+      where: { donationId: donation.id },
+      order: { createdAt: "DESC" },
+    });
+
+    return res.json(mapDonationDetail(donation, paymentLogs));
+  } catch (error) {
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+export async function getUserDonationById(req: Request, res: Response) {
+  try {
+    const userId = (req as { user?: { id?: string } }).user?.id;
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+    const donation = await repo().findOne({
+      where: { id: routeParam(req, 'id'), userId },
+      relations: ["campaign"],
+    });
+    if (!donation) return res.status(404).json({ message: "Donation not found" });
+
+    const paymentLogs = await paymentLogRepo().find({
+      where: { donationId: donation.id },
+      order: { createdAt: "DESC" },
+    });
+
+    return res.json(mapDonationDetail(donation, paymentLogs));
   } catch (error) {
     return res.status(500).json({ message: "Internal server error" });
   }
@@ -335,15 +392,17 @@ export async function getDonationReceipt(req: Request, res: Response) {
       receiptNumber: donation.receiptNumber || `DON-${donation.id.substring(0, 8).toUpperCase()}`,
       donorName: donation.donorName,
       donorEmail: donation.donorEmail,
-      amount: donation.amount,
+      amount: Number(donation.amount),
       currency: donation.currency,
       giftAid: donation.giftAid,
-      giftAidAmount: donation.giftAidAmount,
-      totalAmount: donation.totalAmount,
+      giftAidAmount: Number(donation.giftAidAmount),
+      totalAmount: Number(donation.totalAmount),
       campaignTitle: donation.campaign?.title || "General Donation",
       frequency: donation.frequency,
       date: donation.createdAt,
       status: donation.status,
+      paymentMethod: donation.paymentMethod,
+      donationId: donation.id,
     };
 
     return res.json(receipt);

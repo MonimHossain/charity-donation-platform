@@ -217,6 +217,13 @@ router.get("/my/donations", async (req, res) => {
     return getUserDonations(req, res);
   });
 });
+router.get("/my/donations/:id", async (req, res) => {
+  const { requireUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  requireUser(req, res, async () => {
+    const { getUserDonationById } = await import("../modules/donations/donations.controller.js");
+    return getUserDonationById(req, res);
+  });
+});
 
 // ═══════════════════════════════════
 // RECURRING DONATIONS (lazy-loaded)
@@ -422,6 +429,10 @@ router.get("/admin/donations", requireAdmin, getDonations);
 router.get("/admin/donations/stats", requireAdmin, getDonationStats);
 router.get("/admin/donations/:id", requireAdmin, getDonationById);
 router.put("/admin/donations/:id/refund", requireAdmin, refundDonation);
+router.get("/admin/payment-logs", requireAdmin, async (req, res) => {
+  const { getAdminPaymentLogs } = await import("../modules/payments/paymentLogs.controller.js");
+  return getAdminPaymentLogs(req, res);
+});
 
 // ═══════════════════════════════════
 // ADMIN CMS
@@ -876,6 +887,13 @@ router.get("/automated-donations/my", async (req, res) => {
     return getMyAutomatedSchedules(req, res);
   });
 });
+router.get("/automated-donations/my/:id", async (req, res) => {
+  const { requireUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  requireUser(req, res, async () => {
+    const { getMyAutomatedScheduleById } = await import("../modules/automated/automated.controller.js");
+    return getMyAutomatedScheduleById(req, res);
+  });
+});
 router.put("/automated-donations/:id/cancel", async (req, res) => {
   const { cancelAutomatedSchedule } = await import("../modules/automated/automated.controller.js");
   return cancelAutomatedSchedule(req, res);
@@ -887,6 +905,10 @@ router.put("/automated-donations/:id/cancel", async (req, res) => {
 router.get("/admin/automated-donations", requireAdmin, async (req, res) => {
   const { getAdminAutomatedSchedules } = await import("../modules/automated/automated.controller.js");
   return getAdminAutomatedSchedules(req, res);
+});
+router.get("/admin/automated-donations/:id", requireAdmin, async (req, res) => {
+  const { getAdminAutomatedScheduleById } = await import("../modules/automated/automated.controller.js");
+  return getAdminAutomatedScheduleById(req, res);
 });
 
 // ═══════════════════════════════════

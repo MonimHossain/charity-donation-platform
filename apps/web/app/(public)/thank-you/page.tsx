@@ -19,7 +19,6 @@ import { statTotalClass } from "@/lib/home-buttons";
 import { CURRENCIES, type CurrencyCode } from "@/lib/currency";
 import { useEffect, useState } from "react";
 import { trackEvent } from "@/components/analytics/GTMScript";
-import { fetchDonationReceipt } from "@/lib/api";
 import { USE_MOCK_DATA } from "@/lib/config";
 
 export default function ThankYouPage() {
@@ -36,7 +35,6 @@ export default function ThankYouPage() {
   const installmentAmount = params.get("installmentAmount");
   const isRamadanSplit = frequency === "ramadan_split";
   const [copied, setCopied] = useState(false);
-  const [receiptLoading, setReceiptLoading] = useState(false);
 
   useEffect(() => {
     trackEvent("donation_complete", {
@@ -62,23 +60,6 @@ export default function ThankYouPage() {
     navigator.clipboard.writeText(shareUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleDownloadReceipt = async () => {
-    if (!donationId || USE_MOCK_DATA) return;
-    setReceiptLoading(true);
-    try {
-      const receipt = await fetchDonationReceipt(donationId);
-      const blob = new Blob([JSON.stringify(receipt, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `receipt-${receipt.receiptNumber || donationId}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } finally {
-      setReceiptLoading(false);
-    }
   };
 
   return (
@@ -201,16 +182,17 @@ export default function ThankYouPage() {
           className="flex flex-col sm:flex-row justify-center gap-3 animate-fade-up"
           style={{ animationDelay: "0.6s" }}
         >
-          <Button
-            variant="outline"
-            size="lg"
-            className="rounded-full gap-2"
-            disabled={!donationId || USE_MOCK_DATA || receiptLoading}
-            onClick={handleDownloadReceipt}
-          >
-            <Download className="w-4 h-4" />{" "}
-            {receiptLoading ? "Loading…" : "Download Receipt"}
-          </Button>
+          {donationId && !USE_MOCK_DATA ? (
+            <Button asChild variant="outline" size="lg" className="rounded-full gap-2">
+              <Link href={`/account/receipt/${donationId}`}>
+                <Download className="w-4 h-4" /> View Receipt
+              </Link>
+            </Button>
+          ) : (
+            <Button variant="outline" size="lg" className="rounded-full gap-2" disabled>
+              <Download className="w-4 h-4" /> View Receipt
+            </Button>
+          )}
           <Button asChild variant="default" size="lg" className="rounded-full gap-2">
             <Link href="/account">
               <UserPlus className="w-4 h-4" /> View My Dashboard

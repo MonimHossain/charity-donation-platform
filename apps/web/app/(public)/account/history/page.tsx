@@ -1,21 +1,24 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import Link from "next/link";
 import {
   Search,
-  Download,
+  FileText,
   Calendar,
   Filter,
   ChevronLeft,
   ChevronRight,
   Loader2,
   Heart,
+  Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { fetchUserDonations, fetchDonationReceipt } from "@/lib/api";
+import { fetchUserDonations } from "@/lib/api";
 import { useCurrency } from "@/lib/currency";
+import { DONATION_STATUS_STYLES } from "@/lib/payment-utils";
 
 interface Donation {
   id: string;
@@ -30,6 +33,7 @@ interface Donation {
 
 const STATUSES = ["all", "completed", "pending", "failed", "refunded"];
 const PER_PAGE = 10;
+type Tab = "all" | "failed";
 
 export default function DonationHistoryPage() {
   const { formatMoney } = useCurrency();
@@ -37,27 +41,11 @@ export default function DonationHistoryPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [tab, setTab] = useState<Tab>("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
-  const [receiptLoadingId, setReceiptLoadingId] = useState<string | null>(null);
-
-  const downloadReceipt = async (id: string) => {
-    setReceiptLoadingId(id);
-    try {
-      const receipt = await fetchDonationReceipt(id);
-      const blob = new Blob([JSON.stringify(receipt, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `receipt-${receipt.receiptNumber || id}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } finally {
-      setReceiptLoadingId(null);
-    }
-  };
 
   useEffect(() => {
     fetchUserDonations()
@@ -68,11 +56,14 @@ export default function DonationHistoryPage() {
 
   const filtered = useMemo(() => {
     return donations.filter((d) => {
-      if (
+      if (tab === "failed") {
+        if (!["failed", "pending"].includes(d.status.toLowerCase())) return false;
+      } else if (
         statusFilter !== "all" &&
         d.status.toLowerCase() !== statusFilter
-      )
+      ) {
         return false;
+      }
       if (
         search &&
         !(d.campaign || "").toLowerCase().includes(search.toLowerCase())
@@ -83,7 +74,7 @@ export default function DonationHistoryPage() {
         return false;
       return true;
     });
-  }, [donations, statusFilter, search, dateFrom, dateTo]);
+  }, [donations, statusFilter, search, dateFrom, dateTo, tab]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const pageItems = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
@@ -105,6 +96,27 @@ export default function DonationHistoryPage() {
         <p className="text-sm text-muted-foreground mt-1">
           View and manage all your past donations.
         </p>
+      </div>
+
+      <div className="flex gap-2">
+        {(["all", "failed"] as Tab[]).map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => {
+              setTab(t);
+              setPage(1);
+            }}
+            className={cn(
+              "px-4 py-2 rounded-full text-sm font-semibold transition-all",
+              tab === t
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {t === "all" ? "All donations" : "Failed & incomplete"}
+          </button>
+        ))}
       </div>
 
       {/* Search & Filters */}
@@ -133,6 +145,7 @@ export default function DonationHistoryPage() {
 
         {showFilters && (
           <div className="flex flex-wrap gap-3 pt-2 border-t border-border">
+            {tab === "all" && (
             <div>
               <label className="text-xs text-muted-foreground font-medium">
                 Status
@@ -157,6 +170,7 @@ export default function DonationHistoryPage() {
                 ))}
               </div>
             </div>
+            )}
             <div className="flex gap-2 items-end">
               <div>
                 <label className="text-xs text-muted-foreground font-medium">
@@ -212,7 +226,7 @@ export default function DonationHistoryPage() {
                     Type
                   </th>
                   <th className="px-6 py-3 font-medium">Status</th>
-                  <th className="px-6 py-3 font-medium text-right">Receipt</th>
+                  <th className="px-6 py-3 font-medium text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -247,33 +261,41 @@ export default function DonationHistoryPage() {
                       <span
                         className={cn(
                           "inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize",
-                          don.status === "completed"
-                            ? "bg-green-100 text-green-700"
-                            : don.status === "pending"
-                              ? "bg-yellow-100 text-yellow-700"
-                              : don.status === "failed"
-                                ? "bg-red-100 text-red-700"
-                                : "bg-secondary text-secondary-foreground"
+                          DONATION_STATUS_STYLES[don.status] || "bg-secondary text-secondary-foreground"
                         )}
                       >
                         {don.status}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="rounded-lg gap-1.5 text-xs"
-                        disabled={don.status !== "completed" || receiptLoadingId === don.id}
-                        onClick={() => downloadReceipt(don.id)}
-                      >
-                        {receiptLoadingId === don.id ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <Download className="w-3.5 h-3.5" />
-                        )}{" "}
-                        Receipt
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        {don.status === "completed" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="rounded-lg gap-1.5 text-xs"
+                            asChild
+                          >
+                            <Link href={`/account/receipt/${don.id}`}>
+                              <FileText className="w-3.5 h-3.5" />
+                              Receipt
+                            </Link>
+                          </Button>
+                        )}
+                        {(don.status === "failed" || don.status === "pending") && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="rounded-lg gap-1.5 text-xs text-red-600"
+                            asChild
+                          >
+                            <Link href={`/account/donations/${don.id}`}>
+                              <Eye className="w-3.5 h-3.5" />
+                              Details
+                            </Link>
+                          </Button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
