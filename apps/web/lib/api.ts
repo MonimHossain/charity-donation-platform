@@ -489,6 +489,11 @@ export async function calculateZakat(payload: Record<string, unknown>) {
   return data;
 }
 
+export async function fetchZakatMetalPrices(currency = "GBP") {
+  const { data } = await api.get("/zakat/metal-prices", { params: { currency } });
+  return data;
+}
+
 export async function saveZakatCalculation(payload: Record<string, unknown>) {
   const { data } = await api.post("/zakat/save", payload);
   return data;
@@ -519,6 +524,16 @@ export async function cancelAutomatedSchedule(id: string) {
 
 export async function fetchAdminAutomatedSchedules(params?: Record<string, string>) {
   const { data } = await api.get("/admin/automated-donations", { params });
+  return data;
+}
+
+export async function fetchAdminAutomatedScheduleById(id: string) {
+  const { data } = await api.get(`/admin/automated-donations/${id}`);
+  return data;
+}
+
+export async function fetchMyAutomatedScheduleById(id: string) {
+  const { data } = await api.get(`/automated-donations/my/${id}`);
   return data;
 }
 
@@ -564,6 +579,21 @@ export async function adminChangePassword(currentPassword: string, newPassword: 
 // ═══════════════════════════════════
 export async function fetchAdminDonations(params?: Record<string, string>) {
   const { data } = await api.get("/admin/donations", { params });
+  return data;
+}
+
+export async function fetchAdminDonationById(id: string) {
+  const { data } = await api.get(`/admin/donations/${id}`);
+  return data;
+}
+
+export async function fetchAdminPaymentLogs(params?: Record<string, string>) {
+  const { data } = await api.get("/admin/payment-logs", { params });
+  return data;
+}
+
+export async function fetchUserDonationById(id: string) {
+  const { data } = await api.get(`/my/donations/${id}`);
   return data;
 }
 
@@ -878,7 +908,7 @@ export async function exportDonations(params?: Record<string, string>) {
 // ADMIN ACTIVITY / AUDIT LOGS
 // ═══════════════════════════════════
 export async function fetchActivityLogs(params?: Record<string, string>) {
-  const { data } = await api.get("/admin/activity-logs", { params });
+  const { data } = await api.get("/admin/audit-logs", { params });
   return data;
 }
 

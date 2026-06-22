@@ -4,11 +4,14 @@ import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { CampaignUpsell } from "@/lib/checkout-campaign-config";
+import { formatMoney, normalizeCurrencyCode, type CurrencyCode } from "@/lib/currency";
 import CheckoutStepIndicator, { type CheckoutFlowStep } from "./CheckoutStepIndicator";
 import CheckoutUpsellList from "./CheckoutUpsellList";
 
 type Props = {
   currencySymbol: string;
+  displayCurrency: CurrencyCode | string;
+  sourceCurrency?: CurrencyCode | string;
   donationAmount: number;
   giftAid: boolean;
   onGiftAidChange: (value: boolean) => void;
@@ -23,6 +26,8 @@ type Props = {
 
 export default function CheckoutGiftAidStep({
   currencySymbol,
+  displayCurrency,
+  sourceCurrency = "GBP",
   donationAmount,
   giftAid,
   onGiftAidChange,
@@ -34,7 +39,7 @@ export default function CheckoutGiftAidStep({
   onPrevious,
   flowSteps,
 }: Props) {
-  const withGiftAid = +(donationAmount * 1.25).toFixed(2);
+  const withGiftAid = Math.ceil(donationAmount * 1.25);
 
   return (
     <div className="rounded-3xl bg-card border border-border p-6 lg:p-10 shadow-soft space-y-8 max-w-xl mx-auto">
@@ -59,16 +64,14 @@ export default function CheckoutGiftAidStep({
         <div>
           <p className="text-sm text-muted-foreground mb-1">Your Donation</p>
           <p className="text-2xl font-semibold tabular-nums text-foreground">
-            {currencySymbol}
-            {donationAmount.toFixed(2)}
+            {formatMoney(donationAmount, { code: normalizeCurrencyCode(displayCurrency) })}
           </p>
         </div>
         <ArrowRight className="w-6 h-6 text-muted-foreground shrink-0" />
         <div>
           <p className="text-sm text-muted-foreground mb-1">With Gift Aid becomes</p>
           <p className="text-2xl font-bold tabular-nums text-accent">
-            {currencySymbol}
-            {withGiftAid.toFixed(2)}
+            {formatMoney(withGiftAid, { code: normalizeCurrencyCode(displayCurrency) })}
           </p>
         </div>
       </div>
@@ -102,6 +105,8 @@ export default function CheckoutGiftAidStep({
             upsells={upsells}
             selectedUpsellIds={selectedUpsellIds}
             currencySymbol={currencySymbol}
+            displayCurrency={displayCurrency}
+            sourceCurrency={sourceCurrency}
             onToggleUpsell={onToggleUpsell}
           />
         </div>

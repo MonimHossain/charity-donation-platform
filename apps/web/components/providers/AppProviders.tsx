@@ -3,6 +3,7 @@
 import { MockAuthProvider } from "@/lib/mock-auth";
 import { USE_MOCK_DATA } from "@/lib/config";
 import { QueryProvider } from "@/components/providers/QueryProvider";
+import { CurrencyRatesBootstrap } from "@/components/providers/CurrencyRatesBootstrap";
 import { purgeStaleAdminTokens } from "@/lib/admin-auth";
 import { useEffect, type ReactNode } from "react";
 
@@ -13,6 +14,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
 
   return (
     <QueryProvider>
+      <CurrencyRatesBootstrap />
       {USE_MOCK_DATA ? <MockAuthProvider>{children}</MockAuthProvider> : children}
     </QueryProvider>
   );

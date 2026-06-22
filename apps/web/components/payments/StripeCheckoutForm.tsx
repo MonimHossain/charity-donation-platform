@@ -85,6 +85,10 @@ function WalletPaymentRequestFallback({
   amount,
   currencyCode,
   donationId,
+  paymentMode = "payment",
+  automatedScheduleIds = [],
+  donorName = "",
+  donorEmail = "",
   onAvailable,
   onSuccess,
   onError,
@@ -92,28 +96,36 @@ function WalletPaymentRequestFallback({
   amount: number;
   currencyCode: string;
   donationId: string;
+  paymentMode?: "payment" | "setup";
+  automatedScheduleIds?: string[];
+  donorName?: string;
+  donorEmail?: string;
   onAvailable: () => void;
   onSuccess: () => void;
   onError: (msg: string) => void;
 }) {
   const stripe = useStripe();
   const [paymentRequest, setPaymentRequest] = useState<StripePaymentRequest | null>(null);
+  const isSetupMode = paymentMode === "setup";
 
   const country = useMemo(
     () => CURRENCY_COUNTRY[currencyCode.toUpperCase()] ?? "GB",
     [currencyCode]
   );
 
+  const canUseFallback =
+    isSetupMode ? automatedScheduleIds.length > 0 : amount > 0;
+
   useEffect(() => {
-    if (!stripe) return;
+    if (!stripe || !canUseFallback) return;
 
     let cancelled = false;
     const pr = stripe.paymentRequest({
       country,
       currency: currencyCode.toLowerCase(),
       total: {
-        label: "Donation",
-        amount: Math.round(amount * 100),
+        label: isSetupMode ? "Save payment method" : "Donation",
+        amount: isSetupMode ? 0 : Math.round(amount * 100),
       },
       requestPayerName: true,
       requestPayerEmail: true,
@@ -130,10 +142,65 @@ function WalletPaymentRequestFallback({
       paymentMethod: { id: string };
     }) => {
       try {
+        if (isSetupMode) {
+          const primaryScheduleId = automatedScheduleIds[0];
+          if (!primaryScheduleId) {
+            ev.complete("fail");
+            onError("Ramadan schedule is not ready yet.");
+            return;
+          }
+
+          const setup = await createStripeSetupIntent({
+            automatedScheduleId: primaryScheduleId,
+            automatedScheduleIds,
+            donationId,
+            currency: currencyCode,
+          });
+
+          const { error, setupIntent } = await stripe.confirmCardSetup(
+            setup.clientSecret,
+            { payment_method: ev.paymentMethod.id },
+            { handleActions: false }
+          );
+
+          if (error) {
+            ev.complete("fail");
+            onError(error.message || "Could not save payment method");
+            return;
+          }
+
+          let intent = setupIntent;
+          if (intent?.status === "requires_action") {
+            const followUp = await stripe.confirmCardSetup(setup.clientSecret);
+            if (followUp.error) {
+              ev.complete("fail");
+              onError(followUp.error.message || "Could not save payment method");
+              return;
+            }
+            intent = followUp.setupIntent;
+          }
+
+          ev.complete("success");
+          if (intent?.id) {
+            await confirmStripeSetup({
+              setupIntentId: intent.id,
+              automatedScheduleId: primaryScheduleId,
+              automatedScheduleIds,
+              donationId,
+            });
+            onSuccess();
+          }
+          return;
+        }
+
         const { clientSecret } = await createStripePaymentIntent({
           amount,
           currency: currencyCode,
           donationId,
+          automatedScheduleId: automatedScheduleIds[0],
+          automatedScheduleIds,
+          donorEmail: donorEmail.trim() || undefined,
+          donorName: donorName.trim() || undefined,
         });
 
         const { error, paymentIntent } = await stripe.confirmCardPayment(
@@ -176,9 +243,23 @@ function WalletPaymentRequestFallback({
       cancelled = true;
       pr.off("paymentmethod", handlePaymentMethod);
     };
-  }, [amount, country, currencyCode, donationId, onAvailable, onError, onSuccess, stripe]);
+  }, [
+    amount,
+    automatedScheduleIds,
+    canUseFallback,
+    country,
+    currencyCode,
+    donationId,
+    donorEmail,
+    donorName,
+    isSetupMode,
+    onAvailable,
+    onError,
+    onSuccess,
+    stripe,
+  ]);
 
-  if (!paymentRequest) return null;
+  if (!canUseFallback || !paymentRequest) return null;
 
   return (
     <div className="stripe-payment-request w-full min-h-[48px]">
@@ -261,7 +342,7 @@ function CheckoutForm({
   }, [initialName, initialEmail]);
 
   const formattedAmount = useMemo(
-    () => `${currencySymbol}${amount.toFixed(2)}`,
+    () => `${currencySymbol}${Math.ceil(amount).toLocaleString()}`,
     [amount, currencySymbol]
   );
 
@@ -484,13 +565,17 @@ function CheckoutForm({
   const showWalletHint =
     expressReady && !expressWalletsAvailable && !fallbackWalletAvailable;
 
+  const showWalletFallback = expressReady && !expressWalletsAvailable && !isRecurring;
+
   const perNight = ramadanFirstInstallmentAmount ?? amount;
   const nights = ramadanInstallmentCount ?? 0;
   const totalGift = ramadanCommitmentTotal ?? amount;
 
   const payLabel =
-    automatedScheduleIds.length > 0 && ramadanFirstInstallmentAmount
-      ? `Pay ${currencySymbol}${ramadanFirstInstallmentAmount.toFixed(2)} · night 1 of ${nights}`
+    isSetupMode
+      ? "Save payment method"
+      : automatedScheduleIds.length > 0 && ramadanFirstInstallmentAmount
+      ? `Pay ${currencySymbol}${Math.ceil(ramadanFirstInstallmentAmount).toLocaleString()} · night 1 of ${nights}`
       : isRecurring
         ? `Donate ${formattedAmount}/${intervalLabel} now`
         : `Donate ${formattedAmount} now`;
@@ -499,9 +584,9 @@ function CheckoutForm({
     <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-soft space-y-5">
       {automatedScheduleIds.length > 0 && ramadanCommitmentTotal && (
         <p className="text-xs text-center text-accent-deep font-medium rounded-xl bg-secondary/60 px-3 py-2 leading-relaxed">
-          Paying <span className="font-bold">{currencySymbol}{perNight.toFixed(2)}</span> now (night 1
+          Paying <span className="font-bold">{currencySymbol}{Math.ceil(perNight).toLocaleString()}</span> now (night 1
           of {nights}). {currencySymbol}
-          {(totalGift - perNight).toFixed(2)} will be charged automatically on the remaining{" "}
+          {Math.ceil(totalGift - perNight).toLocaleString()} will be charged automatically on the remaining{" "}
           {Math.max(0, nights - 1)} nights — each payment appears in Stripe on its scheduled date.
         </p>
       )}
@@ -511,7 +596,12 @@ function CheckoutForm({
           {intervalLabel} (sandbox test mode).
         </p>
       )}
-      {!isRecurring && !isSetupMode && (
+      {isSetupMode && (
+        <p className="text-xs text-center text-accent-deep font-medium rounded-xl bg-secondary/60 px-3 py-2">
+          Save your payment method — remaining Ramadan nights will be charged automatically on
+          their scheduled dates.
+        </p>
+      )}
       <div className="space-y-3">
         <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-accent-deep">
           Express checkout
@@ -561,11 +651,15 @@ function CheckoutForm({
             }}
           />
         </div>
-        {expressReady && !expressWalletsAvailable && (
+        {showWalletFallback && (
           <WalletPaymentRequestFallback
             amount={amount}
             currencyCode={currencyCode}
             donationId={donationId}
+            paymentMode={paymentMode}
+            automatedScheduleIds={automatedScheduleIds}
+            donorName={donorName}
+            donorEmail={donorEmail}
             onAvailable={() => setFallbackWalletAvailable(true)}
             onSuccess={onSuccess}
             onError={onError}
@@ -573,9 +667,8 @@ function CheckoutForm({
         )}
         {showWalletHint && <WalletSetupHint showHttpsHelp={needsHttps} />}
       </div>
-      )}
 
-      {!isRecurring && !isSetupMode && <OrPayByCardDivider />}
+      <OrPayByCardDivider />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">

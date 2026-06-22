@@ -5,6 +5,8 @@ import { Campaign } from "../../components/campaign/campaign.entity.js";
 import { RecurringDonation } from "../../components/recurringDonation/recurringDonation.entity.js";
 import { ActivityLog } from "../../components/activityLog/activityLog.entity.js";
 import { AuditLog } from "../../components/auditLog/auditLog.entity.js";
+import { logAudit } from "../../helper/auditLog.js";
+import { mapAuditLogForClient, parseDateFilter } from "../../helper/auditLogFormat.js";
 
 const donationRepo = () => AppDataSource.getRepository(Donation);
 const campaignRepo = () => AppDataSource.getRepository(Campaign);
@@ -253,6 +255,12 @@ export async function exportDonations(req: Request, res: Response) {
 
     const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
 
+    await logAudit(req, {
+      action: "export",
+      entityType: "donation",
+      details: { count: donations.length, startDate, endDate, status },
+    });
+
     res.setHeader("Content-Type", "text/csv");
     res.setHeader("Content-Disposition", `attachment; filename=donations-${Date.now()}.csv`);
     return res.send(csv);
@@ -303,15 +311,26 @@ export async function getActivityLogs(req: Request, res: Response) {
 
 export async function getAuditLogs(req: Request, res: Response) {
   try {
-    const { page = "1", limit = "25", action, user, from, to } = req.query;
+    const { page = "1", limit = "25", action, user, from, to, entityType, search } = req.query;
     const qb = auditLogRepo()
       .createQueryBuilder("a")
       .orderBy("a.createdAt", "DESC");
 
-    if (action) qb.andWhere("a.action = :action", { action });
-    if (user) qb.andWhere("(a.userId ILIKE :user OR a.userEmail ILIKE :user)", { user: `%${user}%` });
-    if (from) qb.andWhere("a.createdAt >= :from", { from });
-    if (to) qb.andWhere("a.createdAt <= :to", { to });
+    if (action && action !== "all") qb.andWhere("a.action = :action", { action });
+    if (entityType && entityType !== "all") {
+      qb.andWhere("a.entityType = :entityType", { entityType });
+    }
+    if (user) {
+      qb.andWhere("(a.userId ILIKE :user OR a.userEmail ILIKE :user)", { user: `%${user}%` });
+    }
+    if (search) {
+      qb.andWhere(
+        "(a.action ILIKE :search OR a.entityType ILIKE :search OR a.entityId ILIKE :search OR a.userEmail ILIKE :search OR CAST(a.details AS TEXT) ILIKE :search)",
+        { search: `%${search}%` }
+      );
+    }
+    if (from) qb.andWhere("a.createdAt >= :from", { from: parseDateFilter(String(from)) });
+    if (to) qb.andWhere("a.createdAt <= :to", { to: parseDateFilter(String(to), true) });
 
     const pageNum = Math.max(1, Number(page));
     const take = Math.min(100, Math.max(1, Number(limit)));
@@ -321,7 +340,7 @@ export async function getAuditLogs(req: Request, res: Response) {
       .getManyAndCount();
 
     return res.json({
-      items,
+      items: items.map(mapAuditLogForClient),
       total,
       page: pageNum,
       totalPages: Math.ceil(total / take),

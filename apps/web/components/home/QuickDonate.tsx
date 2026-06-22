@@ -27,7 +27,8 @@ export default function QuickDonate({ campaign = "gaza", variant = "light" }: Pr
     freq,
     amount,
     custom,
-    prices,
+    displayPrices,
+    displayAmount,
     finalAmount,
     setCategory,
     setFreq,
@@ -132,7 +133,7 @@ export default function QuickDonate({ campaign = "gaza", variant = "light" }: Pr
               <span className="pl-3 pr-1 text-base font-bold text-accent-deep">{symbol}</span>
               <input
                 inputMode="numeric"
-                value={custom || String(amount)}
+                value={custom || String(displayAmount)}
                 onChange={(e) => {
                   const v = e.target.value.replace(/[^0-9]/g, "");
                   setCustom(v);
@@ -146,24 +147,24 @@ export default function QuickDonate({ campaign = "gaza", variant = "light" }: Pr
           </LabeledField>
         </div>
 
-        {prices.length > 0 && (
+        {displayPrices.length > 0 && (
           <div className="mt-3">
             <span className="block text-[10px] uppercase tracking-wider font-bold text-muted-foreground px-1 mb-1.5">
               Quick pick
             </span>
             <div className="flex flex-wrap gap-1.5">
-              {prices.map((p) => (
+              {displayPrices.map((p) => (
                 <button
-                  key={`${p.amount}-${p.sortOrder}`}
+                  key={`${p.gbpAmount}-${p.sortOrder}`}
                   type="button"
-                  onClick={() => selectAmount(p.amount)}
+                  onClick={() => selectAmount(p.gbpAmount)}
                   className={`flex-1 min-w-[60px] px-3 py-2 rounded-xl text-sm font-bold transition-all ${
-                    amount === p.amount && !custom
+                    amount === p.gbpAmount && !custom
                       ? "bg-accent text-accent-foreground shadow-glow scale-[1.02]"
                       : "bg-secondary text-foreground hover:bg-secondary/70"
                   }`}
                 >
-                  {symbol}{p.amount}
+                  {symbol}{p.displayAmount}
                 </button>
               ))}
             </div>
@@ -245,15 +246,15 @@ export default function QuickDonate({ campaign = "gaza", variant = "light" }: Pr
         <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
       </div>
 
-      {prices.length > 0 && (
-        <div className={`grid gap-2 ${prices.length <= 5 ? `grid-cols-${prices.length}` : "grid-cols-5"}`} style={{ gridTemplateColumns: `repeat(${Math.min(prices.length, 5)}, minmax(0, 1fr))` }}>
-          {prices.map((p) => {
-            const active = amount === p.amount && !custom;
+      {displayPrices.length > 0 && (
+        <div className={`grid gap-2 ${displayPrices.length <= 5 ? `grid-cols-${displayPrices.length}` : "grid-cols-5"}`} style={{ gridTemplateColumns: `repeat(${Math.min(displayPrices.length, 5)}, minmax(0, 1fr))` }}>
+          {displayPrices.map((p) => {
+            const active = amount === p.gbpAmount && !custom;
             return (
               <button
-                key={`${p.amount}-${p.sortOrder}`}
+                key={`${p.gbpAmount}-${p.sortOrder}`}
                 type="button"
-                onClick={() => selectAmount(p.amount)}
+                onClick={() => selectAmount(p.gbpAmount)}
                 className={`py-3 rounded-xl font-bold text-sm sm:text-base transition-all ${
                   active
                     ? "bg-accent text-accent-foreground scale-[1.03] shadow-glow"
@@ -262,7 +263,7 @@ export default function QuickDonate({ campaign = "gaza", variant = "light" }: Pr
                     : "bg-secondary text-foreground hover:bg-secondary/70"
                 }`}
               >
-                {symbol}{p.amount}
+                {symbol}{p.displayAmount}
               </button>
             );
           })}

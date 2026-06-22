@@ -215,7 +215,7 @@ function AccountDashboardApi() {
                       </span>
                     </td>
                     <td className="py-3 font-semibold tabular-nums">
-                      {formatMoney(don.amount, { from: don.currency, decimals: 2 })}
+                      {formatMoney(don.amount, { from: don.currency })}
                     </td>
                     <td className="py-3 hidden sm:table-cell text-muted-foreground">
                       {don.campaign || "General"}
@@ -266,7 +266,7 @@ function AccountDashboardApi() {
                 >
                   <div>
                     <p className="font-semibold">
-                      {formatMoney(r.amount, { from: r.currency, decimals: 2 })}/{r.frequency}
+                      {formatMoney(r.amount, { from: r.currency })}/{r.frequency}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {r.campaign || "General Fund"}

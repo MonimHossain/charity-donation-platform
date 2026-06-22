@@ -9,6 +9,31 @@ import { DonationPreset } from "../../components/donation/donationPreset.entity.
 import { Testimonial } from "../../components/testimonial/testimonial.entity.js";
 import { logAudit } from "../../helper/auditLog.js";
 
+const DEFAULT_CURRENCY_RATES: Record<string, number> = {
+  GBP: 1,
+  USD: 1.27,
+  EUR: 1.17,
+  CAD: 1.72,
+  AUD: 1.93,
+  AED: 4.67,
+  SAR: 4.76,
+  MYR: 5.98,
+};
+
+function normalizeCurrencyRates(raw?: Record<string, unknown> | null): Record<string, number> {
+  const rates = { ...DEFAULT_CURRENCY_RATES };
+  if (!raw || typeof raw !== "object") return rates;
+  for (const [code, value] of Object.entries(raw)) {
+    const upper = code.toUpperCase();
+    const num = Number(value);
+    if (upper in rates && Number.isFinite(num) && num > 0) {
+      rates[upper] = num;
+    }
+  }
+  rates.GBP = 1;
+  return rates;
+}
+
 export async function getHeroSlides(_req: Request, res: Response) {
   try {
     const slides = await AppDataSource.getRepository(HeroSlide).find({
@@ -113,6 +138,7 @@ export async function getSiteSettings(_req: Request, res: Response) {
     }
     const response = {
       ...settings,
+      currencyRates: normalizeCurrencyRates(settings.currencyRates),
       payment: settings.paymentConfig
         ? {
             enabledProviders: settings.paymentConfig.enabledProviders || ["stripe"],
@@ -153,6 +179,9 @@ export async function updateSiteSettings(req: Request, res: Response) {
         minimumDonation: payment.minimumDonation ?? 1,
       };
       delete body.payment;
+    }
+    if (body.currencyRates) {
+      body.currencyRates = normalizeCurrencyRates(body.currencyRates);
     }
     if (!settings) {
       settings = createEntity(repo, body);

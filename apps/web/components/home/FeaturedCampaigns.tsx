@@ -13,6 +13,8 @@ import {
   CAMPAIGN_MODE_LABELS,
   isExperienceCampaignMode,
 } from "@/lib/campaign-experience";
+import { getCampaignGoalAmount, getCampaignRaisedAmount } from "@/lib/campaign-fundraising";
+import { useCurrency } from "@/lib/currency";
 
 type Appeal = {
   slug: string;
@@ -30,13 +32,13 @@ type Appeal = {
   expiresAt?: string | null;
 };
 
-const impactBySlug: Record<string, string> = {
-  gaza: "Feeds a family for 1 week",
-  orphans: "£30 sponsors a child / month",
-  water: "£250 builds a hand-pump well",
-  food: "£50 = 1 food parcel",
-  livelihood: "£100 funds a starter kit",
-  emergency: "Deployed within 72 hours",
+const impactTemplates: Record<string, (format: (n: number) => string) => string> = {
+  gaza: () => "Feeds a family for 1 week",
+  orphans: (f) => `${f(30)} sponsors a child / month`,
+  water: (f) => `${f(250)} builds a hand-pump well`,
+  food: (f) => `${f(50)} = 1 food parcel`,
+  livelihood: (f) => `${f(100)} funds a starter kit`,
+  emergency: () => "Deployed within 72 hours",
 };
 
 const impactByMode: Record<string, string> = {
@@ -52,13 +54,18 @@ function appealTag(c: Record<string, unknown>) {
   return String(c.category ?? c.tag ?? "Appeal");
 }
 
-function appealImpact(c: Record<string, unknown>) {
+function appealImpact(c: Record<string, unknown>, formatFromGbp: (n: number) => string) {
   const mode = String(c.campaignMode ?? "");
   if (impactByMode[mode]) return impactByMode[mode];
-  return impactBySlug[String(c.slug)] ?? "Your gift makes a difference";
+  const slug = String(c.slug);
+  const template = impactTemplates[slug];
+  return template ? template(formatFromGbp) : "Your gift makes a difference";
 }
 
-function mapCampaigns(items: Array<Record<string, unknown>>): Appeal[] {
+function mapCampaigns(
+  items: Array<Record<string, unknown>>,
+  formatFromGbp: (n: number) => string
+): Appeal[] {
   return items
     .filter((c): c is Record<string, unknown> => Boolean(c?.slug))
     .filter(
@@ -82,10 +89,10 @@ function mapCampaigns(items: Array<Record<string, unknown>>): Appeal[] {
     }),
     urgent: Boolean(c.isUrgent ?? c.urgent),
     featured: Boolean(c.isFeatured ?? c.featured),
-    raised: Number(c.raisedAmount ?? c.raised ?? 0),
-    goal: Number(c.goalAmount ?? c.goal ?? 1),
+    raised: getCampaignRaisedAmount(c),
+    goal: Math.max(getCampaignGoalAmount(c), 1),
     donors: Number(c.donorCount ?? c.donors ?? 0),
-    impact: appealImpact(c),
+    impact: appealImpact(c, formatFromGbp),
     expirationEnabled: Boolean(c.expirationEnabled),
     expiresAt: (c.expiresAt as string | null | undefined) ?? null,
   }));
@@ -182,6 +189,7 @@ const AppealCard = ({
 
 const FeaturedCampaigns = () => {
   const { data, isLoading, refetch } = useHomepageAppeals();
+  const { formatFromSource, formatMoney } = useCurrency();
   const [hiddenSlugs, setHiddenSlugs] = useState<Set<string>>(() => new Set());
 
   const handleExpired = useCallback(
@@ -194,8 +202,11 @@ const FeaturedCampaigns = () => {
 
   const sourceItems = (data?.items ?? []) as Array<Record<string, unknown>>;
   const appeals = useMemo(
-    () => mapCampaigns(sourceItems).filter((a) => !hiddenSlugs.has(a.slug)),
-    [sourceItems, hiddenSlugs]
+    () =>
+      mapCampaigns(sourceItems, (n) => formatFromSource(n, "GBP")).filter(
+        (a) => !hiddenSlugs.has(a.slug)
+      ),
+    [sourceItems, hiddenSlugs, formatFromSource]
   );
 
   if (isLoading) {
@@ -228,7 +239,8 @@ const FeaturedCampaigns = () => {
           <Shield className="w-3.5 h-3.5 text-accent-deep" /> 100% Donation Policy
         </div>
         <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-secondary text-secondary-foreground text-xs font-semibold">
-          <TrendingUp className="w-3.5 h-3.5 text-accent-deep" /> £1.4M+ raised this year
+          <TrendingUp className="w-3.5 h-3.5 text-accent-deep" />{" "}
+          {formatMoney(1_400_000, { from: "GBP", compact: true })}+ raised this year
         </div>
         <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-secondary text-secondary-foreground text-xs font-semibold">
           <Users className="w-3.5 h-3.5 text-accent-deep" /> 28k+ donors

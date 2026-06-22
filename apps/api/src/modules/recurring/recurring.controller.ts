@@ -3,6 +3,7 @@ import { routeParam } from "../../helper/requestParams.js";
 import { AppDataSource } from "../../helper/connectDB.js";
 import { RecurringDonation } from "../../components/recurringDonation/recurringDonation.entity.js";
 import { ensureDonorUserForDonation } from "../user-auth/userAuth.service.js";
+import { resolveCampaignId } from "../campaigns/resolveCampaignId.js";
 import {
   pauseStripeSubscription,
   resumeStripeSubscription,
@@ -88,7 +89,7 @@ export async function createRecurringDonation(req: Request, res: Response) {
   try {
     const {
       donorName, donorEmail, amount, currency, frequency,
-      campaignId, paymentMethod, giftAid,
+      campaignId, campaignSlug, paymentMethod, giftAid,
       stripeSubscriptionId, stripeCustomerId, paypalSubscriptionId,
     } = req.body;
 
@@ -112,6 +113,8 @@ export async function createRecurringDonation(req: Request, res: Response) {
       existingUserId: authUserId,
     });
 
+    const resolvedCampaignId = await resolveCampaignId(campaignId, campaignSlug);
+
     const recurring = repo().create({
       userId: donorUser.id,
       donorName,
@@ -119,7 +122,7 @@ export async function createRecurringDonation(req: Request, res: Response) {
       amount,
       currency: currency || "GBP",
       frequency: frequency || "monthly",
-      campaignId,
+      campaignId: resolvedCampaignId,
       paymentMethod: paymentMethod || "stripe",
       giftAid: giftAid || false,
       stripeSubscriptionId,

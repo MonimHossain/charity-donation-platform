@@ -304,7 +304,7 @@ export function CampaignDetailLayout({
                       </div>
                     </div>
                     <p className="font-serif text-xl text-primary whitespace-nowrap">
-                      {formatMoney(Number(d.amount), { from: d.currency, decimals: 2 })}
+                      {formatMoney(Number(d.amount), { from: d.currency })}
                     </p>
                   </div>
                 </div>

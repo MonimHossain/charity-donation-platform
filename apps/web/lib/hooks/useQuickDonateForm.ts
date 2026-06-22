@@ -5,12 +5,22 @@ import { useRouter } from "next/navigation";
 import { useQuickDonateConfig } from "@/lib/data/cms";
 import type { QuickDonateOption } from "@/lib/quick-donate";
 import { defaultQuickDonateAmount } from "@/lib/quick-donate";
-import { getCurrencyCode } from "@/lib/currency";
+import { convertAmount, getCurrencyCode, useCurrency } from "@/lib/currency";
 
 export type QuickDonateFrequency = "single" | "monthly";
 
+export type QuickDonateDisplayPrice = {
+  amount: number;
+  sortOrder: number;
+  /** Original GBP preset from admin config */
+  gbpAmount: number;
+  /** Converted amount in the user's selected display currency */
+  displayAmount: number;
+};
+
 export function useQuickDonateForm(initialCampaignSlug?: string) {
   const router = useRouter();
+  const { code: displayCurrency } = useCurrency();
   const { data: config, isLoading } = useQuickDonateConfig();
   const options = config?.options ?? [];
   const categories = config?.settings.donationCategories ?? [];
@@ -54,7 +64,22 @@ export function useQuickDonateForm(initialCampaignSlug?: string) {
     options.find((o) => o.id === selectedOptionId) ?? options[0] ?? null;
 
   const prices = selectedOption?.prices ?? [];
-  const finalAmount = Number(custom) || amount;
+
+  const displayPrices: QuickDonateDisplayPrice[] = useMemo(
+    () =>
+      [...prices]
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map((p) => ({
+          ...p,
+          gbpAmount: p.amount,
+          displayAmount: convertAmount(p.amount, "GBP", displayCurrency),
+        })),
+    [prices, displayCurrency]
+  );
+
+  /** Selected preset in GBP (admin source of truth) */
+  const displayAmount = convertAmount(amount, "GBP", displayCurrency);
+  const finalAmount = Number(custom) || displayAmount;
 
   const selectOption = (optionId: string) => {
     setSelectedOptionId(optionId);
@@ -88,6 +113,9 @@ export function useQuickDonateForm(initialCampaignSlug?: string) {
     if (selectedOption.campaignId) {
       params.set("campaign", selectedOption.campaignId);
     }
+    if (selectedOption.campaignSlug) {
+      params.set("campaignSlug", selectedOption.campaignSlug);
+    }
     router.push(`/donate?${params.toString()}`);
   };
 
@@ -104,6 +132,8 @@ export function useQuickDonateForm(initialCampaignSlug?: string) {
     amount,
     custom,
     prices,
+    displayPrices,
+    displayAmount,
     finalAmount,
     setCategory,
     setFreq,

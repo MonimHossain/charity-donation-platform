@@ -12,6 +12,7 @@ import {
   Menu,
   X,
   Loader2,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fetchUserProfile, userLogout } from "@/lib/api";
@@ -25,6 +26,7 @@ interface UserProfile {
 const NAV_ITEMS = [
   { href: "/account", label: "Dashboard", icon: LayoutDashboard },
   { href: "/account/history", label: "Donation History", icon: History },
+  { href: "/account/automated", label: "Automated Donations", icon: Sparkles },
   { href: "/account/recurring", label: "Recurring Donations", icon: Repeat },
 ];
 
@@ -119,7 +121,9 @@ export default function AccountLayout({
             )}
 
             {NAV_ITEMS.map((item) => {
-              const active = pathname === item.href;
+              const active =
+                pathname === item.href ||
+                (item.href !== "/account" && pathname.startsWith(item.href));
               return (
                 <Link
                   key={item.href}

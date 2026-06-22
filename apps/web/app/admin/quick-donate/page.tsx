@@ -491,7 +491,8 @@ export default function QuickDonateAdminPage() {
                   ))}
                 </select>
                 <p className="text-xs text-muted-foreground">
-                  Optional. Selecting a campaign routes donations to that appeal.
+                  Donations through this option are credited to the linked campaign&apos;s raised total
+                  on the public campaigns list after payment succeeds.
                 </p>
               </div>
 

@@ -79,6 +79,10 @@ export class SiteSettings {
     minimumDonation?: number;
   };
 
+  /** Exchange rates from GBP (1 GBP = rate in target currency). */
+  @Column({ type: "json", default: {} })
+  currencyRates!: Record<string, number>;
+
   @CreateDateColumn()
   createdAt!: Date;
 

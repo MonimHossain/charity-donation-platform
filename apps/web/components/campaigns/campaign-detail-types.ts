@@ -76,6 +76,8 @@ export interface CheckoutSettings {
   enableComments: boolean;
   enableUpsell: boolean;
   enableFeeCoverage: boolean;
+  enableAdminSavesLife: boolean;
+  adminSavesLifeAmount: number;
 }
 
 export interface SeoSettings {

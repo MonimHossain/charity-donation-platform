@@ -114,6 +114,8 @@ export interface CheckoutSettings {
   enableComments: boolean;
   enableUpsell: boolean;
   enableFeeCoverage: boolean;
+  enableAdminSavesLife: boolean;
+  adminSavesLifeAmount: number;
 }
 
 export interface VisibilitySettings {
@@ -255,6 +257,8 @@ export class Campaign {
       enableComments: false,
       enableUpsell: false,
       enableFeeCoverage: false,
+      enableAdminSavesLife: false,
+      adminSavesLifeAmount: 0,
     },
   })
   checkoutSettings!: CheckoutSettings;

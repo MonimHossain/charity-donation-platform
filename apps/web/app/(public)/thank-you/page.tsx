@@ -5,22 +5,17 @@ import Link from "next/link";
 import {
   CheckCircle2,
   Share2,
-  Facebook,
-  Twitter,
   Download,
   Heart,
   UserPlus,
-  Copy,
-  MessageCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { statTotalClass } from "@/lib/home-buttons";
 import { CURRENCIES, type CurrencyCode } from "@/lib/currency";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { trackEvent } from "@/components/analytics/GTMScript";
-import { fetchDonationReceipt } from "@/lib/api";
 import { USE_MOCK_DATA } from "@/lib/config";
+import ShareSheet from "@/components/sharing/ShareSheet";
 
 export default function ThankYouPage() {
   const params = useSearchParams();
@@ -35,8 +30,12 @@ export default function ThankYouPage() {
   const installmentCount = params.get("installmentCount");
   const installmentAmount = params.get("installmentAmount");
   const isRamadanSplit = frequency === "ramadan_split";
-  const [copied, setCopied] = useState(false);
-  const [receiptLoading, setReceiptLoading] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareUrl, setShareUrl] = useState("");
+
+  useEffect(() => {
+    setShareUrl(`${window.location.origin}/donate`);
+  }, []);
 
   useEffect(() => {
     trackEvent("donation_complete", {
@@ -55,31 +54,11 @@ export default function ThankYouPage() {
     ? (Number(amount) + Number(amount) * 0.25).toFixed(2)
     : Number(amount).toFixed(2);
 
-  const shareUrl = typeof window !== "undefined" ? window.location.origin + "/donate" : "";
-  const shareText = `I just donated ${currencyInfo.symbol}${amount} to make a difference! Join me and support this amazing cause.`;
-
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(shareUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleDownloadReceipt = async () => {
-    if (!donationId || USE_MOCK_DATA) return;
-    setReceiptLoading(true);
-    try {
-      const receipt = await fetchDonationReceipt(donationId);
-      const blob = new Blob([JSON.stringify(receipt, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `receipt-${receipt.receiptNumber || donationId}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } finally {
-      setReceiptLoading(false);
-    }
-  };
+  const shareText = useMemo(
+    () =>
+      `I just donated ${currencyInfo.symbol}${total} to make a difference! Join me and support this amazing cause.`,
+    [currencyInfo.symbol, total]
+  );
 
   return (
     <section className="min-h-[80vh] flex items-center justify-center py-12 px-6">
@@ -162,38 +141,24 @@ export default function ThankYouPage() {
           <p className="text-sm font-semibold text-muted-foreground flex items-center justify-center gap-2 mb-4">
             <Share2 className="w-4 h-4" /> Share your generosity &amp; inspire others
           </p>
-          <div className="flex flex-wrap justify-center gap-3">
-            <a
-              href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#1877F2] text-white text-sm font-semibold hover:opacity-90 transition-opacity"
-            >
-              <Facebook className="w-4 h-4" /> Facebook
-            </a>
-            <a
-              href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-foreground text-background text-sm font-semibold hover:opacity-90 transition-opacity"
-            >
-              <Twitter className="w-4 h-4" /> X / Twitter
-            </a>
-            <a
-              href={`https://wa.me/?text=${encodeURIComponent(shareText + " " + shareUrl)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#25D366] text-white text-sm font-semibold hover:opacity-90 transition-opacity"
-            >
-              <MessageCircle className="w-4 h-4" /> WhatsApp
-            </a>
-            <button
-              onClick={handleCopyLink}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-secondary text-secondary-foreground text-sm font-semibold hover:bg-secondary/80 transition-colors"
-            >
-              <Copy className="w-4 h-4" /> {copied ? "Copied!" : "Copy Link"}
-            </button>
-          </div>
+          <Button
+            type="button"
+            size="lg"
+            variant="outline"
+            className="rounded-full gap-2 px-8"
+            onClick={() => setShareOpen(true)}
+          >
+            <Share2 className="w-4 h-4" />
+            Share your donation
+          </Button>
+          <ShareSheet
+            open={shareOpen}
+            onOpenChange={setShareOpen}
+            title="Share your impact"
+            description="Thank you for giving — help others discover this cause without leaving this page."
+            shareText={shareText}
+            shareUrl={shareUrl || "/donate"}
+          />
         </div>
 
         {/* Actions */}
@@ -201,16 +166,17 @@ export default function ThankYouPage() {
           className="flex flex-col sm:flex-row justify-center gap-3 animate-fade-up"
           style={{ animationDelay: "0.6s" }}
         >
-          <Button
-            variant="outline"
-            size="lg"
-            className="rounded-full gap-2"
-            disabled={!donationId || USE_MOCK_DATA || receiptLoading}
-            onClick={handleDownloadReceipt}
-          >
-            <Download className="w-4 h-4" />{" "}
-            {receiptLoading ? "Loading…" : "Download Receipt"}
-          </Button>
+          {donationId && !USE_MOCK_DATA ? (
+            <Button asChild variant="outline" size="lg" className="rounded-full gap-2">
+              <Link href={`/account/receipt/${donationId}`}>
+                <Download className="w-4 h-4" /> View Receipt
+              </Link>
+            </Button>
+          ) : (
+            <Button variant="outline" size="lg" className="rounded-full gap-2" disabled>
+              <Download className="w-4 h-4" /> View Receipt
+            </Button>
+          )}
           <Button asChild variant="default" size="lg" className="rounded-full gap-2">
             <Link href="/account">
               <UserPlus className="w-4 h-4" /> View My Dashboard

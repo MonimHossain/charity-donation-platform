@@ -217,7 +217,10 @@ export async function createBlogPost(req: Request, res: Response) {
       return res.status(400).json({ message: "Title and content are required" });
     }
 
-    const slug = await ensureUniqueSlug(title);
+    const { slug: slugInput } = req.body;
+    const slug = await ensureUniqueSlug(
+      typeof slugInput === "string" && slugInput.trim() ? slugInput.trim() : title
+    );
     const resolvedStatus = status || "draft";
     const post = repo().create({
       title,
@@ -260,6 +263,7 @@ export async function updateBlogPost(req: Request, res: Response) {
 
     const {
       title,
+      slug: slugInput,
       excerpt,
       content,
       featuredImage,
@@ -273,9 +277,14 @@ export async function updateBlogPost(req: Request, res: Response) {
       publishedAt,
     } = req.body;
 
-    if (title && title !== post.title) {
-      post.slug = await ensureUniqueSlug(title, post.id);
-      post.title = title;
+    if (title !== undefined) post.title = title;
+
+    if (slugInput !== undefined) {
+      const nextSlug =
+        typeof slugInput === "string" && slugInput.trim()
+          ? slugInput.trim()
+          : post.title;
+      post.slug = await ensureUniqueSlug(nextSlug, post.id);
     }
 
     if (excerpt !== undefined) post.excerpt = excerpt;

@@ -20,7 +20,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { statTotalClass } from "@/lib/home-buttons";
-import { CURRENCIES, convertAmount, normalizeCurrencyCode } from "@/lib/currency";
+import { CURRENCIES, ceilAmount, convertAmount, formatMoney, getCurrencySymbol, normalizeCurrencyCode, type CurrencyCode } from "@/lib/currency";
+import type { DonationCartItem } from "@/lib/stores/donationCartStore";
 import {
   createAutomatedSchedule,
   createDonation,
@@ -55,6 +56,21 @@ const DEDICATION_TYPES = [
   "As a gift to",
 ];
 
+function formatCartLineDescription(line: DonationCartItem, displayCurrency: CurrencyCode): string {
+  const fromCode = normalizeCurrencyCode(line.currency);
+  const converted = convertAmount(Number(line.amount || 0), fromCode, displayCurrency);
+  const displaySymbol = getCurrencySymbol(displayCurrency);
+  const fromSymbol = getCurrencySymbol(fromCode);
+  if (fromSymbol && line.description.includes(fromSymbol)) {
+    const escaped = fromSymbol.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return line.description.replace(
+      new RegExp(`${escaped}\\s?[\\d,]+(?:\\.\\d+)?`, "g"),
+      `${displaySymbol}${converted.toLocaleString()}`
+    );
+  }
+  return line.description;
+}
+
 function DonationCheckoutContent() {
   const router = useRouter();
   const { items, subtotal, currency, removeItem, clear } = useDonationCart();
@@ -71,6 +87,7 @@ function DonationCheckoutContent() {
   const [donorComment, setDonorComment] = useState("");
   const [giftAid, setGiftAid] = useState(false);
   const [selectedUpsellIds, setSelectedUpsellIds] = useState<Set<string>>(new Set());
+  const [adminSavesLife, setAdminSavesLife] = useState(false);
   const [showDedication, setShowDedication] = useState(false);
   const [dedicationType, setDedicationType] = useState(DEDICATION_TYPES[2]);
   const [dedicationName, setDedicationName] = useState("");
@@ -96,6 +113,8 @@ function DonationCheckoutContent() {
   }, [prefill]);
 
   const currencyInfo = CURRENCIES[currency as keyof typeof CURRENCIES] ?? CURRENCIES.GBP;
+  const displayCurrency = normalizeCurrencyCode(currency);
+  const campaignCurrency = normalizeCurrencyCode(items[0]?.currency ?? "GBP");
   const { checkoutSettings, upsells } = campaignConfig;
 
   const activeUpsells = useMemo(
@@ -125,9 +144,25 @@ function DonationCheckoutContent() {
     () =>
       checkoutUpsellOptions
         .filter((u) => selectedUpsellIds.has(u.id))
-        .reduce((sum, u) => sum + Number(u.amount || 0), 0),
-    [checkoutUpsellOptions, selectedUpsellIds]
+        .reduce(
+          (sum, u) =>
+            sum + convertAmount(Number(u.amount || 0), campaignCurrency, displayCurrency),
+          0
+        ),
+    [checkoutUpsellOptions, selectedUpsellIds, campaignCurrency, displayCurrency]
   );
+
+  const adminSavesLifeAmount = useMemo(() => {
+    if (!checkoutSettings.enableAdminSavesLife) return 0;
+    return Math.max(0, Number(checkoutSettings.adminSavesLifeAmount) || 0);
+  }, [checkoutSettings.enableAdminSavesLife, checkoutSettings.adminSavesLifeAmount]);
+
+  const showAdminSavesLife = adminSavesLifeAmount > 0;
+
+  const adminSavesLifeTotal = useMemo(() => {
+    if (!adminSavesLife || !showAdminSavesLife) return 0;
+    return convertAmount(adminSavesLifeAmount, campaignCurrency, displayCurrency);
+  }, [adminSavesLife, showAdminSavesLife, adminSavesLifeAmount, campaignCurrency, displayCurrency]);
 
   const ramadanSummary = useMemo(() => summarizeRamadanCheckout(items), [items]);
 
@@ -144,17 +179,61 @@ function DonationCheckoutContent() {
     [items, currency]
   );
 
-  const ramadanCheckoutCharge = useMemo(
-    () => ramadanSummary.checkoutChargeAmount,
-    [ramadanSummary.checkoutChargeAmount]
-  );
+  const ramadanCheckoutCharge = useMemo(() => {
+    if (!ramadanSummary.hasRamadanSplit) return 0;
+    return items
+      .filter((i) => isRamadanSplitCartLine(i))
+      .reduce((sum, line) => {
+        const installments = [...getRamadanInstallmentsFromLine(line)].sort((a, b) =>
+          a.scheduledDate.localeCompare(b.scheduledDate)
+        );
+        const first = installments[0];
+        if (!first) return sum;
+        return (
+          sum +
+          convertAmount(
+            Number(first.amount || 0),
+            normalizeCurrencyCode(first.currency || line.currency),
+            displayCurrency
+          )
+        );
+      }, 0);
+  }, [items, displayCurrency, ramadanSummary.hasRamadanSplit]);
 
-  const donationAmount = subtotal + upsellTotal;
-  const chargeAmount = nonRamadanSubtotal + upsellTotal + ramadanCheckoutCharge;
+  const ramadanDisplay = useMemo(() => {
+    if (!ramadanSummary.hasRamadanSplit) return null;
+    let firstNight = 0;
+    let total = 0;
+    for (const line of items.filter((i) => isRamadanSplitCartLine(i))) {
+      const lineCurrency = normalizeCurrencyCode(line.currency);
+      const installments = [...getRamadanInstallmentsFromLine(line)].sort((a, b) =>
+        a.scheduledDate.localeCompare(b.scheduledDate)
+      );
+      const first = installments[0];
+      total += convertAmount(Number(line.amount || 0), lineCurrency, displayCurrency);
+      if (first) {
+        firstNight += convertAmount(
+          Number(first.amount || 0),
+          normalizeCurrencyCode(first.currency || line.currency),
+          displayCurrency
+        );
+      }
+    }
+    return {
+      firstNight,
+      total,
+      future: Math.max(0, total - firstNight),
+    };
+  }, [items, displayCurrency, ramadanSummary.hasRamadanSplit]);
+
+  const donationAmount = ceilAmount(subtotal + upsellTotal + adminSavesLifeTotal);
+  const chargeAmount = ceilAmount(
+    nonRamadanSubtotal + upsellTotal + adminSavesLifeTotal + ramadanCheckoutCharge
+  );
 
   const giftAidBoost =
     giftAid && isGiftAidCheckoutEnabled(checkoutSettings)
-      ? +(chargeAmount * 0.25).toFixed(2)
+      ? Math.ceil(chargeAmount * 0.25)
       : 0;
   const charityValue = donationAmount + giftAidBoost;
 
@@ -192,6 +271,10 @@ function DonationCheckoutContent() {
       cancelled = true;
     };
   }, [cartConfigKey, items]);
+
+  useEffect(() => {
+    if (!showAdminSavesLife) setAdminSavesLife(false);
+  }, [showAdminSavesLife]);
 
   useEffect(() => {
     if (configLoading) return;
@@ -283,6 +366,21 @@ function DonationCheckoutContent() {
 
   const isCartRecurring = isRecurringFrequency(checkoutFrequency);
 
+  const stripePaymentMode = useMemo((): "payment" | "setup" => {
+    if (
+      ramadanSummary.hasRamadanSplit &&
+      pendingAutomatedScheduleIds.length > 0 &&
+      ramadanSummary.checkoutChargeAmount <= 0
+    ) {
+      return "setup";
+    }
+    return "payment";
+  }, [
+    pendingAutomatedScheduleIds.length,
+    ramadanSummary.checkoutChargeAmount,
+    ramadanSummary.hasRamadanSplit,
+  ]);
+
   const redirectToThankYou = (donationId?: string) => {
     clear();
     const summaryParams = new URLSearchParams({
@@ -357,13 +455,19 @@ function DonationCheckoutContent() {
       const upsellSummary = [
         ...cartSelectedUpsells.map(
           (u) =>
-            `${u.name || u.label || "Upsell"} (${currencyInfo.symbol}${Number(u.amount || 0).toFixed(2)})`
+            `${u.name || u.label || "Upsell"} (${formatMoney(Number(u.amount || 0), {
+              from: campaignCurrency,
+              code: displayCurrency,
+            })})`
         ),
         ...checkoutUpsellOptions
           .filter((u) => selectedUpsellIds.has(u.id))
           .map(
             (u) =>
-              `${u.name || u.label || "Upsell"} (${currencyInfo.symbol}${Number(u.amount || 0).toFixed(2)})`
+              `${u.name || u.label || "Upsell"} (${formatMoney(Number(u.amount || 0), {
+                from: campaignCurrency,
+                code: displayCurrency,
+              })})`
           ),
       ].join(", ");
 
@@ -383,6 +487,7 @@ function DonationCheckoutContent() {
           currency,
           frequency: checkoutFrequency,
           campaignId: primary?.campaignId,
+          campaignSlug: primary?.campaignSlug || (!primary?.campaignId ? primary?.donationPageSlug : undefined),
           paymentMethod: "stripe",
           giftAid,
         });
@@ -390,9 +495,9 @@ function DonationCheckoutContent() {
       }
 
       const ramadanMessage = ramadanSummary.hasRamadanSplit
-        ? `Ramadan split — ${currencyInfo.symbol}${donationAmount.toFixed(2)} across ${ramadanSummary.installmentCount} nights` +
+        ? `Ramadan split — ${formatMoney(donationAmount, { code: displayCurrency })} across ${ramadanSummary.installmentCount} nights` +
           (ramadanCheckoutCharge > 0
-            ? ` · First night ${currencyInfo.symbol}${ramadanCheckoutCharge.toFixed(2)}`
+            ? ` · First night ${formatMoney(ramadanCheckoutCharge, { code: displayCurrency })}`
             : " · Card saved for scheduled nights")
         : "";
 
@@ -407,6 +512,8 @@ function DonationCheckoutContent() {
         donorEmail,
         donorPhone: donorPhone || undefined,
         campaignId: primary?.campaignId,
+        campaignSlug:
+          primary?.campaignSlug || (!primary?.campaignId ? primary?.donationPageSlug : undefined),
         quantity: 1,
         unitPrice: chargeAmount,
         automatedScheduleId: primaryScheduleId,
@@ -414,6 +521,9 @@ function DonationCheckoutContent() {
           `Donation cart: ${cartSummary}`,
           ramadanMessage,
           upsellSummary ? `Upsells: ${upsellSummary}` : "",
+          adminSavesLifeTotal > 0
+            ? `Admin Saves Life: ${formatMoney(adminSavesLifeTotal, { code: displayCurrency })}`
+            : "",
           donorComment.trim() ? `Comment: ${donorComment.trim()}` : "",
         ]
           .filter(Boolean)
@@ -438,12 +548,15 @@ function DonationCheckoutContent() {
       setSubmitting(false);
     }
   }, [
+    adminSavesLifeTotal,
+    campaignCurrency,
     cartSelectedUpsells,
     chargeAmount,
     checkoutSettings.enableDedication,
     checkoutFrequency,
     checkoutUpsellOptions,
     createRamadanSchedules,
+    displayCurrency,
     donationAmount,
     ramadanCheckoutCharge,
     ramadanSummary.hasRamadanSplit,
@@ -523,6 +636,8 @@ function DonationCheckoutContent() {
           {flowStep === "gift-aid" && showGiftAidStep && (
             <CheckoutGiftAidStep
               currencySymbol={currencyInfo.symbol}
+              displayCurrency={displayCurrency}
+              sourceCurrency={campaignCurrency}
               donationAmount={donationAmount}
               giftAid={giftAid}
               onGiftAidChange={setGiftAid}
@@ -611,9 +726,39 @@ function DonationCheckoutContent() {
                     upsells={checkoutUpsellOptions}
                     selectedUpsellIds={selectedUpsellIds}
                     currencySymbol={currencyInfo.symbol}
+                    displayCurrency={displayCurrency}
+                    sourceCurrency={campaignCurrency}
                     onToggleUpsell={toggleUpsell}
                   />
                 </div>
+              )}
+
+              {showAdminSavesLife && (
+                <label className="flex items-start gap-3 rounded-2xl border border-border bg-secondary/30 px-4 py-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={adminSavesLife}
+                    onChange={(e) => setAdminSavesLife(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 accent-accent rounded shrink-0"
+                  />
+                  <span className="text-sm flex-1">
+                    <span className="font-semibold text-primary">Admin Saves Life</span>
+                    <span className="block text-xs text-muted-foreground mt-0.5">
+                      Add{" "}
+                      {formatMoney(
+                        convertAmount(adminSavesLifeAmount, campaignCurrency, displayCurrency),
+                        { code: displayCurrency }
+                      )}{" "}
+                      to your donation.
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-sm font-bold text-accent tabular-nums">
+                    {formatMoney(
+                      convertAmount(adminSavesLifeAmount, campaignCurrency, displayCurrency),
+                      { code: displayCurrency }
+                    )}
+                  </span>
+                </label>
               )}
 
               {checkoutSettings.enableDedication && (
@@ -702,8 +847,9 @@ function DonationCheckoutContent() {
                   <span className="text-sm">
                     <span className="font-semibold text-primary">Make this a monthly gift</span>
                     <span className="block text-xs text-muted-foreground mt-0.5">
-                      Sandbox test — charges {currencyInfo.symbol}
-                      {chargeAmount.toFixed(2)} every month until cancelled.
+                      Sandbox test — charges{" "}
+                      {formatMoney(chargeAmount, { code: displayCurrency })} every month until
+                      cancelled.
                     </span>
                   </span>
                 </label>
@@ -829,7 +975,7 @@ function DonationCheckoutContent() {
                     campaignId={items[0]?.campaignId}
                     stripeCustomerId={stripeCustomer?.customerId}
                     customerSessionClientSecret={stripeCustomer?.customerSessionClientSecret}
-                    paymentMode="payment"
+                    paymentMode={stripePaymentMode}
                     automatedScheduleIds={pendingAutomatedScheduleIds}
                     ramadanCommitmentTotal={ramadanSummary.hasRamadanSplit ? donationAmount : undefined}
                     ramadanFirstInstallmentAmount={
@@ -872,32 +1018,44 @@ function DonationCheckoutContent() {
                 >
                   <div className="min-w-0">
                     <p className="font-semibold text-primary truncate">{line.title}</p>
-                    <p className="text-sm text-muted-foreground mt-0.5">{line.description}</p>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      {formatCartLineDescription(line, displayCurrency)}
+                    </p>
                     <p className="text-sm font-bold text-accent-deep mt-1 tabular-nums">
                       {isRamadanSplitCartLine(line) ? (
                         (() => {
                           const installments = [...getRamadanInstallmentsFromLine(line)].sort(
                             (a, b) => a.scheduledDate.localeCompare(b.scheduledDate)
                           );
-                          const perNight = Number(installments[0]?.amount ?? 0);
+                          const first = installments[0];
+                          const perNight = first
+                            ? convertAmount(
+                                Number(first.amount ?? 0),
+                                normalizeCurrencyCode(first.currency || line.currency),
+                                displayCurrency
+                              )
+                            : 0;
+                          const lineTotal = convertAmount(
+                            Number(line.amount || 0),
+                            normalizeCurrencyCode(line.currency),
+                            displayCurrency
+                          );
                           return (
                             <>
-                              {currencyInfo.symbol}
-                              {perNight.toFixed(2)}
+                              {formatMoney(perNight, { code: displayCurrency })}
                               <span className="text-muted-foreground font-normal"> / night</span>
                               <span className="block text-[11px] font-normal text-muted-foreground">
-                                {currencyInfo.symbol}
-                                {Number(line.amount).toFixed(2)} total · {line.ramadan?.nights ?? 0}{" "}
-                                nights
+                                {formatMoney(lineTotal, { code: displayCurrency })} total ·{" "}
+                                {line.ramadan?.nights ?? 0} nights
                               </span>
                             </>
                           );
                         })()
                       ) : (
-                        <>
-                          {currencyInfo.symbol}
-                          {Number(line.amount).toFixed(2)}
-                        </>
+                        formatMoney(Number(line.amount || 0), {
+                          from: line.currency,
+                          code: displayCurrency,
+                        })
                       )}
                     </p>
                   </div>
@@ -925,11 +1083,21 @@ function DonationCheckoutContent() {
                     )}
                   </div>
                   <span className="font-semibold tabular-nums shrink-0">
-                    {currencyInfo.symbol}
-                    {Number(u.amount || 0).toFixed(2)}
+                    {formatMoney(Number(u.amount || 0), {
+                      from: campaignCurrency,
+                      code: displayCurrency,
+                    })}
                   </span>
                 </div>
               )
+            )}
+            {adminSavesLifeTotal > 0 && (
+              <div className="flex items-center justify-between rounded-xl border border-border px-4 py-3 text-sm gap-3">
+                <p className="font-medium">Admin Saves Life</p>
+                <span className="font-semibold tabular-nums shrink-0">
+                  {formatMoney(adminSavesLifeTotal, { code: displayCurrency })}
+                </span>
+              </div>
             )}
           </div>
 
@@ -943,32 +1111,29 @@ function DonationCheckoutContent() {
           )}
 
           <div className="rounded-3xl gradient-plum text-primary-foreground p-6 lg:p-8 shadow-lift">
-            {ramadanSummary.hasRamadanSplit ? (
+            {ramadanSummary.hasRamadanSplit && ramadanDisplay ? (
               <>
                 <p className="text-xs uppercase tracking-widest text-accent font-bold">
                   First night · {currency}
                 </p>
                 <p className={`${statTotalClass} mt-1`}>
-                  {currencyInfo.symbol}
-                  {ramadanSummary.firstInstallmentAmount.toFixed(2)}
+                  {formatMoney(ramadanDisplay.firstNight, { code: displayCurrency })}
                 </p>
                 <p className="text-sm text-primary-foreground/85 mt-2">
-                  {currencyInfo.symbol}
-                  {donationAmount.toFixed(2)} total across {ramadanSummary.installmentCount} nights
+                  {formatMoney(ramadanDisplay.total, { code: displayCurrency })} total across{" "}
+                  {ramadanSummary.installmentCount} nights
                 </p>
                 <p className="text-sm text-primary-foreground/90 mt-3 font-semibold">
-                  Due today: {currencyInfo.symbol}
-                  {chargeAmount.toFixed(2)}
+                  Due today: {formatMoney(chargeAmount, { code: displayCurrency })}
                   <span className="block text-xs font-normal text-primary-foreground/75 mt-0.5">
                     Night 1 of {ramadanSummary.installmentCount} · saved card used for remaining
                     nights
                   </span>
                 </p>
-                {ramadanSummary.futureInstallmentTotal > 0 && (
+                {ramadanDisplay.future > 0 && (
                   <p className="text-xs text-primary-foreground/75 mt-1">
-                    {currencyInfo.symbol}
-                    {ramadanSummary.futureInstallmentTotal.toFixed(2)} charged automatically on nights
-                    2–{ramadanSummary.installmentCount}
+                    {formatMoney(ramadanDisplay.future, { code: displayCurrency })} charged
+                    automatically on nights 2–{ramadanSummary.installmentCount}
                   </p>
                 )}
               </>
@@ -976,16 +1141,14 @@ function DonationCheckoutContent() {
               <>
                 <p className="text-xs uppercase tracking-widest text-accent font-bold">You pay · {currency}</p>
                 <p className={`${statTotalClass} mt-1`}>
-                  {currencyInfo.symbol}
-                  {chargeAmount.toFixed(2)}
+                  {formatMoney(chargeAmount, { code: displayCurrency })}
                 </p>
               </>
             )}
             {giftAid && giftAidBoost > 0 && (
               <p className="text-sm text-primary-foreground/80 mt-2">
-                Charity receives {currencyInfo.symbol}
-                {charityValue.toFixed(2)} with Gift Aid (+{currencyInfo.symbol}
-                {giftAidBoost.toFixed(2)} at no extra cost)
+                Charity receives {formatMoney(charityValue, { code: displayCurrency })} with Gift Aid
+                (+{formatMoney(giftAidBoost, { code: displayCurrency })} at no extra cost)
               </p>
             )}
             {isCartRecurring && (

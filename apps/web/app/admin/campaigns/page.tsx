@@ -120,6 +120,8 @@ interface CheckoutSettings {
   enableComments: boolean;
   enableUpsell: boolean;
   enableFeeCoverage: boolean;
+  enableAdminSavesLife: boolean;
+  adminSavesLifeAmount: number;
 }
 
 interface VisibilitySettings {
@@ -288,6 +290,8 @@ const defaultForm: CampaignForm = {
     enableComments: false,
     enableUpsell: false,
     enableFeeCoverage: false,
+    enableAdminSavesLife: false,
+    adminSavesLifeAmount: 0,
   },
   visibilitySettings: { showInHeader: false, showOnHomepage: false, pinToTop: false, headerDisplayName: "" },
   paymentGateways: ["stripe"],
@@ -1095,19 +1099,20 @@ export default function CampaignsPage() {
                     }
                   />
                   <div className="space-y-2 max-w-xs">
-                    <Label>Max nights</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={30}
-                      value={ramadanConfig.maxNights ?? 30}
+                    <Label>Total Ramadan Nights</Label>
+                    <select
+                      value={ramadanConfig.maxNights === 29 ? 29 : 30}
                       onChange={(e) =>
                         setForm((p) => ({
                           ...p,
                           experienceConfig: { ...ramadanConfig, maxNights: Number(e.target.value) },
                         }))
                       }
-                    />
+                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    >
+                      <option value={30}>30 days</option>
+                      <option value={29}>29 days</option>
+                    </select>
                   </div>
                 </div>
               )}
@@ -1431,6 +1436,48 @@ export default function CampaignsPage() {
                 checked={form.checkoutSettings.enableFeeCoverage}
                 onChange={(v) => setForm((p) => ({ ...p, checkoutSettings: { ...p.checkoutSettings, enableFeeCoverage: v } }))}
               />
+              <SwitchRow
+                label="Admin Saves Life"
+                checked={form.checkoutSettings.enableAdminSavesLife}
+                onChange={(v) =>
+                  setForm((p) => ({
+                    ...p,
+                    checkoutSettings: {
+                      ...p.checkoutSettings,
+                      enableAdminSavesLife: v,
+                      adminSavesLifeAmount: v ? p.checkoutSettings.adminSavesLifeAmount : 0,
+                    },
+                  }))
+                }
+              />
+              {form.checkoutSettings.enableAdminSavesLife && (
+                <div className="ml-0 rounded-xl border border-border bg-secondary/20 p-4">
+                  <Label htmlFor="admin-saves-life-amount" className="text-sm font-medium">
+                    Set the amount
+                  </Label>
+                  <Input
+                    id="admin-saves-life-amount"
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    value={form.checkoutSettings.adminSavesLifeAmount || ""}
+                    onChange={(e) =>
+                      setForm((p) => ({
+                        ...p,
+                        checkoutSettings: {
+                          ...p.checkoutSettings,
+                          adminSavesLifeAmount: Math.max(0, Number(e.target.value) || 0),
+                        },
+                      }))
+                    }
+                    className="mt-2 h-10"
+                    placeholder="0.00"
+                  />
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Donors see this as an optional checkbox at checkout; when selected, the amount is added to their donation.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}

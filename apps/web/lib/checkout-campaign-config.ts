@@ -25,6 +25,8 @@ export const DEFAULT_CHECKOUT_SETTINGS: CheckoutSettings = {
   enableComments: false,
   enableUpsell: false,
   enableFeeCoverage: false,
+  enableAdminSavesLife: false,
+  adminSavesLifeAmount: 0,
 };
 
 export const DEFAULT_CAMPAIGN_CONFIG: CheckoutCampaignConfig = {
@@ -45,6 +47,8 @@ export function normalizeCheckoutSettings(raw?: Partial<CheckoutSettings> | null
     enableComments: asBool(raw.enableComments),
     enableUpsell: asBool(raw.enableUpsell),
     enableFeeCoverage: asBool(raw.enableFeeCoverage),
+    enableAdminSavesLife: asBool(raw.enableAdminSavesLife),
+    adminSavesLifeAmount: Math.max(0, Number(raw.adminSavesLifeAmount ?? 0) || 0),
   };
 }
 
@@ -59,6 +63,10 @@ function mergeCheckoutSettings(
     enableComments: base.enableComments || next.enableComments,
     enableUpsell: base.enableUpsell || next.enableUpsell,
     enableFeeCoverage: base.enableFeeCoverage || next.enableFeeCoverage,
+    enableAdminSavesLife: base.enableAdminSavesLife || next.enableAdminSavesLife,
+    adminSavesLifeAmount: next.enableAdminSavesLife
+      ? next.adminSavesLifeAmount
+      : base.adminSavesLifeAmount,
   };
 }
 

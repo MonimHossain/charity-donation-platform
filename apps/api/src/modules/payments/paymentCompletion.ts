@@ -1,11 +1,22 @@
 import { AppDataSource } from "../../helper/connectDB.js";
 import { Donation } from "../../components/donation/donation.entity.js";
 import { Campaign } from "../../components/campaign/campaign.entity.js";
+import type { FundraiserSettings } from "../../components/campaign/campaign.entity.js";
 import { sendDonationReceiptEmail } from "../../helper/mailer.js";
 import { ensureDonorUserForDonation, refreshUserDonationStats } from "../user-auth/userAuth.service.js";
 
 const donationRepo = () => AppDataSource.getRepository(Donation);
 const campaignRepo = () => AppDataSource.getRepository(Campaign);
+
+const DEFAULT_FUNDRAISER_SETTINGS: FundraiserSettings = {
+  targetAmount: 0,
+  raisedAmount: 0,
+  startDate: "",
+  endDate: "",
+  showProgressBar: true,
+  autoCloseAfterDeadline: false,
+  allowOverfunding: true,
+};
 
 async function sendReceiptEmailIfNeeded(donation: Donation): Promise<void> {
   if (donation.receiptEmailSent || !donation.donorEmail) return;
@@ -55,14 +66,15 @@ export async function completeDonation(donationId: string): Promise<Donation | n
   if (donation.campaignId) {
     const totalAmount = Number(donation.totalAmount);
     const campaign = await campaignRepo().findOne({ where: { id: donation.campaignId } });
-    if (campaign?.fundraiserSettings) {
-      const fs = { ...campaign.fundraiserSettings };
+    if (campaign) {
+      const fs: FundraiserSettings = {
+        ...DEFAULT_FUNDRAISER_SETTINGS,
+        ...campaign.fundraiserSettings,
+      };
       fs.raisedAmount = Number(fs.raisedAmount || 0) + totalAmount;
       campaign.fundraiserSettings = fs;
       campaign.donorCount = (campaign.donorCount || 0) + 1;
       await campaignRepo().save(campaign);
-    } else {
-      await campaignRepo().increment({ id: donation.campaignId }, "donorCount", 1);
     }
   }
 
