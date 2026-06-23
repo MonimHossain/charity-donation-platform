@@ -50,6 +50,11 @@ import {
   type RamadanSplitConfig,
 } from "@/lib/campaign-experience";
 import {
+  hasDuplicateAttributeSortOrders,
+  sortCampaignAttributes,
+  syncAttributeSortOrders,
+} from "@/lib/campaign-attributes";
+import {
   DEFAULT_REGULAR_PAYMENT_CONFIG,
   DEFAULT_SINGLE_PAYMENT_CONFIG,
   type PresetAmount,
@@ -242,15 +247,6 @@ function newAttribute(sortOrder = 0): CampaignAttribute {
   };
 }
 
-function syncAttributeSortOrders(attributes: CampaignAttribute[]): CampaignAttribute[] {
-  return attributes.map((attr, index) => ({ ...attr, sortOrder: index }));
-}
-
-function hasDuplicateAttributeSortOrders(attributes: CampaignAttribute[]): boolean {
-  const orders = attributes.map((a) => a.sortOrder);
-  return new Set(orders).size !== orders.length;
-}
-
 function newCustomField(): CustomField {
   return {
     id: uid(),
@@ -374,7 +370,7 @@ function buildWizardSteps(form: CampaignForm): WizardStep[] {
     steps.push({
       id: "attributes",
       title: "Donation options",
-      description: "Set preset amounts, payment types, and custom fields.",
+      description: "Set options, preset amounts, and display order (left to right on the donation page).",
     });
   }
 
@@ -445,7 +441,7 @@ function normalizeAttributePayment(attr: CampaignAttribute): CampaignAttribute {
 }
 
 function normalizeCampaignAttributes(attributes: CampaignAttribute[]) {
-  return attributes.map(normalizeAttributePayment);
+  return syncAttributeSortOrders(attributes.map(normalizeAttributePayment));
 }
 
 // ── Main Page ──
@@ -543,7 +539,8 @@ export default function CampaignsPage() {
       experienceConfig: (c as Campaign & { experienceConfig?: CampaignForm["experienceConfig"] }).experienceConfig
         ? { ...(c as Campaign & { experienceConfig?: CampaignForm["experienceConfig"] }).experienceConfig! }
         : {},
-      attributes: (c.attributes || []).map((attr) => {
+      attributes: syncAttributeSortOrders(
+        (c.attributes || []).map((attr) => {
         const normalized = normalizeAttributePayment(attr as CampaignAttribute);
         return {
           ...normalized,
@@ -562,7 +559,8 @@ export default function CampaignsPage() {
             options: [...field.options],
           })),
         };
-      }),
+      })
+      ),
       upsellIds: Array.isArray((c as Campaign & { upsellIds?: string[] }).upsellIds)
         ? [...((c as Campaign & { upsellIds?: string[] }).upsellIds || [])]
         : (c.upsells || []).map((u: { id?: string }) => u.id).filter(Boolean) as string[],
@@ -1249,7 +1247,8 @@ export default function CampaignsPage() {
               <div>
                 <h3 className="font-serif font-semibold text-lg">Campaign Attributes</h3>
                 <p className="text-sm text-muted-foreground">
-                  Each attribute defines a donation option with its own payment types, preset amounts, and custom fields.
+                  Each attribute is a donation option on the public campaign page. Use sort order (or the arrows) to
+                  control which option appears first in the inline row — lower numbers are further left.
                 </p>
               </div>
               <Button
@@ -1263,6 +1262,29 @@ export default function CampaignsPage() {
                 <Plus className="h-4 w-4" /> Add Attribute
               </Button>
             </div>
+
+            {form.attributes.length > 1 && (
+              <div className="rounded-lg border bg-muted/20 p-4 space-y-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Donor page tab order (left → right)
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {sortCampaignAttributes(form.attributes).map((attr, i) => (
+                    <span
+                      key={attr.id}
+                      className={cn(
+                        "px-3 py-1.5 rounded-full text-xs font-medium border",
+                        i === 0
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background text-foreground border-border"
+                      )}
+                    >
+                      {i + 1}. {attr.name || `Option ${i + 1}`}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {!isAttributesSkippedMode(form.campaignMode) && form.attributes.length === 0 && (
               <Alert className="border-amber-200 bg-amber-50 text-amber-950">
@@ -1281,9 +1303,9 @@ export default function CampaignsPage() {
             )}
 
             <div className="space-y-4">
-              {form.attributes.map((attr, ai) => {
+              {sortCampaignAttributes(form.attributes).map((attr, ai) => {
                 const duplicateSortOrder = form.attributes.some(
-                  (other, oi) => oi !== ai && other.sortOrder === attr.sortOrder
+                  (other) => other.id !== attr.id && other.sortOrder === attr.sortOrder
                 );
                 return (
                 <AttributeEditor
@@ -1295,19 +1317,22 @@ export default function CampaignsPage() {
                   onChange={(updated) =>
                     setForm((p) => ({
                       ...p,
-                      attributes: p.attributes.map((a, i) => (i === ai ? updated : a)),
+                      attributes: syncAttributeSortOrders(
+                        p.attributes.map((a) => (a.id === updated.id ? updated : a))
+                      ),
                     }))
                   }
                   onRemove={() =>
                     setForm((p) => ({
                       ...p,
-                      attributes: syncAttributeSortOrders(p.attributes.filter((_, i) => i !== ai)),
+                      attributes: syncAttributeSortOrders(p.attributes.filter((a) => a.id !== attr.id)),
                     }))
                   }
                   onMoveUp={() =>
                     setForm((p) => {
                       if (ai === 0) return p;
-                      const arr = [...p.attributes];
+                      const sorted = sortCampaignAttributes(p.attributes);
+                      const arr = [...sorted];
                       const prev = arr[ai - 1];
                       const curr = arr[ai];
                       if (prev && curr) {
@@ -1320,7 +1345,8 @@ export default function CampaignsPage() {
                   onMoveDown={() =>
                     setForm((p) => {
                       if (ai >= p.attributes.length - 1) return p;
-                      const arr = [...p.attributes];
+                      const sorted = sortCampaignAttributes(p.attributes);
+                      const arr = [...sorted];
                       const curr = arr[ai];
                       const next = arr[ai + 1];
                       if (curr && next) {
@@ -1967,11 +1993,17 @@ function AttributeEditor({
     <div className="rounded-xl border bg-background">
       <div className="flex items-center gap-2 p-4">
         <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
-        <button type="button" onClick={() => setExpanded(!expanded)} className="flex-1 text-left">
-          <span className="font-medium text-sm">
-            {attribute.name || `Attribute ${index + 1}`}
-          </span>
-          <span className="text-xs text-muted-foreground ml-2">
+        <button type="button" onClick={() => setExpanded(!expanded)} className="flex-1 text-left min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-medium text-sm">
+              {attribute.name || `Attribute ${index + 1}`}
+            </span>
+            <Badge variant="outline" className="text-[10px] font-normal shrink-0">
+              Position {index + 1} of {total}
+              {index === 0 ? " · first on site" : index === total - 1 ? " · last on site" : ""}
+            </Badge>
+          </div>
+          <span className="text-xs text-muted-foreground">
             {[
               attribute.enableSinglePayment && "Single",
               attribute.enableRegularPayment && "Regular",
@@ -2008,15 +2040,23 @@ function AttributeEditor({
               <Input value={attribute.name} onChange={(e) => update("name", e.target.value)} placeholder="e.g. Feed a Family" />
             </div>
             <div className="space-y-2">
-              <Label className="text-xs">Sort Order</Label>
+              <Label className="text-xs">Display position</Label>
               <Input
                 type="number"
-                value={attribute.sortOrder}
-                onChange={(e) => update("sortOrder", Number(e.target.value))}
+                min={1}
+                max={total}
+                value={attribute.sortOrder + 1}
+                onChange={(e) => {
+                  const position = Math.max(1, Math.min(total, Number(e.target.value) || 1));
+                  update("sortOrder", position - 1);
+                }}
                 className={duplicateSortOrder ? "border-destructive focus-visible:ring-destructive" : undefined}
               />
+              <p className="text-[11px] text-muted-foreground">
+                1 = leftmost tab on the donation page. Use the arrows above or change this number.
+              </p>
               {duplicateSortOrder && (
-                <p className="text-xs text-destructive">This sort order is already used by another attribute.</p>
+                <p className="text-xs text-destructive">This position is already used by another attribute.</p>
               )}
             </div>
           </div>

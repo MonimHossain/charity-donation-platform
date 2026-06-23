@@ -12,6 +12,7 @@ import { CampaignDonationExperience } from "@/components/campaigns/CampaignDonat
 import { CampaignDonationCard } from "@/components/campaigns/CampaignDonationCard";
 import { CampaignDetailLayout } from "@/components/campaigns/CampaignDetailLayout";
 import { isExperienceCampaignMode } from "@/lib/campaign-experience";
+import { sortCampaignAttributes } from "@/lib/campaign-attributes";
 import {
   CURRENCY_SYMBOLS,
   normalizeCampaignAttribute,
@@ -86,7 +87,9 @@ function CampaignDetailApi({ slug: slugProp }: { slug: string }) {
         const normalized = data
           ? {
               ...data,
-              attributes: (data.attributes || []).map(normalizeCampaignAttribute),
+              attributes: sortCampaignAttributes(
+                (data.attributes || []).map(normalizeCampaignAttribute)
+              ),
             }
           : null;
         setCampaign(normalized);

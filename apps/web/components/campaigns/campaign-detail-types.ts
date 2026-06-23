@@ -32,6 +32,7 @@ export interface CampaignAttribute {
   name: string;
   description: string;
   image: string;
+  sortOrder?: number;
   enableSinglePayment: boolean;
   enableRegularPayment: boolean;
   enableQuantity: boolean;
@@ -45,6 +46,7 @@ export interface CampaignAttribute {
 export function normalizeCampaignAttribute(attr: CampaignAttribute): CampaignAttribute {
   return {
     ...attr,
+    sortOrder: Number.isFinite(attr.sortOrder) ? Number(attr.sortOrder) : 0,
     singlePaymentConfig: normalizeSinglePaymentConfig(attr.singlePaymentConfig),
     regularPaymentConfig: normalizeRegularPaymentConfig(attr.regularPaymentConfig),
   };

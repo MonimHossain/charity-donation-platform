@@ -42,6 +42,7 @@ import {
   initPayTabsPayment,
 } from "@/lib/api";
 import { isRecurringFrequency, normalizeRecurringFrequency } from "@/lib/stripe-recurring";
+import { sortCampaignAttributes } from "@/lib/campaign-attributes";
 import { StripeCheckoutForm } from "@/components/payments/StripeCheckoutForm";
 import { PayPalCheckoutButton } from "@/components/payments/PayPalCheckoutButton";
 import {
@@ -64,6 +65,7 @@ interface CampaignPreset { amount: number; label: string; description?: string; 
 interface CampaignAttribute {
   name: string;
   description?: string;
+  sortOrder?: number;
   options?: Array<{ label: string; priceAdjustment?: number }>;
 }
 interface CampaignUpsell { label: string; type: "fixed" | "percentage" | "round-up"; value: number; description?: string; }
@@ -285,7 +287,14 @@ function DonatePageApi() {
   useEffect(() => {
     if (selectedCampaign) {
       const found = campaigns.find((c) => c.id === selectedCampaign);
-      setActiveCampaign(found || null);
+      setActiveCampaign(
+        found
+          ? {
+              ...found,
+              attributes: sortCampaignAttributes(found.attributes || []),
+            }
+          : null
+      );
       setQuantity(1);
       setAttributeSelections({});
       setSelectedUpsells(new Set());
