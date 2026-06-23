@@ -1,5 +1,13 @@
 import type { QuickDonateCampaignPayload } from "@/lib/quick-donate-campaign";
 
+export const QUICK_DONATE_CAMPAIGN_MODES = ["standard", "fundraiser", "ramadan_split"] as const;
+
+export type QuickDonateCampaignMode = (typeof QUICK_DONATE_CAMPAIGN_MODES)[number];
+
+export function isQuickDonateCampaignMode(mode: string | undefined | null): mode is QuickDonateCampaignMode {
+  return QUICK_DONATE_CAMPAIGN_MODES.includes(mode as QuickDonateCampaignMode);
+}
+
 export interface QuickDonatePrice {
   amount: number;
   sortOrder: number;

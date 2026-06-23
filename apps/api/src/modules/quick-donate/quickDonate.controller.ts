@@ -12,6 +12,7 @@ import { Campaign } from "../../components/campaign/campaign.entity.js";
 import { logAudit } from "../../helper/auditLog.js";
 import {
   campaignUsableInQuickDonate,
+  QUICK_DONATE_CAMPAIGN_REQUIREMENTS,
   serializeCampaignForQuickDonate,
 } from "./quickDonateCampaign.js";
 
@@ -127,8 +128,7 @@ export async function createQuickDonateOption(req: Request, res: Response) {
     }
     if (!campaignUsableInQuickDonate(campaignFields.campaign)) {
       return res.status(400).json({
-        message:
-          "Campaign must be published, not a fundraiser, and have at least one donation attribute with preset amounts",
+        message: QUICK_DONATE_CAMPAIGN_REQUIREMENTS,
       });
     }
 
@@ -169,8 +169,7 @@ export async function updateQuickDonateOption(req: Request, res: Response) {
       }
       if (!campaignUsableInQuickDonate(campaignFields.campaign)) {
         return res.status(400).json({
-          message:
-            "Campaign must be published, not a fundraiser, and have at least one donation attribute with preset amounts",
+          message: QUICK_DONATE_CAMPAIGN_REQUIREMENTS,
         });
       }
       option.campaignId = campaignFields.campaignId;

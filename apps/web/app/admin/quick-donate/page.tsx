@@ -26,7 +26,8 @@ import {
   fetchCampaigns,
 } from "@/lib/api";
 import type { DonationCategoryOption } from "@/lib/quick-donate";
-import { slugifyLabel } from "@/lib/quick-donate";
+import { isQuickDonateCampaignMode, slugifyLabel } from "@/lib/quick-donate";
+import { CAMPAIGN_MODE_LABELS } from "@/lib/campaign-experience";
 
 type CategoryRow = DonationCategoryOption & { rowId: string };
 
@@ -57,18 +58,44 @@ interface CampaignOption {
   slug: string;
   status?: string;
   campaignMode?: string;
-  attributes?: Array<{ singlePaymentConfig?: { presetAmounts?: unknown[] }; regularPaymentConfig?: { presetAmounts?: unknown[] } }>;
+  attributes?: Array<{
+    enableSinglePayment?: boolean;
+    enableRegularPayment?: boolean;
+    singlePaymentConfig?: { priceType?: string; presetAmounts?: unknown[] };
+    regularPaymentConfig?: { priceType?: string; presetAmounts?: unknown[] };
+  }>;
 }
 
-function campaignHasDonationAttributes(c: CampaignOption): boolean {
-  if (c.campaignMode === "fundraiser") return false;
+function paymentConfigHasDonationOptions(
+  config?: { priceType?: string; presetAmounts?: unknown[] } | null
+): boolean {
+  if (!config) return false;
+  const hasPresets = (config.presetAmounts?.length ?? 0) > 0;
+  const allowsCustom = config.priceType === "custom" || config.priceType === "both";
+  return hasPresets || allowsCustom;
+}
+
+function attributeHasDonationOptions(attr: NonNullable<CampaignOption["attributes"]>[number]): boolean {
+  if (attr.enableSinglePayment && paymentConfigHasDonationOptions(attr.singlePaymentConfig)) {
+    return true;
+  }
+  if (attr.enableRegularPayment && paymentConfigHasDonationOptions(attr.regularPaymentConfig)) {
+    return true;
+  }
+  return false;
+}
+
+function campaignEligibleForQuickDonate(c: CampaignOption): boolean {
+  if (c.status && c.status !== "published") return false;
+  if (!isQuickDonateCampaignMode(c.campaignMode || "standard")) return false;
   const attrs = c.attributes || [];
   if (!attrs.length) return false;
-  return attrs.some((attr) => {
-    const single = attr.singlePaymentConfig?.presetAmounts?.length ?? 0;
-    const regular = attr.regularPaymentConfig?.presetAmounts?.length ?? 0;
-    return single > 0 || regular > 0;
-  });
+  return attrs.some(attributeHasDonationOptions);
+}
+
+function campaignModeLabel(mode?: string): string {
+  const key = mode || "standard";
+  return CAMPAIGN_MODE_LABELS[key] || key.replace(/_/g, " ");
 }
 
 const emptyOptionForm = {
@@ -111,7 +138,7 @@ export default function QuickDonateAdminPage() {
             campaignMode: c.campaignMode,
             attributes: c.attributes,
           }))
-          .filter(campaignHasDonationAttributes)
+          .filter(campaignEligibleForQuickDonate)
       );
     } catch {
       toast.error("Failed to load quick donate configuration");
@@ -261,9 +288,9 @@ export default function QuickDonateAdminPage() {
           <HandCoins className="h-7 w-7 text-primary" /> Quick Donate Form
         </h1>
         <p className="text-muted-foreground mt-1 max-w-3xl">
-          Each dropdown option links to a published campaign. Prices and donation attributes on the
-          homepage quick donate widget are loaded from that campaign automatically. Options without a
-          linked campaign are hidden on the frontend.
+          Each dropdown option links to a published Standard, Fundraiser, or Ramadan Split campaign.
+          Attribute tabs, prices, and descriptions on the homepage quick donate widget come from that
+          campaign&apos;s donation attributes — nothing is hardcoded on the frontend.
         </p>
       </div>
 
@@ -455,12 +482,13 @@ export default function QuickDonateAdminPage() {
                   <option value="">Select a campaign…</option>
                   {campaigns.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.title} ({c.slug})
+                      {c.title} — {campaignModeLabel(c.campaignMode)}
                     </option>
                   ))}
                 </select>
                 <p className="text-xs text-muted-foreground">
-                  Preset amounts and attribute tabs on the quick donate widget are taken from this campaign.
+                  Published Standard, Fundraiser, and Ramadan Split campaigns with donation attributes.
+                  Attribute names, prices, and descriptions are taken directly from the campaign.
                 </p>
               </div>
 
