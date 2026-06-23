@@ -518,9 +518,17 @@ export default function AdminBlogPage() {
           <div className="rounded-2xl border bg-card shadow-soft p-6 space-y-4">
             <div>
               <h2 className="text-sm font-semibold">Article Content *</h2>
-              <p className="text-xs text-muted-foreground">Use the rich text editor to format headings, lists, quotes, images, and links.</p>
+              <p className="text-xs text-muted-foreground">
+                Use the rich text editor to format headings, lists, quotes, images, and links. Click the
+                heart icon in the toolbar to embed a campaign&apos;s donation options inline in the article.
+              </p>
             </div>
-            <RichTextEditor value={content} onChange={setContent} placeholder="Write the full blog content here." />
+            <RichTextEditor
+              value={content}
+              onChange={setContent}
+              placeholder="Write the full blog content here."
+              enableCampaignEmbeds
+            />
           </div>
 
           {/* Actions */}
