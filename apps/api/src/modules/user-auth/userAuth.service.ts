@@ -5,6 +5,7 @@ import { AppDataSource } from "../../helper/connectDB.js";
 import { User } from "../../components/user/user.entity.js";
 import { Donation } from "../../components/donation/donation.entity.js";
 import { RecurringDonation } from "../../components/recurringDonation/recurringDonation.entity.js";
+import { AutomatedDonationSchedule } from "../../components/automatedDonation/automatedDonation.entity.js";
 
 const JWT_SECRET = process.env.USER_JWT_SECRET ?? "user-jwt-secret-dev";
 const JWT_EXPIRES = process.env.USER_JWT_EXPIRES_IN ?? "7d";
@@ -67,6 +68,15 @@ export async function linkDonationsToUser(userId: string, email: string): Promis
   await recurringRepo
     .createQueryBuilder()
     .update(RecurringDonation)
+    .set({ userId })
+    .where("LOWER(donorEmail) = :email", { email: normalized })
+    .andWhere("userId IS NULL")
+    .execute();
+
+  const automatedRepo = AppDataSource.getRepository(AutomatedDonationSchedule);
+  await automatedRepo
+    .createQueryBuilder()
+    .update(AutomatedDonationSchedule)
     .set({ userId })
     .where("LOWER(donorEmail) = :email", { email: normalized })
     .andWhere("userId IS NULL")

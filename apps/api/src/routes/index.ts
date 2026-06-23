@@ -236,8 +236,11 @@ router.get("/recurring/my", async (req, res) => {
   });
 });
 router.post("/recurring", async (req, res) => {
-  const { createRecurringDonation } = await import("../modules/recurring/recurring.controller.js");
-  return createRecurringDonation(req, res);
+  const { optionalUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  optionalUser(req, res, async () => {
+    const { createRecurringDonation } = await import("../modules/recurring/recurring.controller.js");
+    return createRecurringDonation(req, res);
+  });
 });
 router.put("/recurring/:id/pause", async (req, res) => {
   const { pauseRecurringDonation } = await import("../modules/recurring/recurring.controller.js");
@@ -881,8 +884,11 @@ router.get("/zakat/history", async (req, res) => {
 // AUTOMATED DONATIONS (public/user)
 // ═══════════════════════════════════
 router.post("/automated-donations", async (req, res) => {
-  const { createAutomatedSchedule } = await import("../modules/automated/automated.controller.js");
-  return createAutomatedSchedule(req, res);
+  const { optionalUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  optionalUser(req, res, async () => {
+    const { createAutomatedSchedule } = await import("../modules/automated/automated.controller.js");
+    return createAutomatedSchedule(req, res);
+  });
 });
 router.get("/automated-donations/my", async (req, res) => {
   const { requireUser } = await import("../modules/user-auth/userAuth.middleware.js");

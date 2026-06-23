@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { routeParam } from "../../helper/requestParams.js";
 import { AppDataSource } from "../../helper/connectDB.js";
 import { RecurringDonation } from "../../components/recurringDonation/recurringDonation.entity.js";
-import { ensureDonorUserForDonation } from "../user-auth/userAuth.service.js";
+import { ensureDonorUserForDonation, normalizeEmail } from "../user-auth/userAuth.service.js";
 import { resolveCampaignId } from "../campaigns/resolveCampaignId.js";
 import {
   pauseStripeSubscription,
@@ -46,7 +46,24 @@ export async function getRecurringDonations(req: Request, res: Response) {
       relations: ["campaign"],
     });
 
-    return res.json({ items, total, page: Number(page), limit: Number(limit) });
+    return res.json({
+      items: items.map((item) => ({
+        id: item.id,
+        donorName: item.donorName,
+        donorEmail: item.donorEmail,
+        amount: Number(item.amount),
+        currency: item.currency,
+        frequency: item.frequency,
+        status: item.status,
+        campaignTitle: item.campaign?.title,
+        nextPaymentDate: item.nextPaymentDate,
+        totalPaid: Number(item.totalPaid || 0),
+        createdAt: item.createdAt,
+      })),
+      total,
+      page: Number(page),
+      limit: Number(limit),
+    });
   } catch (error) {
     console.error("Get recurring donations error:", error);
     return res.status(500).json({ message: "Internal server error" });
@@ -55,16 +72,21 @@ export async function getRecurringDonations(req: Request, res: Response) {
 
 export async function getUserRecurringDonations(req: Request, res: Response) {
   try {
-    const userId = (req as any).user?.id;
-    if (!userId) {
+    const user = (req as { user?: { id?: string; email?: string } }).user;
+    if (!user?.id) {
       return res.status(401).json({ message: "Authentication required" });
     }
 
-    const items = await repo().find({
-      where: { userId },
-      order: { createdAt: "DESC" },
-      relations: ["campaign"],
-    });
+    const email = normalizeEmail(user.email || "");
+    const items = await repo()
+      .createQueryBuilder("recurring")
+      .leftJoinAndSelect("recurring.campaign", "campaign")
+      .where("(recurring.userId = :userId OR LOWER(recurring.donorEmail) = :email)", {
+        userId: user.id,
+        email,
+      })
+      .orderBy("recurring.createdAt", "DESC")
+      .getMany();
 
     return res.json({
       items: items.map((item) => ({

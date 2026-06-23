@@ -514,7 +514,9 @@ export async function createAutomatedSchedule(payload: Record<string, unknown>) 
 
 export async function fetchMyAutomatedSchedules() {
   const { data } = await api.get("/automated-donations/my");
-  return data;
+  if (Array.isArray(data?.items)) return data;
+  if (Array.isArray(data)) return { items: data };
+  return { items: [] };
 }
 
 export async function cancelAutomatedSchedule(id: string) {

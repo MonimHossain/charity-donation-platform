@@ -4,9 +4,17 @@ import { AppDataSource } from "../../helper/connectDB.js";
 import { AutomatedDonationSchedule } from "../../components/automatedDonation/automatedDonation.entity.js";
 import { Donation } from "../../components/donation/donation.entity.js";
 import { PaymentLog } from "../../components/paymentLog/paymentLog.entity.js";
+import { RecurringDonation } from "../../components/recurringDonation/recurringDonation.entity.js";
 import { logAudit } from "../../helper/auditLog.js";
+import { ensureDonorUserForDonation, normalizeEmail } from "../user-auth/userAuth.service.js";
+import {
+  isUpcomingAutomatedStatus,
+  serializeAutomatedSchedule,
+  serializeRecurringAsAutomation,
+} from "./automation.helpers.js";
 
 const repo = () => AppDataSource.getRepository(AutomatedDonationSchedule);
+const recurringRepo = () => AppDataSource.getRepository(RecurringDonation);
 const donationRepo = () => AppDataSource.getRepository(Donation);
 const paymentLogRepo = () => AppDataSource.getRepository(PaymentLog);
 
@@ -79,6 +87,13 @@ export async function createAutomatedSchedule(req: Request, res: Response) {
       end.setDate(end.getDate() + Number(days) - 1);
     }
 
+    const authUserId = (req as { user?: { id?: string } }).user?.id;
+    const donorUser = await ensureDonorUserForDonation({
+      donorEmail,
+      donorName,
+      existingUserId: authUserId,
+    });
+
     const schedule = repo().create({
       donorName,
       donorEmail,
@@ -96,7 +111,7 @@ export async function createAutomatedSchedule(req: Request, res: Response) {
       notes: recurringPlanId
         ? `${notes || ""} recurringPlanId=${recurringPlanId}`.trim()
         : notes,
-      userId: (req as any).user?.id,
+      userId: donorUser.id,
       status: req.body.status || (installmentRows?.length ? "awaiting_payment_method" : "scheduled"),
     });
 
@@ -114,16 +129,45 @@ export async function createAutomatedSchedule(req: Request, res: Response) {
 
 export async function getMyAutomatedSchedules(req: Request, res: Response) {
   try {
-    const user = (req as any).user;
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    const user = (req as { user?: { id?: string; email?: string } }).user;
+    if (!user?.id) return res.status(401).json({ message: "Unauthorized" });
 
-    const items = await repo().find({
-      where: { userId: user.id },
-      order: { createdAt: "DESC" },
-      relations: ["campaign"],
+    const email = normalizeEmail(user.email || "");
+    const schedules = await repo()
+      .createQueryBuilder("schedule")
+      .leftJoinAndSelect("schedule.campaign", "campaign")
+      .where("(schedule.userId = :userId OR LOWER(schedule.donorEmail) = :email)", {
+        userId: user.id,
+        email,
+      })
+      .orderBy("schedule.createdAt", "DESC")
+      .getMany();
+
+    const recurring = await recurringRepo()
+      .createQueryBuilder("recurring")
+      .leftJoinAndSelect("recurring.campaign", "campaign")
+      .where("(recurring.userId = :userId OR LOWER(recurring.donorEmail) = :email)", {
+        userId: user.id,
+        email,
+      })
+      .andWhere("recurring.status IN (:...statuses)", {
+        statuses: ["active", "paused", "failed"],
+      })
+      .orderBy("recurring.createdAt", "DESC")
+      .getMany();
+
+    const installmentItems = schedules.map(serializeAutomatedSchedule);
+    const recurringItems = recurring.map(serializeRecurringAsAutomation);
+    const items = [...installmentItems, ...recurringItems].sort((a, b) => {
+      const aDate = a.nextScheduledDate ? new Date(a.nextScheduledDate).getTime() : 0;
+      const bDate = b.nextScheduledDate ? new Date(b.nextScheduledDate).getTime() : 0;
+      if (aDate !== bDate) return aDate - bDate;
+      return new Date(String(b.createdAt)).getTime() - new Date(String(a.createdAt)).getTime();
     });
+
     return res.json({ items });
   } catch (error) {
+    console.error("getMyAutomatedSchedules error:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 }
@@ -188,18 +232,41 @@ export async function getAdminAutomatedSchedules(req: Request, res: Response) {
       }
     }
 
+    const recurringWhere: Record<string, string> = {};
+    if (status) recurringWhere.status = String(status);
+    const recurringItems = await recurringRepo().find({
+      where: recurringWhere,
+      order: { createdAt: "DESC" },
+      take: Number(limit),
+      relations: ["campaign"],
+    });
+
+    let recurringFiltered = recurringItems;
+    if (failedOnly === "true" || failedOnly === "1") {
+      recurringFiltered = recurringItems.filter((r) =>
+        ["failed", "paused", "cancelled"].includes(r.status)
+      );
+    } else if (!status) {
+      recurringFiltered = recurringItems.filter((r) => isUpcomingAutomatedStatus(r.status) || r.status === "failed");
+    }
+
+    const scheduleRows = filtered.map(serializeAutomatedSchedule);
+    const recurringRows = recurringFiltered.map(serializeRecurringAsAutomation);
+    const merged = [...scheduleRows, ...recurringRows].sort((a, b) => {
+      const aDate = a.nextScheduledDate ? new Date(a.nextScheduledDate).getTime() : Number.MAX_SAFE_INTEGER;
+      const bDate = b.nextScheduledDate ? new Date(b.nextScheduledDate).getTime() : Number.MAX_SAFE_INTEGER;
+      if (aDate !== bDate) return aDate - bDate;
+      return new Date(String(b.createdAt)).getTime() - new Date(String(a.createdAt)).getTime();
+    });
+
     return res.json({
-      items: filtered.map((s) => ({
-        ...s,
-        totalAmount: Number(s.totalAmount),
-        dailyAmount: Number(s.dailyAmount),
-        paidAmount: Number(s.paidAmount),
-      })),
-      total: failedOnly ? filtered.length : total,
+      items: merged,
+      total: failedOnly ? merged.length : total + recurringFiltered.length,
       page: Number(page),
       limit: Number(limit),
     });
   } catch (error) {
+    console.error("getAdminAutomatedSchedules error:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 }
@@ -264,13 +331,19 @@ export async function getAdminAutomatedScheduleById(req: Request, res: Response)
 
 export async function getMyAutomatedScheduleById(req: Request, res: Response) {
   try {
-    const user = (req as { user?: { id?: string } }).user;
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    const user = (req as { user?: { id?: string; email?: string } }).user;
+    if (!user?.id) return res.status(401).json({ message: "Unauthorized" });
 
-    const schedule = await repo().findOne({
-      where: { id: routeParam(req, "id"), userId: user.id },
-      relations: ["campaign"],
-    });
+    const email = normalizeEmail(user.email || "");
+    const schedule = await repo()
+      .createQueryBuilder("schedule")
+      .leftJoinAndSelect("schedule.campaign", "campaign")
+      .where("schedule.id = :id", { id: routeParam(req, "id") })
+      .andWhere("(schedule.userId = :userId OR LOWER(schedule.donorEmail) = :email)", {
+        userId: user.id,
+        email,
+      })
+      .getOne();
     if (!schedule) return res.status(404).json({ message: "Schedule not found" });
 
     const donations = await donationRepo().find({
@@ -288,10 +361,7 @@ export async function getMyAutomatedScheduleById(req: Request, res: Response) {
       : [];
 
     return res.json({
-      ...schedule,
-      totalAmount: Number(schedule.totalAmount),
-      dailyAmount: Number(schedule.dailyAmount),
-      paidAmount: Number(schedule.paidAmount),
+      ...serializeAutomatedSchedule(schedule),
       campaignTitle: schedule.campaign?.title,
       donations: donations.map((d) => ({
         id: d.id,
