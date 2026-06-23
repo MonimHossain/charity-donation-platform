@@ -75,6 +75,7 @@ export default function QuickDonate({ campaign = "gaza", variant = "light" }: Pr
                   attributes={attributes}
                   selectedIndex={selectedAttrIdx}
                   onSelect={selectAttribute}
+                  appearance="frequency"
                 />
               </div>
             ) : (

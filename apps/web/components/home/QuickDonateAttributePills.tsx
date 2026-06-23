@@ -8,6 +8,8 @@ interface QuickDonateAttributePillsProps {
   selectedIndex: number;
   onSelect: (index: number) => void;
   dark?: boolean;
+  /** Hero home banner — matches legacy Single / Monthly toggle styling */
+  appearance?: "default" | "frequency";
 }
 
 export function QuickDonateAttributePills({
@@ -15,8 +17,32 @@ export function QuickDonateAttributePills({
   selectedIndex,
   onSelect,
   dark = false,
+  appearance = "default",
 }: QuickDonateAttributePillsProps) {
   if (attributes.length <= 1) return null;
+
+  if (appearance === "frequency") {
+    return (
+      <div className="flex p-0.5 rounded-full bg-secondary">
+        {attributes.map((attr, i) => (
+          <button
+            key={attr.id}
+            type="button"
+            onClick={() => onSelect(i)}
+            title={attr.description || attr.name}
+            className={cn(
+              "flex-1 min-w-0 px-3 sm:px-4 py-1.5 text-[11px] sm:text-xs font-bold rounded-full transition-colors truncate",
+              selectedIndex === i
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {attr.name}
+          </button>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div
