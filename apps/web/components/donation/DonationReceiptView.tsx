@@ -1,22 +1,53 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { Download, Printer } from "lucide-react";
+import { useState } from "react";
+import { Download } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { formatMoney, normalizeCurrencyCode } from "@/lib/currency";
 import { DONATION_STATUS_STYLES, type ReceiptData } from "@/lib/payment-utils";
 import { cn } from "@/lib/utils";
 
-export default function DonationReceiptView({
-  receipt,
-  showPrint = true,
-}: {
-  receipt: ReceiptData;
-  showPrint?: boolean;
-}) {
-  const receiptRef = useRef<HTMLDivElement>(null);
+function getTransactionId(receipt: ReceiptData): string {
+  return receipt.donationId || receipt.receiptNumber || "—";
+}
+
+function buildReceiptPdf(receipt: ReceiptData, currency: string, dateLabel: string, transactionId: string) {
+  const amount = formatMoney(Number(receipt.amount || 0), { from: currency, code: currency });
+  const total = formatMoney(Number(receipt.totalAmount ?? receipt.amount ?? 0), {
+    from: currency,
+    code: currency,
+  });
+
+  const lines: Array<{ label: string; value: string; bold?: boolean }> = [
+    { label: "Receipt number", value: receipt.receiptNumber || "—" },
+    { label: "Date", value: dateLabel },
+    { label: "Transaction ID", value: transactionId },
+    { label: "Donor", value: receipt.donorName || "—" },
+    { label: "Email", value: receipt.donorEmail || "—" },
+    { label: "Status", value: receipt.status || "—" },
+    { label: "Campaign", value: receipt.campaignTitle || "General" },
+    { label: "Frequency", value: receipt.frequency || "single" },
+    { label: "Payment method", value: receipt.paymentMethod || "—" },
+    { label: "Donation amount", value: amount },
+  ];
+
+  if (receipt.giftAid && Number(receipt.giftAidAmount) > 0) {
+    lines.push({
+      label: "Gift Aid (25%)",
+      value: `+${formatMoney(Number(receipt.giftAidAmount || 0), { from: currency, code: currency })}`,
+    });
+  }
+
+  lines.push({ label: "Total", value: total, bold: true });
+
+  return lines;
+}
+
+export default function DonationReceiptView({ receipt }: { receipt: ReceiptData }) {
   const [downloading, setDownloading] = useState(false);
   const currency = normalizeCurrencyCode(receipt.currency);
+  const transactionId = getTransactionId(receipt);
   const dateLabel = receipt.date
     ? new Date(receipt.date).toLocaleString("en-GB", {
         day: "numeric",
@@ -28,37 +59,63 @@ export default function DonationReceiptView({
     : "—";
 
   async function handleDownload() {
-    if (!receiptRef.current || downloading) return;
+    if (downloading) return;
     setDownloading(true);
     try {
-      const html2canvas = (await import("html2canvas")).default;
       const { jsPDF } = await import("jspdf");
-      const element = receiptRef.current;
-      const filename = `donation-receipt-${receipt.receiptNumber || receipt.id || "receipt"}.pdf`;
+      const filename = `donation-receipt-${transactionId}.pdf`;
+      const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
 
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#ffffff",
-        logging: false,
-        width: element.scrollWidth,
-        height: element.scrollHeight,
-        windowWidth: element.scrollWidth,
-        windowHeight: element.scrollHeight,
-      });
+      const marginLeft = 20;
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const maxValueWidth = pageWidth - marginLeft - 20;
+      let y = 24;
 
-      const imgData = canvas.toDataURL("image/jpeg", 0.98);
-      const pdf = new jsPDF({
-        orientation: canvas.width >= canvas.height ? "landscape" : "portrait",
-        unit: "px",
-        format: [canvas.width, canvas.height],
-        hotfixes: ["px_scaling"],
-      });
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(20);
+      pdf.setTextColor(30, 58, 47);
+      pdf.text("Donation receipt", marginLeft, y);
+      y += 14;
 
-      pdf.addImage(imgData, "JPEG", 0, 0, canvas.width, canvas.height);
+      const lines = buildReceiptPdf(receipt, currency, dateLabel, transactionId);
+
+      for (const line of lines) {
+        if (y > 270) {
+          pdf.addPage();
+          y = 24;
+        }
+
+        pdf.setFont("helvetica", line.bold ? "bold" : "normal");
+        pdf.setFontSize(line.bold ? 12 : 10);
+        pdf.setTextColor(line.bold ? 30 : 80, line.bold ? 58 : 80, line.bold ? 47 : 80);
+
+        pdf.text(line.label, marginLeft, y);
+
+        pdf.setFont("helvetica", "normal");
+        pdf.setTextColor(40, 40, 40);
+        const valueLines = pdf.splitTextToSize(line.value, maxValueWidth - 55);
+        pdf.text(valueLines, marginLeft + 55, y);
+        y += Math.max(7, valueLines.length * 5 + 2);
+      }
+
+      y += 6;
+      if (y > 270) {
+        pdf.addPage();
+        y = 24;
+      }
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(9);
+      pdf.setTextColor(100, 100, 100);
+      const footer =
+        "Thank you for your generous support. This receipt confirms your donation. Please retain it for your records." +
+        (receipt.giftAid ? " Gift Aid has been claimed where applicable." : "");
+      const footerLines = pdf.splitTextToSize(footer, pageWidth - marginLeft * 2);
+      pdf.text(footerLines, marginLeft, y);
+
       pdf.save(filename);
-    } catch {
-      window.print();
+    } catch (error) {
+      console.error("Receipt download failed:", error);
+      toast.error("Could not download receipt. Please try again.");
     } finally {
       setDownloading(false);
     }
@@ -66,34 +123,20 @@ export default function DonationReceiptView({
 
   return (
     <div className="space-y-6">
-      {showPrint && (
-        <div className="flex flex-wrap justify-end gap-2 print:hidden">
-          <Button
-            type="button"
-            variant="outline"
-            className="rounded-full gap-2"
-            onClick={handleDownload}
-            disabled={downloading}
-          >
-            <Download className="h-4 w-4" />
-            {downloading ? "Downloading..." : "Download PDF"}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className="rounded-full gap-2"
-            onClick={() => window.print()}
-          >
-            <Printer className="h-4 w-4" />
-            Print
-          </Button>
-        </div>
-      )}
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          className="rounded-full gap-2"
+          onClick={handleDownload}
+          disabled={downloading}
+        >
+          <Download className="h-4 w-4" />
+          {downloading ? "Downloading..." : "Download receipt"}
+        </Button>
+      </div>
 
-      <div
-        ref={receiptRef}
-        className="rounded-2xl border border-border bg-card p-6 shadow-soft space-y-5 print:shadow-none"
-      >
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-soft space-y-5">
         <div>
           <p className="text-xs uppercase tracking-widest text-accent-deep font-bold">
             Donation receipt
@@ -102,7 +145,11 @@ export default function DonationReceiptView({
             {receipt.receiptNumber || "Receipt"}
           </h2>
           <p className="text-sm text-muted-foreground mt-1">{dateLabel}</p>
+          <p className="text-xs text-muted-foreground mt-2 font-mono">
+            Transaction ID: {transactionId}
+          </p>
         </div>
+
         <div className="border-t border-border pt-5 grid gap-4 sm:grid-cols-2">
           <div>
             <p className="text-xs text-muted-foreground uppercase tracking-wide">Donor</p>
@@ -164,9 +211,7 @@ export default function DonationReceiptView({
         <p className="text-xs text-muted-foreground leading-relaxed">
           Thank you for your generous support. This receipt confirms your donation. Please retain
           it for your records.
-          {receipt.giftAid
-            ? " Gift Aid has been claimed where applicable."
-            : ""}
+          {receipt.giftAid ? " Gift Aid has been claimed where applicable." : ""}
         </p>
       </div>
     </div>
