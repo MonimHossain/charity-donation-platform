@@ -31,18 +31,32 @@ export default function DonationReceiptView({
     if (!receiptRef.current || downloading) return;
     setDownloading(true);
     try {
-      const html2pdf = (await import("html2pdf.js")).default;
+      const html2canvas = (await import("html2canvas")).default;
+      const { jsPDF } = await import("jspdf");
+      const element = receiptRef.current;
       const filename = `donation-receipt-${receipt.receiptNumber || receipt.id || "receipt"}.pdf`;
-      await html2pdf()
-        .set({
-          margin: 12,
-          filename,
-          image: { type: "jpeg", quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true },
-          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-        })
-        .from(receiptRef.current)
-        .save();
+
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+        width: element.scrollWidth,
+        height: element.scrollHeight,
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight,
+      });
+
+      const imgData = canvas.toDataURL("image/jpeg", 0.98);
+      const pdf = new jsPDF({
+        orientation: canvas.width >= canvas.height ? "landscape" : "portrait",
+        unit: "px",
+        format: [canvas.width, canvas.height],
+        hotfixes: ["px_scaling"],
+      });
+
+      pdf.addImage(imgData, "JPEG", 0, 0, canvas.width, canvas.height);
+      pdf.save(filename);
     } catch {
       window.print();
     } finally {
@@ -52,7 +66,34 @@ export default function DonationReceiptView({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+      {showPrint && (
+        <div className="flex flex-wrap justify-end gap-2 print:hidden">
+          <Button
+            type="button"
+            variant="outline"
+            className="rounded-full gap-2"
+            onClick={handleDownload}
+            disabled={downloading}
+          >
+            <Download className="h-4 w-4" />
+            {downloading ? "Downloading..." : "Download PDF"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="rounded-full gap-2"
+            onClick={() => window.print()}
+          >
+            <Printer className="h-4 w-4" />
+            Print
+          </Button>
+        </div>
+      )}
+
+      <div
+        ref={receiptRef}
+        className="rounded-2xl border border-border bg-card p-6 shadow-soft space-y-5 print:shadow-none"
+      >
         <div>
           <p className="text-xs uppercase tracking-widest text-accent-deep font-bold">
             Donation receipt
@@ -62,36 +103,7 @@ export default function DonationReceiptView({
           </h2>
           <p className="text-sm text-muted-foreground mt-1">{dateLabel}</p>
         </div>
-        {showPrint && (
-          <div className="flex flex-wrap gap-2 print:hidden">
-            <Button
-              type="button"
-              variant="outline"
-              className="rounded-full gap-2"
-              onClick={handleDownload}
-              disabled={downloading}
-            >
-              <Download className="h-4 w-4" />
-              {downloading ? "Downloading..." : "Download PDF"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="rounded-full gap-2"
-              onClick={() => window.print()}
-            >
-              <Printer className="h-4 w-4" />
-              Print
-            </Button>
-          </div>
-        )}
-      </div>
-
-      <div
-        ref={receiptRef}
-        className="rounded-2xl border border-border bg-card p-6 shadow-soft space-y-5 print:shadow-none"
-      >
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="border-t border-border pt-5 grid gap-4 sm:grid-cols-2">
           <div>
             <p className="text-xs text-muted-foreground uppercase tracking-wide">Donor</p>
             <p className="font-medium mt-1">{receipt.donorName || "—"}</p>
