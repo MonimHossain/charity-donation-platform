@@ -6,6 +6,7 @@ import { DashboardQuickActions } from "@/components/admin/dashboard/DashboardQui
 import { DashboardStatCard } from "@/components/admin/dashboard/DashboardStatCard";
 import { ExpiringCertificationsTable } from "@/components/admin/dashboard/ExpiringCertificationsTable";
 import { RecentSubmissionsTable } from "@/components/admin/dashboard/RecentSubmissionsTable";
+import { RamadanSplitDashboardSection } from "@/components/admin/dashboard/RamadanSplitDashboardSection";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -325,6 +326,8 @@ function AdminDashboardPageApi() {
           </div>
         )}
       </DashboardSection>
+
+      <RamadanSplitDashboardSection />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 rounded-2xl border bg-card shadow-soft p-5">

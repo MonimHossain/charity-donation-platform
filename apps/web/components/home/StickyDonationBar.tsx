@@ -35,16 +35,16 @@ const StickyDonationBar = () => {
     freq,
     amount,
     custom,
-    showCustomInput,
+    customAmountActive,
     allowCustomPrice,
     displayPrices,
     finalAmount,
     setCategory,
     setFreq,
-    setCustom,
     selectOption,
     selectAmount,
     openCustomInput,
+    updateCustomAmount,
     goToDonate,
   } = useQuickDonateForm();
 
@@ -66,7 +66,7 @@ const StickyDonationBar = () => {
     ].filter(Boolean) as Array<"single" | "monthly">
   );
 
-  const currentImpact = IMPACT[amount] ?? "Your gift makes an immediate difference";
+  const currentImpact = IMPACT[finalAmount] ?? "Your gift makes an immediate difference";
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 pointer-events-none">
@@ -124,7 +124,7 @@ const StickyDonationBar = () => {
                   key={p.gbpAmount}
                   onClick={() => selectAmount(p.gbpAmount)}
                   className={`py-2.5 rounded-xl text-sm font-bold transition-all ${
-                    amount === p.gbpAmount && !custom && !showCustomInput
+                    !customAmountActive && amount === p.gbpAmount
                       ? "bg-accent text-accent-foreground"
                       : "bg-primary-foreground/10 hover:bg-primary-foreground/20"
                   }`}
@@ -137,7 +137,7 @@ const StickyDonationBar = () => {
                   type="button"
                   onClick={openCustomInput}
                   className={`py-2.5 rounded-xl text-sm font-bold transition-all ${
-                    showCustomInput
+                    customAmountActive
                       ? "bg-accent text-accent-foreground"
                       : "bg-primary-foreground/10 hover:bg-primary-foreground/20"
                   }`}
@@ -146,13 +146,13 @@ const StickyDonationBar = () => {
                 </button>
               )}
             </div>
-            {allowCustomPrice && showCustomInput && (
+            {allowCustomPrice && customAmountActive && (
               <div className="flex items-center gap-2">
                 <span className="text-sm font-semibold text-primary-foreground/80">{symbol}</span>
                 <input
                   inputMode="numeric"
                   value={custom}
-                  onChange={(e) => setCustom(e.target.value.replace(/[^0-9]/g, ""))}
+                  onChange={(e) => updateCustomAmount(e.target.value.replace(/[^0-9]/g, ""))}
                   placeholder="Enter amount"
                   className="flex-1 px-3 py-2 rounded-xl text-sm bg-primary-foreground/10 border border-primary-foreground/15 text-primary-foreground placeholder:text-primary-foreground/50 focus:outline-none focus:ring-2 focus:ring-accent"
                 />

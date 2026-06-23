@@ -27,18 +27,17 @@ export default function QuickDonate({ campaign = "gaza", variant = "light" }: Pr
     freq,
     amount,
     custom,
-    showCustomInput,
+    customAmountActive,
     allowCustomPrice,
     displayPrices,
     displayAmount,
     finalAmount,
     setCategory,
     setFreq,
-    setCustom,
-    setAmount,
     selectOption,
     selectAmount,
     openCustomInput,
+    updateCustomAmount,
     goToDonate,
   } = useQuickDonateForm(campaign);
 
@@ -132,17 +131,13 @@ export default function QuickDonate({ campaign = "gaza", variant = "light" }: Pr
 
         <div className="mt-3">
           <LabeledField label="Amount" icon={CircleDollarSign}>
-            {allowCustomPrice && showCustomInput ? (
+            {allowCustomPrice && customAmountActive ? (
               <div className="relative flex items-center bg-secondary/60 hover:bg-secondary rounded-xl border border-border focus-within:ring-2 focus-within:ring-accent h-11">
                 <span className="pl-3 pr-1 text-base font-bold text-accent-deep">{symbol}</span>
                 <input
                   inputMode="numeric"
                   value={custom}
-                  onChange={(e) => {
-                    const v = e.target.value.replace(/[^0-9]/g, "");
-                    setCustom(v);
-                    if (v) setAmount(Number(v));
-                  }}
+                  onChange={(e) => updateCustomAmount(e.target.value.replace(/[^0-9]/g, ""))}
                   onFocus={(e) => e.currentTarget.select()}
                   placeholder="Enter amount"
                   className="w-full bg-transparent pr-3 text-base font-bold focus:outline-none"
@@ -169,7 +164,7 @@ export default function QuickDonate({ campaign = "gaza", variant = "light" }: Pr
                   type="button"
                   onClick={() => selectAmount(p.gbpAmount)}
                   className={`flex-1 min-w-[60px] px-3 py-2 rounded-xl text-sm font-bold transition-all ${
-                    amount === p.gbpAmount && !custom && !showCustomInput
+                    !customAmountActive && amount === p.gbpAmount
                       ? "bg-accent text-accent-foreground shadow-glow scale-[1.02]"
                       : "bg-secondary text-foreground hover:bg-secondary/70"
                   }`}
@@ -182,7 +177,7 @@ export default function QuickDonate({ campaign = "gaza", variant = "light" }: Pr
                   type="button"
                   onClick={openCustomInput}
                   className={`flex-1 min-w-[60px] px-3 py-2 rounded-xl text-sm font-bold transition-all ${
-                    showCustomInput
+                    customAmountActive
                       ? "bg-accent text-accent-foreground shadow-glow scale-[1.02]"
                       : "bg-secondary text-foreground hover:bg-secondary/70"
                   }`}
@@ -272,7 +267,7 @@ export default function QuickDonate({ campaign = "gaza", variant = "light" }: Pr
       {displayPrices.length > 0 && (
         <div className={`grid gap-2 ${displayPrices.length <= 5 ? `grid-cols-${displayPrices.length}` : "grid-cols-5"}`} style={{ gridTemplateColumns: `repeat(${Math.min(displayPrices.length + (allowCustomPrice ? 1 : 0), 5)}, minmax(0, 1fr))` }}>
           {displayPrices.map((p) => {
-            const active = amount === p.gbpAmount && !custom && !showCustomInput;
+            const active = !customAmountActive && amount === p.gbpAmount;
             return (
               <button
                 key={`${p.gbpAmount}-${p.sortOrder}`}
@@ -295,7 +290,7 @@ export default function QuickDonate({ campaign = "gaza", variant = "light" }: Pr
               type="button"
               onClick={openCustomInput}
               className={`py-3 rounded-xl font-bold text-sm sm:text-base transition-all ${
-                showCustomInput
+                customAmountActive
                   ? "bg-accent text-accent-foreground scale-[1.03] shadow-glow"
                   : dark
                   ? "bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/20"
@@ -308,7 +303,7 @@ export default function QuickDonate({ campaign = "gaza", variant = "light" }: Pr
         </div>
       )}
 
-      {allowCustomPrice && showCustomInput && (
+      {allowCustomPrice && customAmountActive && (
         <div className="mt-2 flex items-center gap-2">
           <span className={`text-sm font-semibold ${dark ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
             {symbol}
@@ -317,7 +312,7 @@ export default function QuickDonate({ campaign = "gaza", variant = "light" }: Pr
             inputMode="numeric"
             pattern="[0-9]*"
             value={custom}
-            onChange={(e) => setCustom(e.target.value.replace(/[^0-9]/g, ""))}
+            onChange={(e) => updateCustomAmount(e.target.value.replace(/[^0-9]/g, ""))}
             placeholder="Enter custom amount"
             className={`flex-1 px-3 py-2 rounded-xl text-sm bg-transparent border focus:outline-none focus:ring-2 focus:ring-accent ${
               dark

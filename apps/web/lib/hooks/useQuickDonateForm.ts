@@ -43,7 +43,7 @@ export function useQuickDonateForm(initialCampaignSlug?: string) {
   const [freq, setFreq] = useState<QuickDonateFrequency>("single");
   const [amount, setAmount] = useState(50);
   const [custom, setCustom] = useState("");
-  const [showCustomInput, setShowCustomInput] = useState(false);
+  const [customAmountActive, setCustomAmountActive] = useState(false);
 
   const [initialized, setInitialized] = useState(false);
 
@@ -52,7 +52,7 @@ export function useQuickDonateForm(initialCampaignSlug?: string) {
     setSelectedOptionId(initialOption.id);
     setAmount(defaultQuickDonateAmount(initialOption.prices));
     setCustom("");
-    setShowCustomInput(false);
+    setCustomAmountActive(false);
     setInitialized(true);
   }, [initialOption, initialized]);
 
@@ -82,7 +82,11 @@ export function useQuickDonateForm(initialCampaignSlug?: string) {
 
   /** Selected preset in GBP (admin source of truth) */
   const displayAmount = convertAmount(amount, "GBP", displayCurrency);
-  const finalAmount = Number(custom) || displayAmount;
+  const finalAmount = customAmountActive
+    ? Number(custom) > 0
+      ? Number(custom)
+      : displayAmount
+    : displayAmount;
 
   const selectOption = (optionId: string) => {
     setSelectedOptionId(optionId);
@@ -93,19 +97,23 @@ export function useQuickDonateForm(initialCampaignSlug?: string) {
     if (defaultAmount) {
       setAmount(defaultAmount);
       setCustom("");
-      setShowCustomInput(false);
+      setCustomAmountActive(false);
     }
   };
 
   const selectAmount = (value: number) => {
     setAmount(value);
     setCustom("");
-    setShowCustomInput(false);
+    setCustomAmountActive(false);
   };
 
   const openCustomInput = () => {
-    setShowCustomInput(true);
-    setCustom("");
+    setCustomAmountActive(true);
+  };
+
+  const updateCustomAmount = (value: string) => {
+    setCustomAmountActive(true);
+    setCustom(value);
   };
 
   const goToDonate = () => {
@@ -141,7 +149,7 @@ export function useQuickDonateForm(initialCampaignSlug?: string) {
     freq,
     amount,
     custom,
-    showCustomInput,
+    customAmountActive,
     allowCustomPrice,
     prices,
     displayPrices,
@@ -151,10 +159,11 @@ export function useQuickDonateForm(initialCampaignSlug?: string) {
     setFreq,
     setCustom,
     setAmount,
-    setShowCustomInput,
+    setCustomAmountActive,
     selectOption,
     selectAmount,
     openCustomInput,
+    updateCustomAmount,
     goToDonate,
   };
 }
