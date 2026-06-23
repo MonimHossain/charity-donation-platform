@@ -6,30 +6,53 @@ import { homeOutlineButtonClass } from "@/lib/home-buttons";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 
-import { heroSlides as fallbackSlides } from "@/lib/mock/home";
 import { useHeroSlides } from "@/lib/data/cms";
 
-function normalizeSlides(raw: unknown[]): typeof fallbackSlides {
-  if (!raw?.length) return fallbackSlides;
-  return raw.map((s: Record<string, string>, i) => ({
-    img: s.backgroundImage || fallbackSlides[i % fallbackSlides.length]?.img || "/images/hero-1.webp",
-    alt: s.title || "Hero slide",
-    quote: s.title || s.subtitle || "",
-    cite: s.subtitle ? `— ${s.subtitle}` : "",
-  }));
+type HeroSlideView = {
+  img: string;
+  alt: string;
+  quote: string;
+  cite: string;
+};
+
+function normalizeSlides(raw: unknown[]): HeroSlideView[] {
+  if (!raw?.length) return [];
+
+  return raw
+    .filter((s): s is Record<string, string> => Boolean(s && typeof s === "object"))
+    .map((s) => {
+      const img = typeof s.backgroundImage === "string" ? s.backgroundImage.trim() : "";
+      if (!img) return null;
+
+      const title = typeof s.title === "string" ? s.title.trim() : "";
+      const subtitle = typeof s.subtitle === "string" ? s.subtitle.trim() : "";
+
+      return {
+        img,
+        alt: title || "Hero slide",
+        quote: title || subtitle,
+        cite: title && subtitle ? `— ${subtitle}` : subtitle ? `— ${subtitle}` : "",
+      };
+    })
+    .filter((s): s is HeroSlideView => s !== null);
 }
 
 const Hero = () => {
   const { data: rawSlides } = useHeroSlides();
-  const slides = normalizeSlides((rawSlides as unknown[]) ?? fallbackSlides);
+  const slides = normalizeSlides(Array.isArray(rawSlides) ? rawSlides : []);
   const [index, setIndex] = useState(0);
   const sectionRef = useRef<HTMLElement | null>(null);
   const [imgHeight, setImgHeight] = useState<number | null>(null);
 
   useEffect(() => {
+    if (slides.length <= 1) return;
     const id = setInterval(() => setIndex((i) => (i + 1) % slides.length), 5000);
     return () => clearInterval(id);
-  }, []);
+  }, [slides.length]);
+
+  useEffect(() => {
+    if (index >= slides.length) setIndex(0);
+  }, [index, slides.length]);
 
   useLayoutEffect(() => {
     const compute = () => {
@@ -86,25 +109,40 @@ const Hero = () => {
           className="lg:col-span-6 relative rounded-3xl overflow-hidden shadow-lift h-[320px] sm:h-[420px] lg:h-[540px] xl:h-[600px]"
           style={imgHeight ? { height: `${imgHeight}px` } : undefined}
         >
-          {slides.map((s, i) => (
-            <div
-              key={i}
-              className={`absolute inset-0 transition-opacity duration-1000 ${i === index ? "opacity-100" : "opacity-0"}`}
-              aria-hidden={i !== index}
-            >
-              <img
-                src={s.img}
-                alt={s.alt}
-                className="absolute inset-0 w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-primary/70 via-primary/10 to-transparent" />
-              <div className="absolute bottom-5 left-5 right-5 text-primary-foreground">
-                <p className="font-serif italic text-lg lg:text-xl leading-snug max-w-md">&ldquo;{s.quote}&rdquo;</p>
-                <p className="text-xs text-primary-foreground/80 mt-1.5 tracking-widest uppercase">{s.cite}</p>
+          {slides.length === 0 ? (
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-accent/15 to-secondary" aria-hidden />
+          ) : (
+            slides.map((s, i) => (
+              <div
+                key={`${s.img}-${i}`}
+                className={`absolute inset-0 transition-opacity duration-1000 ${i === index ? "opacity-100" : "opacity-0"}`}
+                aria-hidden={i !== index}
+              >
+                <img
+                  src={s.img}
+                  alt={s.alt}
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-primary/70 via-primary/10 to-transparent" />
+                {(s.quote || s.cite) && (
+                  <div className="absolute bottom-5 left-5 right-5 text-primary-foreground">
+                    {s.quote && (
+                      <p className="font-serif italic text-lg lg:text-xl leading-snug max-w-md">
+                        &ldquo;{s.quote}&rdquo;
+                      </p>
+                    )}
+                    {s.cite && (
+                      <p className="text-xs text-primary-foreground/80 mt-1.5 tracking-widest uppercase">
+                        {s.cite}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            ))
+          )}
 
+          {slides.length > 1 && (
           <div className="absolute bottom-3 right-5 flex gap-2 z-10">
             {slides.map((_, i) => (
               <button
@@ -116,6 +154,7 @@ const Hero = () => {
               />
             ))}
           </div>
+          )}
         </div>
       </div>
     </section>

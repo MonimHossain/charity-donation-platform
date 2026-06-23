@@ -78,6 +78,10 @@ export default function HeroSlidesPage() {
       toast.error("Title is required");
       return;
     }
+    if (form.isVisible && !form.backgroundImage?.trim()) {
+      toast.error("Upload a background image before making a slide visible");
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
