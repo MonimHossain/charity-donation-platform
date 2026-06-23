@@ -1,11 +1,40 @@
-import path from "path";
 import "reflect-metadata";
 import { DataSource } from "typeorm";
-import { fileURLToPath } from "url";
-
-const filename = fileURLToPath(import.meta.url);
-const dirname = path.dirname(filename);
-const isDistRuntime = dirname.split(path.sep).includes("dist");
+import { ActivityLog } from "../components/activityLog/activityLog.entity.js";
+import { Admin } from "../components/admin/admin.entity.js";
+import { AuditLog } from "../components/auditLog/auditLog.entity.js";
+import { AutomatedDonationSchedule } from "../components/automatedDonation/automatedDonation.entity.js";
+import { BlogCategory } from "../components/blog/blogCategory.entity.js";
+import { BlogPost } from "../components/blog/blogPost.entity.js";
+import { Campaign } from "../components/campaign/campaign.entity.js";
+import { ApplyReviewSubmission } from "../components/charity/applyReview.entity.js";
+import { Certification } from "../components/charity/certification.entity.js";
+import { Charity } from "../components/charity/charity.entity.js";
+import { ConcernReport } from "../components/charity/concernReport.entity.js";
+import { ContactMessage } from "../components/charity/contactMessage.entity.js";
+import { Banner } from "../components/cms/banner.entity.js";
+import { Faq } from "../components/cms/faq.entity.js";
+import { HeroSlide } from "../components/cms/heroSlide.entity.js";
+import { HomepageSection } from "../components/cms/homepageSection.entity.js";
+import { MediaLibrary } from "../components/cms/mediaLibrary.entity.js";
+import { NavigationMenu } from "../components/cms/navigationMenu.entity.js";
+import { PageBlock } from "../components/cms/pageBuilder.entity.js";
+import { SeoSettings } from "../components/cms/seoSettings.entity.js";
+import { SiteSettings } from "../components/cms/siteSettings.entity.js";
+import { Translation } from "../components/cms/translation.entity.js";
+import { Donation } from "../components/donation/donation.entity.js";
+import { DonationPreset } from "../components/donation/donationPreset.entity.js";
+import { QuickDonateOption } from "../components/donation/quickDonateOption.entity.js";
+import { QuickDonateSettings } from "../components/donation/quickDonateSettings.entity.js";
+import { DonationDedication } from "../components/donationDedication/donationDedication.entity.js";
+import { DonationPage } from "../components/donationPage/donationPage.entity.js";
+import { NewsletterSubscriber } from "../components/newsletter/subscriber.entity.js";
+import { PaymentLog } from "../components/paymentLog/paymentLog.entity.js";
+import { RecurringDonation } from "../components/recurringDonation/recurringDonation.entity.js";
+import { Testimonial } from "../components/testimonial/testimonial.entity.js";
+import { Upsell } from "../components/upsell/upsell.entity.js";
+import { User } from "../components/user/user.entity.js";
+import { ZakatCalculation } from "../components/zakat/zakatCalculation.entity.js";
 
 const dbHost = process.env.DB_HOST ?? "localhost";
 const dbPort = Number(process.env.DB_PORT ?? 54322);
@@ -15,10 +44,43 @@ const dbName = process.env.DB_DATABASE ?? "charity_platform";
 const dbSynchronize = (process.env.DB_SYNCHRONIZE ?? "true").toLowerCase() === "true";
 const dbLogging = (process.env.DB_LOGGING ?? "false").toLowerCase() === "true";
 
-const entitiesGlob = path.join(
-  dirname,
-  isDistRuntime ? "../components/**/*.entity.js" : "../components/**/*.entity.ts"
-);
+const entities = [
+  ActivityLog,
+  Admin,
+  AuditLog,
+  AutomatedDonationSchedule,
+  BlogCategory,
+  BlogPost,
+  Campaign,
+  ApplyReviewSubmission,
+  Certification,
+  Charity,
+  ConcernReport,
+  ContactMessage,
+  Banner,
+  Faq,
+  HeroSlide,
+  HomepageSection,
+  MediaLibrary,
+  NavigationMenu,
+  PageBlock,
+  SeoSettings,
+  SiteSettings,
+  Translation,
+  Donation,
+  DonationPreset,
+  QuickDonateOption,
+  QuickDonateSettings,
+  DonationDedication,
+  DonationPage,
+  NewsletterSubscriber,
+  PaymentLog,
+  RecurringDonation,
+  Testimonial,
+  Upsell,
+  User,
+  ZakatCalculation,
+];
 
 export const AppDataSource = new DataSource({
   type: "postgres",
@@ -29,7 +91,7 @@ export const AppDataSource = new DataSource({
   database: dbName,
   synchronize: dbSynchronize,
   logging: dbLogging,
-  entities: [entitiesGlob],
+  entities,
   migrations: ["src/migration/**/*.ts"],
   subscribers: [],
 });
