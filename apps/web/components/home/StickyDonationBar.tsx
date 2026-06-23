@@ -34,13 +34,17 @@ const StickyDonationBar = () => {
     category,
     freq,
     amount,
+    custom,
+    showCustomInput,
+    allowCustomPrice,
     displayPrices,
-    displayAmount,
     finalAmount,
     setCategory,
     setFreq,
+    setCustom,
     selectOption,
     selectAmount,
+    openCustomInput,
     goToDonate,
   } = useQuickDonateForm();
 
@@ -114,13 +118,13 @@ const StickyDonationBar = () => {
               )}
             </div>
 
-            <div className={`grid gap-2 ${displayPrices.length <= 4 ? "grid-cols-4" : "grid-cols-5"}`}>
+            <div className={`grid gap-2 ${displayPrices.length + (allowCustomPrice ? 1 : 0) <= 4 ? "grid-cols-4" : "grid-cols-5"}`}>
               {displayPrices.map((p) => (
                 <button
                   key={p.gbpAmount}
                   onClick={() => selectAmount(p.gbpAmount)}
                   className={`py-2.5 rounded-xl text-sm font-bold transition-all ${
-                    amount === p.gbpAmount
+                    amount === p.gbpAmount && !custom && !showCustomInput
                       ? "bg-accent text-accent-foreground"
                       : "bg-primary-foreground/10 hover:bg-primary-foreground/20"
                   }`}
@@ -128,7 +132,32 @@ const StickyDonationBar = () => {
                   {symbol}{p.displayAmount}
                 </button>
               ))}
+              {allowCustomPrice && (
+                <button
+                  type="button"
+                  onClick={openCustomInput}
+                  className={`py-2.5 rounded-xl text-sm font-bold transition-all ${
+                    showCustomInput
+                      ? "bg-accent text-accent-foreground"
+                      : "bg-primary-foreground/10 hover:bg-primary-foreground/20"
+                  }`}
+                >
+                  Others
+                </button>
+              )}
             </div>
+            {allowCustomPrice && showCustomInput && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-primary-foreground/80">{symbol}</span>
+                <input
+                  inputMode="numeric"
+                  value={custom}
+                  onChange={(e) => setCustom(e.target.value.replace(/[^0-9]/g, ""))}
+                  placeholder="Enter amount"
+                  className="flex-1 px-3 py-2 rounded-xl text-sm bg-primary-foreground/10 border border-primary-foreground/15 text-primary-foreground placeholder:text-primary-foreground/50 focus:outline-none focus:ring-2 focus:ring-accent"
+                />
+              </div>
+            )}
             <p className="text-[11px] text-center text-primary-foreground/75">{currentImpact}</p>
           </div>
         )}

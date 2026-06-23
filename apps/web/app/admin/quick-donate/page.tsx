@@ -51,6 +51,7 @@ interface QuickDonateOptionRow {
   prices: { amount: number; sortOrder: number }[];
   sortOrder: number;
   isActive: boolean;
+  allowCustomPrice: boolean;
 }
 
 interface CampaignOption {
@@ -65,6 +66,7 @@ const emptyOptionForm = {
   prices: [{ amount: 20, sortOrder: 0 }, { amount: 40, sortOrder: 1 }, { amount: 50, sortOrder: 2 }],
   sortOrder: 0,
   isActive: true,
+  allowCustomPrice: false,
 };
 
 export default function QuickDonateAdminPage() {
@@ -143,6 +145,7 @@ export default function QuickDonateAdminPage() {
         : [{ amount: 20, sortOrder: 0 }],
       sortOrder: row.sortOrder,
       isActive: row.isActive,
+      allowCustomPrice: row.allowCustomPrice ?? false,
     });
     setEditingId(row.id);
     setShowModal(true);
@@ -170,6 +173,7 @@ export default function QuickDonateAdminPage() {
         prices,
         sortOrder: form.sortOrder,
         isActive: form.isActive,
+        allowCustomPrice: form.allowCustomPrice,
       };
       if (editingId) {
         await updateAdminQuickDonateOption(editingId, payload);
@@ -543,14 +547,24 @@ export default function QuickDonateAdminPage() {
                     onChange={(e) => setForm({ ...form, sortOrder: Number(e.target.value) })}
                   />
                 </div>
-                <label className="flex items-center gap-2 text-sm pt-8">
-                  <input
-                    type="checkbox"
-                    checked={form.isActive}
-                    onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
-                  />
-                  Active on frontend
-                </label>
+                <div className="flex flex-col gap-3 pt-2">
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={form.isActive}
+                      onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+                    />
+                    Active on frontend
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={form.allowCustomPrice}
+                      onChange={(e) => setForm({ ...form, allowCustomPrice: e.target.checked })}
+                    />
+                    Allow custom price option
+                  </label>
+                </div>
               </div>
 
               <Separator />

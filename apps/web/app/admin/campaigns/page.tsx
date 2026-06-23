@@ -45,6 +45,7 @@ import {
 import {
   CAMPAIGN_MODE_LABELS,
   DEFAULT_RAMADAN_CONFIG,
+  isAttributesSkippedMode,
   isExperienceCampaignMode,
   type RamadanSplitConfig,
 } from "@/lib/campaign-experience";
@@ -218,13 +219,13 @@ const defaultQuantityConfig: QuantityConfig = {
   maxQuantity: 100,
 };
 
-function newAttribute(): CampaignAttribute {
+function newAttribute(sortOrder = 0): CampaignAttribute {
   return {
     id: uid(),
     name: "",
     description: "",
     image: "",
-    sortOrder: 0,
+    sortOrder,
     enableSinglePayment: true,
     enableRegularPayment: false,
     enableQuantity: false,
@@ -239,6 +240,15 @@ function newAttribute(): CampaignAttribute {
     quantityConfig: { ...defaultQuantityConfig },
     customFields: [],
   };
+}
+
+function syncAttributeSortOrders(attributes: CampaignAttribute[]): CampaignAttribute[] {
+  return attributes.map((attr, index) => ({ ...attr, sortOrder: index }));
+}
+
+function hasDuplicateAttributeSortOrders(attributes: CampaignAttribute[]): boolean {
+  const orders = attributes.map((a) => a.sortOrder);
+  return new Set(orders).size !== orders.length;
 }
 
 function newCustomField(): CustomField {
@@ -360,7 +370,7 @@ function buildWizardSteps(form: CampaignForm): WizardStep[] {
     },
   ];
 
-  if (!experience) {
+  if (!isAttributesSkippedMode(form.campaignMode)) {
     steps.push({
       id: "attributes",
       title: "Donation options",
@@ -614,10 +624,14 @@ export default function CampaignsPage() {
       toast.warning("Please set a campaign expiration date and time.");
       return false;
     }
-    if (stepId === "attributes" && !isExperienceCampaignMode(form.campaignMode) && form.attributes.length === 0) {
+    if (stepId === "attributes" && !isAttributesSkippedMode(form.campaignMode) && form.attributes.length === 0) {
       toast.warning(
         "Add at least one donation attribute. Without it, this campaign will not show any payment options to donors."
       );
+      return false;
+    }
+    if (stepId === "attributes" && hasDuplicateAttributeSortOrders(form.attributes)) {
+      toast.warning("Each attribute must have a unique sort order. Adjust duplicate values before continuing.");
       return false;
     }
     return true;
@@ -629,10 +643,14 @@ export default function CampaignsPage() {
       toast.warning("Please set a campaign expiration date and time.");
       return false;
     }
-    if (!isExperienceCampaignMode(form.campaignMode) && form.attributes.length === 0) {
+    if (!isAttributesSkippedMode(form.campaignMode) && form.attributes.length === 0) {
       toast.warning(
         "Add at least one donation attribute. Without it, this campaign will not show any payment options to donors."
       );
+      return false;
+    }
+    if (hasDuplicateAttributeSortOrders(form.attributes)) {
+      toast.warning("Each attribute must have a unique sort order. Adjust duplicate values before saving.");
       return false;
     }
     return true;
@@ -643,7 +661,7 @@ export default function CampaignsPage() {
       if (!form.title.trim()) {
         toast.error("Title is required");
         setCurrentStepIndex(0);
-      } else if (!isExperienceCampaignMode(form.campaignMode)) {
+      } else if (!isAttributesSkippedMode(form.campaignMode)) {
         const attributesStepIndex = wizardSteps.findIndex((s) => s.id === "attributes");
         if (attributesStepIndex >= 0) setCurrentStepIndex(attributesStepIndex);
       }
@@ -798,7 +816,7 @@ export default function CampaignsPage() {
                         </span>
                       </td>
                       <td className="px-5 py-3 text-muted-foreground">
-                        {isExperienceCampaignMode(c.campaignMode || "standard")
+                        {isAttributesSkippedMode(c.campaignMode || "standard")
                           ? "—"
                           : `${c.attributes?.length || 0} attribute${(c.attributes?.length || 0) !== 1 ? "s" : ""}`}
                       </td>
@@ -1234,12 +1252,19 @@ export default function CampaignsPage() {
                   Each attribute defines a donation option with its own payment types, preset amounts, and custom fields.
                 </p>
               </div>
-              <Button onClick={() => setForm((p) => ({ ...p, attributes: [newAttribute(), ...p.attributes] }))}>
+              <Button
+                onClick={() =>
+                  setForm((p) => ({
+                    ...p,
+                    attributes: syncAttributeSortOrders([newAttribute(p.attributes.length), ...p.attributes]),
+                  }))
+                }
+              >
                 <Plus className="h-4 w-4" /> Add Attribute
               </Button>
             </div>
 
-            {!isExperienceCampaignMode(form.campaignMode) && form.attributes.length === 0 && (
+            {!isAttributesSkippedMode(form.campaignMode) && form.attributes.length === 0 && (
               <Alert className="border-amber-200 bg-amber-50 text-amber-950">
                 <AlertTriangle className="text-amber-600" />
                 <AlertDescription>
@@ -1256,12 +1281,17 @@ export default function CampaignsPage() {
             )}
 
             <div className="space-y-4">
-              {form.attributes.map((attr, ai) => (
+              {form.attributes.map((attr, ai) => {
+                const duplicateSortOrder = form.attributes.some(
+                  (other, oi) => oi !== ai && other.sortOrder === attr.sortOrder
+                );
+                return (
                 <AttributeEditor
                   key={attr.id}
                   attribute={attr}
                   index={ai}
                   total={form.attributes.length}
+                  duplicateSortOrder={duplicateSortOrder}
                   onChange={(updated) =>
                     setForm((p) => ({
                       ...p,
@@ -1271,7 +1301,7 @@ export default function CampaignsPage() {
                   onRemove={() =>
                     setForm((p) => ({
                       ...p,
-                      attributes: p.attributes.filter((_, i) => i !== ai),
+                      attributes: syncAttributeSortOrders(p.attributes.filter((_, i) => i !== ai)),
                     }))
                   }
                   onMoveUp={() =>
@@ -1284,7 +1314,7 @@ export default function CampaignsPage() {
                         arr[ai - 1] = curr;
                         arr[ai] = prev;
                       }
-                      return { ...p, attributes: arr };
+                      return { ...p, attributes: syncAttributeSortOrders(arr) };
                     })
                   }
                   onMoveDown={() =>
@@ -1297,20 +1327,21 @@ export default function CampaignsPage() {
                         arr[ai] = next;
                         arr[ai + 1] = curr;
                       }
-                      return { ...p, attributes: arr };
+                      return { ...p, attributes: syncAttributeSortOrders(arr) };
                     })
                   }
                   onDuplicate={() =>
                     setForm((p) => ({
                       ...p,
-                      attributes: [
+                      attributes: syncAttributeSortOrders([
                         { ...attr, id: uid(), name: `${attr.name} (copy)` },
                         ...p.attributes,
-                      ],
+                      ]),
                     }))
                   }
                 />
-              ))}
+              );
+              })}
             </div>
           </div>
         )}
@@ -1757,6 +1788,7 @@ function AttributeEditor({
   attribute,
   index,
   total,
+  duplicateSortOrder = false,
   onChange,
   onRemove,
   onMoveUp,
@@ -1766,6 +1798,7 @@ function AttributeEditor({
   attribute: CampaignAttribute;
   index: number;
   total: number;
+  duplicateSortOrder?: boolean;
   onChange: (attr: CampaignAttribute) => void;
   onRemove: () => void;
   onMoveUp: () => void;
@@ -1976,7 +2009,15 @@ function AttributeEditor({
             </div>
             <div className="space-y-2">
               <Label className="text-xs">Sort Order</Label>
-              <Input type="number" value={attribute.sortOrder} onChange={(e) => update("sortOrder", Number(e.target.value))} />
+              <Input
+                type="number"
+                value={attribute.sortOrder}
+                onChange={(e) => update("sortOrder", Number(e.target.value))}
+                className={duplicateSortOrder ? "border-destructive focus-visible:ring-destructive" : undefined}
+              />
+              {duplicateSortOrder && (
+                <p className="text-xs text-destructive">This sort order is already used by another attribute.</p>
+              )}
             </div>
           </div>
           <div className="space-y-2">

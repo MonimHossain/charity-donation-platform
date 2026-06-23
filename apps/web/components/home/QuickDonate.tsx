@@ -27,6 +27,8 @@ export default function QuickDonate({ campaign = "gaza", variant = "light" }: Pr
     freq,
     amount,
     custom,
+    showCustomInput,
+    allowCustomPrice,
     displayPrices,
     displayAmount,
     finalAmount,
@@ -36,6 +38,7 @@ export default function QuickDonate({ campaign = "gaza", variant = "light" }: Pr
     setAmount,
     selectOption,
     selectAmount,
+    openCustomInput,
     goToDonate,
   } = useQuickDonateForm(campaign);
 
@@ -129,21 +132,28 @@ export default function QuickDonate({ campaign = "gaza", variant = "light" }: Pr
 
         <div className="mt-3">
           <LabeledField label="Amount" icon={CircleDollarSign}>
-            <div className="relative flex items-center bg-secondary/60 hover:bg-secondary rounded-xl border border-border focus-within:ring-2 focus-within:ring-accent h-11">
-              <span className="pl-3 pr-1 text-base font-bold text-accent-deep">{symbol}</span>
-              <input
-                inputMode="numeric"
-                value={custom || String(displayAmount)}
-                onChange={(e) => {
-                  const v = e.target.value.replace(/[^0-9]/g, "");
-                  setCustom(v);
-                  if (v) setAmount(Number(v));
-                }}
-                onFocus={(e) => e.currentTarget.select()}
-                className="w-full bg-transparent pr-3 text-base font-bold focus:outline-none"
-                aria-label="Amount"
-              />
-            </div>
+            {allowCustomPrice && showCustomInput ? (
+              <div className="relative flex items-center bg-secondary/60 hover:bg-secondary rounded-xl border border-border focus-within:ring-2 focus-within:ring-accent h-11">
+                <span className="pl-3 pr-1 text-base font-bold text-accent-deep">{symbol}</span>
+                <input
+                  inputMode="numeric"
+                  value={custom}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/[^0-9]/g, "");
+                    setCustom(v);
+                    if (v) setAmount(Number(v));
+                  }}
+                  onFocus={(e) => e.currentTarget.select()}
+                  placeholder="Enter amount"
+                  className="w-full bg-transparent pr-3 text-base font-bold focus:outline-none"
+                  aria-label="Custom amount"
+                />
+              </div>
+            ) : (
+              <div className="flex items-center bg-secondary/60 rounded-xl border border-border h-11 px-3 text-base font-bold">
+                {symbol}{finalAmount}
+              </div>
+            )}
           </LabeledField>
         </div>
 
@@ -159,7 +169,7 @@ export default function QuickDonate({ campaign = "gaza", variant = "light" }: Pr
                   type="button"
                   onClick={() => selectAmount(p.gbpAmount)}
                   className={`flex-1 min-w-[60px] px-3 py-2 rounded-xl text-sm font-bold transition-all ${
-                    amount === p.gbpAmount && !custom
+                    amount === p.gbpAmount && !custom && !showCustomInput
                       ? "bg-accent text-accent-foreground shadow-glow scale-[1.02]"
                       : "bg-secondary text-foreground hover:bg-secondary/70"
                   }`}
@@ -167,6 +177,19 @@ export default function QuickDonate({ campaign = "gaza", variant = "light" }: Pr
                   {symbol}{p.displayAmount}
                 </button>
               ))}
+              {allowCustomPrice && (
+                <button
+                  type="button"
+                  onClick={openCustomInput}
+                  className={`flex-1 min-w-[60px] px-3 py-2 rounded-xl text-sm font-bold transition-all ${
+                    showCustomInput
+                      ? "bg-accent text-accent-foreground shadow-glow scale-[1.02]"
+                      : "bg-secondary text-foreground hover:bg-secondary/70"
+                  }`}
+                >
+                  Others
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -247,9 +270,9 @@ export default function QuickDonate({ campaign = "gaza", variant = "light" }: Pr
       </div>
 
       {displayPrices.length > 0 && (
-        <div className={`grid gap-2 ${displayPrices.length <= 5 ? `grid-cols-${displayPrices.length}` : "grid-cols-5"}`} style={{ gridTemplateColumns: `repeat(${Math.min(displayPrices.length, 5)}, minmax(0, 1fr))` }}>
+        <div className={`grid gap-2 ${displayPrices.length <= 5 ? `grid-cols-${displayPrices.length}` : "grid-cols-5"}`} style={{ gridTemplateColumns: `repeat(${Math.min(displayPrices.length + (allowCustomPrice ? 1 : 0), 5)}, minmax(0, 1fr))` }}>
           {displayPrices.map((p) => {
-            const active = amount === p.gbpAmount && !custom;
+            const active = amount === p.gbpAmount && !custom && !showCustomInput;
             return (
               <button
                 key={`${p.gbpAmount}-${p.sortOrder}`}
@@ -267,26 +290,43 @@ export default function QuickDonate({ campaign = "gaza", variant = "light" }: Pr
               </button>
             );
           })}
+          {allowCustomPrice && (
+            <button
+              type="button"
+              onClick={openCustomInput}
+              className={`py-3 rounded-xl font-bold text-sm sm:text-base transition-all ${
+                showCustomInput
+                  ? "bg-accent text-accent-foreground scale-[1.03] shadow-glow"
+                  : dark
+                  ? "bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/20"
+                  : "bg-secondary text-foreground hover:bg-secondary/70"
+              }`}
+            >
+              Others
+            </button>
+          )}
         </div>
       )}
 
-      <div className="mt-2 flex items-center gap-2">
-        <span className={`text-sm font-semibold ${dark ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
-          {symbol}
-        </span>
-        <input
-          inputMode="numeric"
-          pattern="[0-9]*"
-          value={custom}
-          onChange={(e) => setCustom(e.target.value.replace(/[^0-9]/g, ""))}
-          placeholder="Other amount"
-          className={`flex-1 px-3 py-2 rounded-xl text-sm bg-transparent border focus:outline-none focus:ring-2 focus:ring-accent ${
-            dark
-              ? "border-primary-foreground/25 placeholder:text-primary-foreground/50"
-              : "border-border placeholder:text-muted-foreground"
-          }`}
-        />
-      </div>
+      {allowCustomPrice && showCustomInput && (
+        <div className="mt-2 flex items-center gap-2">
+          <span className={`text-sm font-semibold ${dark ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+            {symbol}
+          </span>
+          <input
+            inputMode="numeric"
+            pattern="[0-9]*"
+            value={custom}
+            onChange={(e) => setCustom(e.target.value.replace(/[^0-9]/g, ""))}
+            placeholder="Enter custom amount"
+            className={`flex-1 px-3 py-2 rounded-xl text-sm bg-transparent border focus:outline-none focus:ring-2 focus:ring-accent ${
+              dark
+                ? "border-primary-foreground/25 placeholder:text-primary-foreground/50"
+                : "border-border placeholder:text-muted-foreground"
+            }`}
+          />
+        </div>
+      )}
 
       <button
         type="button"

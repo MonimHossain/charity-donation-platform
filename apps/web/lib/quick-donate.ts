@@ -11,6 +11,7 @@ export interface QuickDonateOption {
   campaignTitle?: string | null;
   prices: QuickDonatePrice[];
   sortOrder?: number;
+  allowCustomPrice?: boolean;
 }
 
 export interface DonationCategoryOption {

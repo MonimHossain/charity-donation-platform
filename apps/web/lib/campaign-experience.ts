@@ -37,3 +37,8 @@ export const CAMPAIGN_MODE_LABELS: Record<string, string> = {
 export function isExperienceCampaignMode(mode: string): boolean {
   return mode === "fidya_kaffarah" || mode === "ramadan_split";
 }
+
+/** Experience modes that skip the donation attributes wizard step (Fidya/Kaffarah only). */
+export function isAttributesSkippedMode(mode: string): boolean {
+  return mode === "fidya_kaffarah";
+}

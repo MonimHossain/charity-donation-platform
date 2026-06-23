@@ -176,9 +176,23 @@ export default function DonationsPage() {
                       <td className="px-5 py-3 font-semibold tabular-nums">
                         {formatMoney(Number(d.amount || 0), { from: currency, code: currency })}
                       </td>
-                      <td className="px-5 py-3 text-muted-foreground">
-                        {d.campaignTitle || d.campaign?.title ||
-                          (d.donationType === QUICK_DONATION_TYPE ? "Quick Donation" : "—")}
+                      <td className="px-5 py-3">
+                        {(() => {
+                          const campaignName =
+                            d.campaignTitle || d.campaign?.title ||
+                            (d.donationType === QUICK_DONATION_TYPE ? "Quick Donation" : null);
+                          if (!campaignName || campaignName === "—") {
+                            return <span className="text-muted-foreground">—</span>;
+                          }
+                          if (campaignName === "Quick Donation") {
+                            return <span className="text-muted-foreground">Quick Donation</span>;
+                          }
+                          return (
+                            <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-teal-50 text-teal-700 ring-1 ring-inset ring-teal-600/20">
+                              {campaignName}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="px-5 py-3">
                         <span

@@ -43,6 +43,7 @@ export function useQuickDonateForm(initialCampaignSlug?: string) {
   const [freq, setFreq] = useState<QuickDonateFrequency>("single");
   const [amount, setAmount] = useState(50);
   const [custom, setCustom] = useState("");
+  const [showCustomInput, setShowCustomInput] = useState(false);
 
   const [initialized, setInitialized] = useState(false);
 
@@ -51,6 +52,7 @@ export function useQuickDonateForm(initialCampaignSlug?: string) {
     setSelectedOptionId(initialOption.id);
     setAmount(defaultQuickDonateAmount(initialOption.prices));
     setCustom("");
+    setShowCustomInput(false);
     setInitialized(true);
   }, [initialOption, initialized]);
 
@@ -63,6 +65,7 @@ export function useQuickDonateForm(initialCampaignSlug?: string) {
   const selectedOption: QuickDonateOption | null =
     options.find((o) => o.id === selectedOptionId) ?? options[0] ?? null;
 
+  const allowCustomPrice = Boolean(selectedOption?.allowCustomPrice);
   const prices = selectedOption?.prices ?? [];
 
   const displayPrices: QuickDonateDisplayPrice[] = useMemo(
@@ -90,11 +93,18 @@ export function useQuickDonateForm(initialCampaignSlug?: string) {
     if (defaultAmount) {
       setAmount(defaultAmount);
       setCustom("");
+      setShowCustomInput(false);
     }
   };
 
   const selectAmount = (value: number) => {
     setAmount(value);
+    setCustom("");
+    setShowCustomInput(false);
+  };
+
+  const openCustomInput = () => {
+    setShowCustomInput(true);
     setCustom("");
   };
 
@@ -131,6 +141,8 @@ export function useQuickDonateForm(initialCampaignSlug?: string) {
     freq,
     amount,
     custom,
+    showCustomInput,
+    allowCustomPrice,
     prices,
     displayPrices,
     displayAmount,
@@ -139,8 +151,10 @@ export function useQuickDonateForm(initialCampaignSlug?: string) {
     setFreq,
     setCustom,
     setAmount,
+    setShowCustomInput,
     selectOption,
     selectAmount,
+    openCustomInput,
     goToDonate,
   };
 }

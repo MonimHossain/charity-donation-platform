@@ -79,6 +79,7 @@ export async function getPublicQuickDonate(_req: Request, res: Response) {
         campaignTitle: o.campaignTitle ?? null,
         prices: normalizePrices(o.prices),
         sortOrder: o.sortOrder,
+        allowCustomPrice: Boolean(o.allowCustomPrice),
       })),
       settings: {
         donationCategories: categories,
@@ -111,6 +112,7 @@ export async function createQuickDonateOption(req: Request, res: Response) {
       prices: normalizePrices(req.body.prices),
       sortOrder: Number(req.body.sortOrder ?? 0),
       isActive: req.body.isActive !== false,
+      allowCustomPrice: Boolean(req.body.allowCustomPrice),
       ...campaignFields,
     });
     if (!option.label) {
@@ -134,6 +136,9 @@ export async function updateQuickDonateOption(req: Request, res: Response) {
     if (req.body.prices !== undefined) option.prices = normalizePrices(req.body.prices);
     if (req.body.sortOrder !== undefined) option.sortOrder = Number(req.body.sortOrder);
     if (req.body.isActive !== undefined) option.isActive = Boolean(req.body.isActive);
+    if (req.body.allowCustomPrice !== undefined) {
+      option.allowCustomPrice = Boolean(req.body.allowCustomPrice);
+    }
     if (req.body.campaignId !== undefined) {
       const campaignFields = await resolveCampaignFields(req.body.campaignId);
       option.campaignId = campaignFields.campaignId ?? undefined;

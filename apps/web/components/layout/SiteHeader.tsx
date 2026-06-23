@@ -13,6 +13,7 @@ import { useHeaderNavCampaigns, headerNavLabel } from "@/lib/data/campaigns";
 import { usePrayerTimes } from "@/lib/hooks/usePrayerTimes";
 import { useDonationCart } from "@/lib/stores/donationCartStore";
 import { useCurrency } from "@/lib/currency";
+import { DropdownPortal } from "./DropdownPortal";
 
 const mockNav = [
   { href: "/causes/food", label: "Food Aid" },
@@ -42,6 +43,7 @@ export default function SiteHeader() {
   const [isSignedIn, setIsSignedIn] = useState(false);
   const { islamicDate, nextPrayer, location: prayerLocation } = usePrayerTimes();
   const aboutRef = useRef<HTMLDivElement>(null);
+  const aboutButtonRef = useRef<HTMLButtonElement>(null);
   const { data: headerCampaigns } = useHeaderNavCampaigns();
   const { basketDisplayTotal } = useDonationCart();
   const { formatMoney } = useCurrency();
@@ -86,9 +88,10 @@ export default function SiteHeader() {
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (aboutRef.current && !aboutRef.current.contains(e.target as Node)) {
-        setAboutOpen(false);
-      }
+      const target = e.target as Node;
+      if (aboutRef.current?.contains(target)) return;
+      if ((target as Element).closest?.("[data-dropdown-portal]")) return;
+      setAboutOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -210,24 +213,28 @@ export default function SiteHeader() {
               {/* About dropdown */}
               <div className="relative" ref={aboutRef}>
                 <button
+                  ref={aboutButtonRef}
                   onClick={() => setAboutOpen(!aboutOpen)}
                   className="px-3 py-1.5 text-sm font-medium rounded-full text-foreground/75 hover:text-primary hover:bg-secondary/60 inline-flex items-center gap-1 outline-none"
                 >
                   About <ChevronDown className={`w-3.5 h-3.5 transition-transform ${aboutOpen ? "rotate-180" : ""}`} />
                 </button>
-                {aboutOpen && (
-                  <div className="absolute top-full left-0 mt-1 bg-card border border-border rounded-xl shadow-lift py-1 min-w-[10rem] z-50">
-                    {aboutItems.map((i) => (
-                      <Link
-                        key={i.href}
-                        href={i.href}
-                        className="block px-4 py-2.5 text-sm hover:bg-secondary/60 transition-colors"
-                      >
-                        {i.label}
-                      </Link>
-                    ))}
-                  </div>
-                )}
+                <DropdownPortal
+                  open={aboutOpen}
+                  triggerRef={aboutButtonRef}
+                  className="bg-card border border-border rounded-xl shadow-lift py-1 min-w-[10rem]"
+                >
+                  {aboutItems.map((i) => (
+                    <Link
+                      key={i.href}
+                      href={i.href}
+                      className="block px-4 py-2.5 text-sm hover:bg-secondary/60 transition-colors"
+                      onClick={() => setAboutOpen(false)}
+                    >
+                      {i.label}
+                    </Link>
+                  ))}
+                </DropdownPortal>
               </div>
             </nav>
           </div>
