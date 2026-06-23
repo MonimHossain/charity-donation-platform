@@ -8,6 +8,7 @@ import { useQuickDonateForm } from "@/lib/hooks/useQuickDonateForm";
 import { useCurrency } from "@/lib/currency";
 import { QuickDonateAttributePills } from "@/components/home/QuickDonateAttributePills";
 import { QuickDonatePricePicker } from "@/components/home/QuickDonatePricePicker";
+import { QuickDonateRamadanSection } from "@/components/home/QuickDonateRamadanSection";
 
 const HIDE_ON = ["/donate", "/donation/checkout"];
 const HIDE_PREFIXES = ["/donation/"];
@@ -44,6 +45,12 @@ const StickyDonationBar = () => {
     sourceCurrency,
     attributes,
     selectedAttrIdx,
+    selectedCampaign,
+    showRamadanSection,
+    ramadanGivingOption,
+    ramadanSelectedDates,
+    setRamadanGivingOption,
+    setRamadanSelectedDates,
     setCategory,
     selectOption,
     selectAttribute,
@@ -64,7 +71,7 @@ const StickyDonationBar = () => {
   if (HIDE_PREFIXES.some((p) => pathname.startsWith(p))) return null;
   if (!visible) return null;
 
-  const showAttributePills = attributes.length > 1;
+  const showAttributePills = attributes.length >= 1;
   const showPricePicker = showPresets || showCustomAmount;
   const impactText =
     selectedPresetDescription.trim() ||
@@ -82,6 +89,7 @@ const StickyDonationBar = () => {
                 selectedIndex={selectedAttrIdx}
                 onSelect={selectAttribute}
                 dark
+                showWhenSingle
               />
             )}
 
@@ -126,6 +134,18 @@ const StickyDonationBar = () => {
                 onUpdateCustom={updateCustomAmount}
                 dark
                 compact
+              />
+            )}
+
+            {showRamadanSection && selectedCampaign && (
+              <QuickDonateRamadanSection
+                campaign={selectedCampaign}
+                givingOption={ramadanGivingOption}
+                selectedDates={ramadanSelectedDates}
+                onGivingOptionChange={setRamadanGivingOption}
+                onSelectedDatesChange={setRamadanSelectedDates}
+                compact
+                dark
               />
             )}
 

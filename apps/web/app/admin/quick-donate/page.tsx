@@ -64,6 +64,7 @@ interface CampaignOption {
     singlePaymentConfig?: { priceType?: string; presetAmounts?: unknown[] };
     regularPaymentConfig?: { priceType?: string; presetAmounts?: unknown[] };
   }>;
+  experienceConfig?: Record<string, unknown>;
 }
 
 function paymentConfigHasDonationOptions(
@@ -89,6 +90,19 @@ function campaignEligibleForQuickDonate(c: CampaignOption): boolean {
   if (c.status && c.status !== "published") return false;
   if (!isQuickDonateCampaignMode(c.campaignMode || "standard")) return false;
   const attrs = c.attributes || [];
+  const mode = c.campaignMode || "standard";
+
+  if (mode === "ramadan_split") {
+    const hasRamadan = Boolean(
+      c.experienceConfig &&
+        typeof c.experienceConfig === "object" &&
+        (Array.isArray((c.experienceConfig as { startChoices?: unknown[] }).startChoices) ||
+          (c.experienceConfig as { ramadanStartDate?: string }).ramadanStartDate)
+    );
+    if (!attrs.length) return hasRamadan;
+    return hasRamadan || attrs.some(attributeHasDonationOptions);
+  }
+
   if (!attrs.length) return false;
   return attrs.some(attributeHasDonationOptions);
 }
@@ -137,6 +151,7 @@ export default function QuickDonateAdminPage() {
             status: c.status,
             campaignMode: c.campaignMode,
             attributes: c.attributes,
+            experienceConfig: c.experienceConfig,
           }))
           .filter(campaignEligibleForQuickDonate)
       );

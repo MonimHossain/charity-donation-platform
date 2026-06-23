@@ -10,6 +10,8 @@ interface QuickDonateAttributePillsProps {
   dark?: boolean;
   /** Hero home banner — matches legacy Single / Monthly toggle styling */
   appearance?: "default" | "frequency";
+  /** Show pills when there is only one campaign attribute */
+  showWhenSingle?: boolean;
 }
 
 export function QuickDonateAttributePills({
@@ -18,8 +20,10 @@ export function QuickDonateAttributePills({
   onSelect,
   dark = false,
   appearance = "default",
+  showWhenSingle = false,
 }: QuickDonateAttributePillsProps) {
-  if (attributes.length <= 1) return null;
+  if (attributes.length === 0) return null;
+  if (attributes.length === 1 && !showWhenSingle) return null;
 
   if (appearance === "frequency") {
     return (
@@ -31,7 +35,8 @@ export function QuickDonateAttributePills({
             onClick={() => onSelect(i)}
             title={attr.description || attr.name}
             className={cn(
-              "flex-1 min-w-0 px-3 sm:px-4 py-1.5 text-[11px] sm:text-xs font-bold rounded-full transition-colors truncate",
+              "flex-1 min-w-0 px-2 sm:px-3 py-1.5 text-[10px] sm:text-[11px] font-bold rounded-full transition-colors",
+              "leading-tight whitespace-normal text-center line-clamp-2",
               selectedIndex === i
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
@@ -58,7 +63,8 @@ export function QuickDonateAttributePills({
           onClick={() => onSelect(i)}
           title={attr.description || attr.name}
           className={cn(
-            "flex-1 min-w-0 py-2 px-2 rounded-full text-xs sm:text-sm font-semibold transition-colors truncate",
+            "flex-1 min-w-0 py-2 px-2 rounded-full text-xs sm:text-sm font-semibold transition-colors",
+            "leading-tight whitespace-normal text-center line-clamp-2",
             selectedIndex === i
               ? dark
                 ? "bg-accent text-accent-foreground shadow-sm"

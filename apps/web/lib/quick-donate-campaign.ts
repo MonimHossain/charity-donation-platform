@@ -1,3 +1,4 @@
+import type { RamadanSplitConfig } from "@/lib/campaign-experience";
 import type { PresetAmount, RegularPaymentConfig, SinglePaymentConfig } from "@/lib/campaign-payment-config";
 import {
   normalizeCampaignAttribute,
@@ -12,7 +13,24 @@ export interface QuickDonateCampaignPayload {
   title: string;
   currency: string;
   campaignMode: string;
+  category?: string;
+  experienceConfig?: RamadanSplitConfig | Record<string, unknown>;
   attributes: CampaignAttribute[];
+}
+
+export function isQuickDonateRamadanCampaign(
+  campaign: QuickDonateCampaignPayload | null | undefined
+): boolean {
+  return campaign?.campaignMode === "ramadan_split";
+}
+
+export function quickDonateHasRamadanConfig(
+  campaign: QuickDonateCampaignPayload | null | undefined
+): boolean {
+  if (!campaign?.experienceConfig || typeof campaign.experienceConfig !== "object") return false;
+  const exp = campaign.experienceConfig as RamadanSplitConfig;
+  if (Array.isArray(exp.startChoices) && exp.startChoices.length > 0) return true;
+  return Boolean(exp.ramadanStartDate);
 }
 
 export type QuickDonatePaymentConfig = SinglePaymentConfig | RegularPaymentConfig;
@@ -32,6 +50,11 @@ export function normalizeQuickDonateCampaign(
     title: String(raw.title || ""),
     currency: String(raw.currency || "GBP"),
     campaignMode: String(raw.campaignMode || "standard"),
+    category: String(raw.category || "general"),
+    experienceConfig:
+      raw.experienceConfig && typeof raw.experienceConfig === "object"
+        ? (raw.experienceConfig as RamadanSplitConfig)
+        : {},
     attributes,
   };
 }

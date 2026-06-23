@@ -10,12 +10,26 @@ import {
   getQuickDonatePaymentConfig,
   getQuickDonatePaymentType,
   getQuickDonatePresets,
+  isQuickDonateRamadanCampaign,
   normalizeQuickDonateCampaign,
   quickDonateAllowsCustomAmount,
+  quickDonateHasRamadanConfig,
   quickDonateShowsPresets,
   quickDonateStartsWithCustomInput,
 } from "@/lib/quick-donate-campaign";
+import { DEFAULT_RAMADAN_CONFIG, type RamadanSplitConfig } from "@/lib/campaign-experience";
+import { campaignToDonationSource } from "@/lib/donation-source";
 import { convertAmount, getCurrencyCode, useCurrency } from "@/lib/currency";
+import {
+  buildEqualRamadanNightPreview,
+  buildRamadanCalendarDates,
+  buildRecurringDonationPlan,
+  getRamadanAdminConfig,
+  getRamadanPresetDates,
+} from "@/lib/ramadan-split";
+import { useRamadanRegion, ramadanRegionLabel } from "@/lib/ramadan-region";
+import { clearDonationCart, addDonationCartItem } from "@/lib/stores/donationCartStore";
+import type { QuickDonateGivingOption } from "@/components/home/QuickDonateRamadanSection";
 
 export type QuickDonateFrequency = "single" | "monthly";
 
@@ -31,13 +45,23 @@ function normalizeOption(option: QuickDonateOption): QuickDonateOption | null {
   const campaign = normalizeQuickDonateCampaign(
     option.campaign as Record<string, unknown> | null | undefined
   );
-  if (!option.campaignId || !campaign || campaign.attributes.length === 0) return null;
+  if (!option.campaignId || !campaign) return null;
+
+  if (isQuickDonateRamadanCampaign(campaign)) {
+    const hasAttrs = campaign.attributes.length > 0;
+    const hasRamadan = quickDonateHasRamadanConfig(campaign);
+    if (!hasAttrs && !hasRamadan) return null;
+    return { ...option, campaign };
+  }
+
+  if (campaign.attributes.length === 0) return null;
   return { ...option, campaign };
 }
 
 export function useQuickDonateForm(initialCampaignSlug?: string) {
   const router = useRouter();
-  const { code: displayCurrency } = useCurrency();
+  const { code: displayCurrency, formatFromSource } = useCurrency();
+  const { regionId } = useRamadanRegion();
   const { data: config, isLoading } = useQuickDonateConfig();
 
   const options = useMemo(
@@ -72,6 +96,8 @@ export function useQuickDonateForm(initialCampaignSlug?: string) {
   const [custom, setCustom] = useState("");
   const [customAmountActive, setCustomAmountActive] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  const [ramadanGivingOption, setRamadanGivingOption] = useState<QuickDonateGivingOption>("odd_5");
+  const [ramadanSelectedDates, setRamadanSelectedDates] = useState<string[]>([]);
 
   const selectedOption: QuickDonateOption | null =
     options.find((o) => o.id === selectedOptionId) ?? options[0] ?? null;
@@ -80,6 +106,44 @@ export function useQuickDonateForm(initialCampaignSlug?: string) {
   const attributes = selectedCampaign?.attributes ?? [];
   const selectedAttr = attributes[selectedAttrIdx];
   const sourceCurrency = selectedCampaign?.currency ?? "GBP";
+  const isRamadanSplit = isQuickDonateRamadanCampaign(selectedCampaign);
+  const showRamadanSection = isRamadanSplit && quickDonateHasRamadanConfig(selectedCampaign);
+
+  const ramadanExperience = useMemo(() => {
+    if (!selectedCampaign || !isRamadanSplit) return null;
+    const config = {
+      ...DEFAULT_RAMADAN_CONFIG,
+      ...(selectedCampaign.experienceConfig as RamadanSplitConfig),
+    };
+    return {
+      type: "ramadan_split" as const,
+      ...config,
+      campaignId: selectedCampaign.id,
+      currency: selectedCampaign.currency,
+    };
+  }, [selectedCampaign, isRamadanSplit]);
+
+  const ramadanCalendarDates = useMemo(() => {
+    if (!ramadanExperience) return [];
+    const { ramadanStartDate, maxNights } = getRamadanAdminConfig(ramadanExperience, regionId);
+    return buildRamadanCalendarDates(ramadanStartDate, maxNights);
+  }, [ramadanExperience, regionId]);
+
+  const ramadanSelectedOrdered = useMemo(
+    () => ramadanCalendarDates.filter((d) => ramadanSelectedDates.includes(d)),
+    [ramadanCalendarDates, ramadanSelectedDates]
+  );
+
+  useEffect(() => {
+    if (!showRamadanSection || !ramadanCalendarDates.length) return;
+    setRamadanGivingOption("odd_5");
+    setRamadanSelectedDates(getRamadanPresetDates("odd_5", ramadanCalendarDates));
+  }, [selectedCampaign?.id, showRamadanSection]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!showRamadanSection || ramadanGivingOption === "custom") return;
+    setRamadanSelectedDates(getRamadanPresetDates(ramadanGivingOption, ramadanCalendarDates));
+  }, [ramadanCalendarDates, ramadanGivingOption, regionId, showRamadanSection]);
 
   const paymentType = getQuickDonatePaymentType(selectedAttr);
   const paymentConfig = getQuickDonatePaymentConfig(selectedAttr, paymentType);
@@ -92,7 +156,7 @@ export function useQuickDonateForm(initialCampaignSlug?: string) {
     const campaign = option.campaign;
     const attr = campaign?.attributes[attrIdx];
     const type = getQuickDonatePaymentType(attr);
-    const config = getQuickDonatePaymentConfig(attr, type);
+    const attrConfig = getQuickDonatePaymentConfig(attr, type);
     const nextPresets = getQuickDonatePresets(attr, type);
     const defaultAmount = defaultAmountForAttribute(attr, type);
     const defaultDescription =
@@ -101,7 +165,7 @@ export function useQuickDonateForm(initialCampaignSlug?: string) {
     setSelectedOptionId(option.id);
     setSelectedAttrIdx(attrIdx);
 
-    if (quickDonateStartsWithCustomInput(config)) {
+    if (quickDonateStartsWithCustomInput(attrConfig)) {
       setAmount(0);
       setSelectedPresetDescription("");
       setCustom("");
@@ -197,6 +261,67 @@ export function useQuickDonateForm(initialCampaignSlug?: string) {
 
   const goToDonate = () => {
     if (!selectedOption?.campaign) return;
+
+    if (isRamadanSplit && showRamadanSection && ramadanExperience && selectedCampaign) {
+      const campaign = selectedCampaign;
+      const baseTotal = finalAmount;
+      const nightPreview = buildEqualRamadanNightPreview(ramadanSelectedOrdered, baseTotal);
+      if (
+        ramadanSelectedOrdered.length === 0 ||
+        !Number.isFinite(baseTotal) ||
+        baseTotal <= 0 ||
+        nightPreview.some((n) => n.amount < 0)
+      ) {
+        return;
+      }
+
+      const { ramadanStartDate } = getRamadanAdminConfig(ramadanExperience, regionId);
+      const source = campaignToDonationSource({
+        id: campaign.id,
+        slug: campaign.slug,
+        title: campaign.title,
+        category: campaign.category || "general",
+        currency: sourceCurrency,
+      });
+      const recurringPlan = buildRecurringDonationPlan({
+        donationPageId: source.id,
+        donationPageSlug: source.slug,
+        campaignId: campaign.id,
+        currency: sourceCurrency,
+        totalAmount: baseTotal,
+        nights: nightPreview,
+      });
+      const dailyBreakdown = nightPreview.map((n) => n.amount);
+
+      clearDonationCart();
+      addDonationCartItem({
+        kind: "ramadan_split",
+        donationPageId: source.id,
+        donationPageSlug: source.slug,
+        title: selectedOption.label || campaign.title,
+        category: category || campaign.category || "general",
+        amount: baseTotal,
+        currency: sourceCurrency,
+        description: `Ramadan split — ${ramadanSelectedOrdered.length} nights — ${formatFromSource(nightPreview[0]?.amount ?? 0, sourceCurrency)}/night`,
+        campaignId: campaign.id,
+        donationType: "ramadan",
+        ramadan: {
+          ramadanStartDate,
+          regionId,
+          regionLabel: ramadanRegionLabel(regionId),
+          selectedDates: ramadanSelectedOrdered,
+          weights: ramadanSelectedOrdered.map(() => 1),
+          dailyBreakdown,
+          nights: ramadanSelectedOrdered.length,
+          campaignId: campaign.id,
+          notes: `Ramadan split (${ramadanSelectedOrdered.length} nights)`,
+          recurringPlan,
+        },
+      });
+      router.push("/donation/checkout");
+      return;
+    }
+
     const cause =
       selectedOption.campaignSlug ||
       selectedOption.campaign.slug ||
@@ -251,6 +376,12 @@ export function useQuickDonateForm(initialCampaignSlug?: string) {
     displayAmount,
     finalAmount,
     sourceCurrency,
+    isRamadanSplit,
+    showRamadanSection,
+    ramadanGivingOption,
+    ramadanSelectedDates,
+    setRamadanGivingOption,
+    setRamadanSelectedDates,
     setCategory,
     selectOption,
     selectAttribute,

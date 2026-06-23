@@ -6,6 +6,7 @@ import { useQuickDonateForm } from "@/lib/hooks/useQuickDonateForm";
 import { useCurrency } from "@/lib/currency";
 import { QuickDonateAttributePills } from "@/components/home/QuickDonateAttributePills";
 import { QuickDonatePricePicker } from "@/components/home/QuickDonatePricePicker";
+import { QuickDonateRamadanSection } from "@/components/home/QuickDonateRamadanSection";
 
 interface Props {
   defaultAmount?: number;
@@ -31,6 +32,12 @@ export default function QuickDonate({ campaign = "gaza", variant = "light" }: Pr
     sourceCurrency,
     attributes,
     selectedAttrIdx,
+    selectedCampaign,
+    showRamadanSection,
+    ramadanGivingOption,
+    ramadanSelectedDates,
+    setRamadanGivingOption,
+    setRamadanSelectedDates,
     setCategory,
     selectOption,
     selectAttribute,
@@ -41,7 +48,7 @@ export default function QuickDonate({ campaign = "gaza", variant = "light" }: Pr
   } = useQuickDonateForm(campaign);
 
   const { symbol } = useCurrency();
-  const showAttributePills = attributes.length > 1;
+  const showAttributePills = attributes.length >= 1;
   const showPricePicker = showPresets || showCustomAmount;
 
   if (variant === "banner") {
@@ -76,6 +83,7 @@ export default function QuickDonate({ campaign = "gaza", variant = "light" }: Pr
                   selectedIndex={selectedAttrIdx}
                   onSelect={selectAttribute}
                   appearance="frequency"
+                  showWhenSingle
                 />
               </div>
             ) : (
@@ -139,6 +147,19 @@ export default function QuickDonate({ campaign = "gaza", variant = "light" }: Pr
           </div>
         )}
 
+        {showRamadanSection && selectedCampaign && (
+          <div className="mt-3">
+            <QuickDonateRamadanSection
+              campaign={selectedCampaign}
+              givingOption={ramadanGivingOption}
+              selectedDates={ramadanSelectedDates}
+              onGivingOptionChange={setRamadanGivingOption}
+              onSelectedDatesChange={setRamadanSelectedDates}
+              compact
+            />
+          </div>
+        )}
+
         <button
           type="button"
           onClick={goToDonate}
@@ -175,6 +196,7 @@ export default function QuickDonate({ campaign = "gaza", variant = "light" }: Pr
               selectedIndex={selectedAttrIdx}
               onSelect={selectAttribute}
               dark={dark}
+              showWhenSingle
             />
           </div>
         )}
@@ -221,6 +243,20 @@ export default function QuickDonate({ campaign = "gaza", variant = "light" }: Pr
           onUpdateCustom={updateCustomAmount}
           dark={dark}
         />
+      )}
+
+      {showRamadanSection && selectedCampaign && (
+        <div className="mt-3">
+          <QuickDonateRamadanSection
+            campaign={selectedCampaign}
+            givingOption={ramadanGivingOption}
+            selectedDates={ramadanSelectedDates}
+            onGivingOptionChange={setRamadanGivingOption}
+            onSelectedDatesChange={setRamadanSelectedDates}
+            compact
+            dark={dark}
+          />
+        </div>
       )}
 
       <button
