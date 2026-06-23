@@ -191,7 +191,7 @@ const Fundraisers = () => {
   }
 
   return (
-    <section className="container-wide py-20">
+    <section className="container-wide pt-8 pb-16 sm:pt-10 sm:pb-20">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
         <div className="max-w-2xl">
           <p className="text-sm uppercase tracking-[0.25em] text-accent-deep font-semibold">Live Fundraisers</p>

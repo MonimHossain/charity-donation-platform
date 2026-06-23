@@ -222,7 +222,7 @@ const FeaturedCampaigns = () => {
   }
 
   return (
-  <section className="container-wide px-4 sm:px-6 lg:px-8 py-16 sm:py-20 lg:py-28">
+  <section className="container-wide px-4 sm:px-6 lg:px-8 pt-16 pb-10 sm:pt-20 sm:pb-12 lg:pt-28 lg:pb-14">
     <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-10 sm:mb-14">
       <div className="max-w-2xl">
         <p className="text-sm uppercase tracking-[0.25em] text-accent-deep font-semibold">Our Appeals</p>
