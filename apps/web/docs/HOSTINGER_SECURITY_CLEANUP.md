@@ -12,8 +12,106 @@ Use this after suspected malware, recurring reinfection (~every 2 days), or befo
 | Reverse proxy | nginx (`infra/nginx/production.conf`) |
 | Docker services | PostgreSQL, Redis, MinIO (`infra/docker-compose.yaml`) |
 | Domain | `yourimpactdev.com` |
+| Current VPS IP | `72.62.6.143` (DNS A record; old `82.29.190.206` is decommissioned) |
 
 Run commands as `root` unless noted. Take snapshots/backups before destructive steps.
+
+---
+
+## XMRig miner — confirmed infection (Hostinger scan)
+
+Hostinger flagged crypto-miner files under the web app directory. **These are not in git** — they were dropped on the server (common causes: unpatched Next.js RCE, weak admin/SSH passwords, or a reinfecting cron job).
+
+**Known paths (remove all of these):**
+
+```
+/var/www/charity-donation-platform/apps/web/xmrig-6.21.0/
+/var/www/charity-donation-platform/apps/web/scanner_linux
+```
+
+`scanner_linux` is part of the same automated attack: it scans the internet for vulnerable servers (including **Next.js RCE**) and downloads XMRig 6.21.0. If it reappears without you creating it, **persistence is still active** on the VPS.
+
+### Step 1 — Stop the miner and remove files
+
+```bash
+ssh root@72.62.6.143
+
+# Kill any running xmrig process
+sudo pkill -9 xmrig 2>/dev/null || true
+sudo pkill -9 scanner_linux 2>/dev/null || true
+ps aux | grep -iE 'xmrig|scanner_linux|miner|kinsing|kdevtmpfsi' | grep -v grep
+
+# Remove miner/scanner files
+sudo rm -rf /var/www/charity-donation-platform/apps/web/xmrig-6.21.0
+sudo rm -f /var/www/charity-donation-platform/apps/web/scanner_linux
+sudo find /var/www /tmp /var/tmp /dev/shm /root /home -iname '*xmrig*' -o -iname 'scanner_linux' 2>/dev/null | xargs -r ls -la
+sudo find /var/www /tmp /var/tmp -type f -perm -111 -mtime -30 -ls 2>/dev/null | head -50
+```
+
+### Step 2 — Find what re-downloads it (check before reboot)
+
+```bash
+# Cron (most common — "every 2 days" pattern)
+for u in root jenkins www-data deployment; do
+  echo "=== $u ==="
+  crontab -l -u "$u" 2>/dev/null || true
+done
+grep -rE 'xmrig|curl.*\|.*sh|wget.*\|.*bash|/tmp/' /etc/cron* /var/spool/cron 2>/dev/null
+
+# systemd persistence
+systemctl list-units --type=service --state=running | grep -iE 'xmr|miner|unknown'
+ls -la /etc/systemd/system/*.service /etc/systemd/system/multi-user.target.wants/ 2>/dev/null
+
+# PM2 — rogue apps
+sudo -u jenkins pm2 list
+sudo -u jenkins pm2 save --force
+
+# What is listening / high CPU
+ps aux --sort=-%cpu | head -15
+```
+
+Delete any cron line, systemd unit, or PM2 process you did not create.
+
+### Step 3 — Rotate all secrets (assume compromised)
+
+```bash
+cd /var/www/charity-donation-platform
+# Generate new secrets locally, then edit .env on server:
+nano .env
+cp .env apps/api/.env
+```
+
+Rotate: `DB_PASSWORD`, `ADMIN_PASSWORD`, `ADMIN_JWT_SECRET`, `USER_JWT_SECRET`, `MINIO_*`, `STRIPE_*`, `SMTP_PASS`, and **all SSH keys** (GitHub Actions `SSH_PRIVATE_KEY` too).
+
+Set in production `.env`:
+
+```env
+DB_SYNCHRONIZE=false
+STRIPE_WEBHOOK_SKIP_VERIFY=false
+NODE_ENV=production
+```
+
+### Step 4 — Redeploy clean code and restart
+
+```bash
+cd /var/www/charity-donation-platform
+git pull origin prod
+pnpm install --frozen-lockfile
+pnpm build
+sudo -u jenkins pm2 restart all
+sudo -u jenkins pm2 save
+```
+
+### Step 5 — Re-scan
+
+Ask Hostinger to run another malware scan. Locally verify:
+
+```bash
+test ! -e /var/www/charity-donation-platform/apps/web/xmrig-6.21.0 && echo "xmrig folder gone"
+ps aux | grep -i xmrig | grep -v grep || echo "no xmrig process"
+```
+
+If xmrig returns within 48 hours, a **cron or backdoor user** was missed — use hPanel Browser Terminal and repeat Step 2, or request a **clean VPS reinstall** from Hostinger and restore only the database from backup.
 
 ---
 
@@ -176,12 +274,35 @@ Verify:
 ```bash
 curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:4000/health
 curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:3001
-curl -sI https://yourimpactdev.com | head -5
+curl -sI http://yourimpactdev.com | head -5
+curl -sI https://yourimpactdev.com | head -5   # if this times out, fix SSL on port 443
+```
+
+**SSH:** use the current IP, not a retired one:
+
+```bash
+ssh root@72.62.6.143
 ```
 
 ---
 
-## Phase 7 — nginx
+## HTTPS not working (port 443 timeout)
+
+If `http://yourimpactdev.com` works but `https://` times out, nginx is likely only listening on port 80.
+The repo config `infra/nginx/production.conf` is HTTP-only until SSL is provisioned.
+
+On the server (`ssh root@72.62.6.143`):
+
+```bash
+sudo ss -tlnp | grep -E ':80|:443'    # expect :80 only until SSL is set up
+sudo ufw allow 443/tcp
+sudo certbot --nginx -d yourimpactdev.com -d www.yourimpactdev.com
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+Also open port **443** in Hostinger hPanel → VPS → Firewall.
+
+---
 
 ```bash
 sudo nginx -t

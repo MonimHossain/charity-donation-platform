@@ -9,5 +9,10 @@ dist/
 .DS_Store
 coverage/
 .vercel
+xmrig*/
+**/xmrig
+**/xmrig-*/
+scanner_linux
+**/scanner_linux
 apps/scripts/*
 .cursor/
