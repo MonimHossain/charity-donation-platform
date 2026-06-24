@@ -7,6 +7,7 @@ import {
   changeAdminPassword,
 } from "../modules/admin-auth/adminAuth.controller.js";
 import { requireAdmin } from "../modules/admin-auth/adminAuth.middleware.js";
+import { authRateLimit } from "../modules/security/rateLimiter.js";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -145,11 +146,11 @@ router.get("/public/experts", async (req, res) => {
 // ═══════════════════════════════════
 // USER AUTH ROUTES (lazy-loaded)
 // ═══════════════════════════════════
-router.post("/auth/register", async (req, res) => {
+router.post("/auth/register", authRateLimit, async (req, res) => {
   const { registerUser } = await import("../modules/user-auth/userAuth.controller.js");
   return registerUser(req, res);
 });
-router.post("/auth/login", async (req, res) => {
+router.post("/auth/login", authRateLimit, async (req, res) => {
   const { loginUser } = await import("../modules/user-auth/userAuth.controller.js");
   return loginUser(req, res);
 });
@@ -200,11 +201,11 @@ router.put("/auth/change-password", async (req, res) => {
 });
 
 // Password reset (public)
-router.post("/auth/forgot-password", async (req, res) => {
+router.post("/auth/forgot-password", authRateLimit, async (req, res) => {
   const { forgotPassword } = await import("../modules/user-auth/userAuth.controller.js");
   return forgotPassword(req, res);
 });
-router.post("/auth/reset-password", async (req, res) => {
+router.post("/auth/reset-password", authRateLimit, async (req, res) => {
   const { resetPassword } = await import("../modules/user-auth/userAuth.controller.js");
   return resetPassword(req, res);
 });
@@ -391,7 +392,7 @@ router.get("/blog/categories", async (req, res) => {
 // ═══════════════════════════════════
 // ADMIN AUTH
 // ═══════════════════════════════════
-router.post("/admin/login", loginAdmin);
+router.post("/admin/login", authRateLimit, loginAdmin);
 router.post("/admin/logout", requireAdmin, logoutAdmin);
 router.get("/admin/profile", requireAdmin, getAdminProfile);
 router.put("/admin/profile/password", requireAdmin, changeAdminPassword);
