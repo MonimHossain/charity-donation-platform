@@ -273,15 +273,27 @@ export async function getDonationStatus(req: Request, res: Response) {
   try {
     const donation = await repo().findOne({
       where: { id: routeParam(req, 'id') },
-      select: ["id", "status", "totalAmount", "currency", "receiptNumber"],
+      relations: ["campaign"],
     });
     if (!donation) return res.status(404).json({ message: "Donation not found" });
     return res.json({
       id: donation.id,
       status: donation.status,
+      amount: donation.amount,
       totalAmount: donation.totalAmount,
       currency: donation.currency,
       receiptNumber: donation.receiptNumber,
+      frequency: donation.frequency,
+      giftAid: donation.giftAid,
+      donationType: donation.donationType,
+      paymentMethod: donation.paymentMethod,
+      donorName: donation.donorName,
+      donorEmail: donation.donorEmail,
+      donorPhone: donation.donorPhone,
+      campaignSlug: donation.campaign?.slug,
+      campaignTitle: donation.campaign?.title,
+      category: donation.campaign?.category,
+      campaignMode: donation.campaign?.campaignMode,
     });
   } catch (error) {
     return res.status(500).json({ message: "Internal server error" });

@@ -41,6 +41,8 @@ import {
   isRamadanSplitCartLine,
   summarizeRamadanCheckout,
 } from "@/lib/ramadan-split";
+import { buildThankYouSearchParams } from "@/lib/analytics/thank-you-params";
+import { pushDonationEvent } from "@/lib/analytics/push-donation-event";
 import {
   DEFAULT_CAMPAIGN_CONFIG,
   isGiftAidCheckoutEnabled,
@@ -103,6 +105,24 @@ function DonationCheckoutContent() {
   const [pendingAutomatedScheduleIds, setPendingAutomatedScheduleIds] = useState<string[]>([]);
   const [monthlyGift, setMonthlyGift] = useState(false);
   const [stripeReady, setStripeReady] = useState(false);
+  const beginCheckoutTracked = useRef(false);
+
+  useEffect(() => {
+    if (beginCheckoutTracked.current || items.length === 0) return;
+    beginCheckoutTracked.current = true;
+    const primary = items[0];
+    if (!primary) return;
+    void pushDonationEvent("begin_checkout", {
+      appealId: primary.campaignSlug || primary.donationPageSlug,
+      appealName: primary.title,
+      category: primary.category,
+      donationType: primary.donationType,
+      amount: subtotal,
+      currency: primary.currency,
+      frequency: primary.recurringFrequency || "single",
+      giftAid,
+    });
+  }, [items, subtotal, giftAid]);
 
   useEffect(() => {
     if (!prefill || prefillApplied.current) return;
@@ -383,18 +403,25 @@ function DonationCheckoutContent() {
 
   const redirectToThankYou = (donationId?: string) => {
     clear();
-    const summaryParams = new URLSearchParams({
-      amount: chargeAmount.toString(),
+    const primary = items[0];
+    const summaryParams = buildThankYouSearchParams({
+      amount: chargeAmount,
       currency,
       frequency: ramadanSummary.hasRamadanSplit ? "ramadan_split" : checkoutFrequency,
-      giftAid: giftAid.toString(),
+      giftAid,
+      donationId,
+      campaignSlug: primary?.campaignSlug || primary?.donationPageSlug,
+      campaignTitle: primary?.title,
+      category: primary?.category,
+      donationType: primary?.donationType,
+      paymentMethod: "stripe",
+      donorName,
+      donorEmail,
+      donorPhone,
+      commitmentTotal: ramadanSummary.hasRamadanSplit ? donationAmount : undefined,
+      installmentCount: ramadanSummary.hasRamadanSplit ? ramadanSummary.installmentCount : undefined,
+      installmentAmount: ramadanSummary.hasRamadanSplit ? ramadanSummary.firstInstallmentAmount : undefined,
     });
-    if (ramadanSummary.hasRamadanSplit) {
-      summaryParams.set("commitmentTotal", donationAmount.toString());
-      summaryParams.set("installmentCount", String(ramadanSummary.installmentCount));
-      summaryParams.set("installmentAmount", ramadanSummary.firstInstallmentAmount.toString());
-    }
-    if (donationId) summaryParams.set("donationId", donationId);
     router.push(`/thank-you?${summaryParams.toString()}`);
   };
 

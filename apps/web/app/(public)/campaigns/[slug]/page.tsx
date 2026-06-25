@@ -2,7 +2,7 @@
 
 import { USE_MOCK_DATA } from "@/lib/config";
 import MockCampaignDetail from "@/components/site/MockCampaignDetail";
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import {
 } from "@/components/campaigns/campaign-detail-types";
 import type { DonorScheduleChoice } from "@/lib/campaign-payment-config";
 import { sourceFromDisplay } from "@/lib/currency";
+import { pushDonationEvent } from "@/lib/analytics/push-donation-event";
 
 export default function CampaignDetailPage() {
   const params = useParams<{ slug: string }>();
@@ -48,6 +49,7 @@ function CampaignDetailApi({ slug: slugProp }: { slug: string }) {
   const [donorSchedule, setDonorSchedule] = useState<DonorScheduleChoice>({ mode: "admin" });
   const [showCustomSchedule, setShowCustomSchedule] = useState(false);
   const [quantity, setQuantity] = useState(1);
+  const viewItemTracked = useRef(false);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
 
   function initAttributeState(attr: CampaignData["attributes"][0]) {
@@ -130,6 +132,10 @@ function CampaignDetailApi({ slug: slugProp }: { slug: string }) {
       .catch(() => {});
   }, [slug]);
 
+  useEffect(() => {
+    viewItemTracked.current = false;
+  }, [slug]);
+
   const selectedAttr = campaign?.attributes?.[selectedAttrIdx];
 
   const handleSelectAttribute = useCallback(
@@ -150,6 +156,21 @@ function CampaignDetailApi({ slug: slugProp }: { slug: string }) {
     const useQuantity = selectedAttr?.enableQuantity;
     return base * (useQuantity ? quantity : 1);
   }, [selectedAmount, customAmount, quantity, selectedAttr, campaign?.currency]);
+
+  useEffect(() => {
+    if (!campaign || viewItemTracked.current) return;
+    viewItemTracked.current = true;
+    void pushDonationEvent("view_item", {
+      appealId: campaign.slug,
+      appealName: campaign.title,
+      category: campaign.category,
+      campaignMode: campaign.campaignMode,
+      amount: finalAmount,
+      currency: campaign.currency,
+      frequency: paymentType === "regular" ? "monthly" : "single",
+      giftAid: false,
+    });
+  }, [campaign, finalAmount, paymentType]);
 
   const handleShare = useCallback(
     (platform: string) => {

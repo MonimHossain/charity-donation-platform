@@ -457,7 +457,25 @@ export async function fetchCampaignPaymentsConfig(campaignGateways: string[]) {
 
 export async function getDonationStatus(donationId: string) {
   const { data } = await api.get(`/donations/${donationId}/status`);
-  return data as { id: string; status: string; totalAmount: number; currency: string; receiptNumber?: string };
+  return data as {
+    id: string;
+    status: string;
+    amount?: number;
+    totalAmount: number;
+    currency: string;
+    receiptNumber?: string;
+    frequency?: string;
+    giftAid?: boolean;
+    donationType?: string;
+    paymentMethod?: string;
+    donorName?: string;
+    donorEmail?: string;
+    donorPhone?: string;
+    campaignSlug?: string;
+    campaignTitle?: string;
+    category?: string;
+    campaignMode?: string;
+  };
 }
 
 export async function initTelrPayment(payload: {

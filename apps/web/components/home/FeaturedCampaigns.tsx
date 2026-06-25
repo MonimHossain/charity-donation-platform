@@ -9,6 +9,7 @@ import { isCampaignExpired } from "@/lib/campaign-expiration";
 import { CampaignExpirationCountdown } from "@/components/campaigns/CampaignExpirationCountdown";
 import { CampaignFeaturedBadge } from "@/components/campaigns/CampaignFeaturedBadge";
 import { homeDonateButtonClass } from "@/lib/home-buttons";
+import { trackSelectItem } from "@/lib/analytics/push-donation-event";
 import {
   CAMPAIGN_MODE_LABELS,
   isExperienceCampaignMode,
@@ -20,6 +21,8 @@ type Appeal = {
   slug: string;
   title: string;
   tag: string;
+  category?: string;
+  currency?: string;
   excerpt: string;
   image: string;
   featured?: boolean;
@@ -80,6 +83,8 @@ function mapCampaigns(
     slug: String(c.slug),
     title: String(c.title),
     tag: appealTag(c),
+    category: c.category ? String(c.category) : undefined,
+    currency: c.currency ? String(c.currency) : undefined,
     excerpt: String(c.shortDescription ?? c.summary ?? ""),
     image: getCampaignCardImage({
       thumbnail: c.thumbnail as string | undefined,
@@ -106,9 +111,18 @@ const AppealCard = ({
   a: Appeal;
   large?: boolean;
   onExpired?: () => void;
-}) => (
+}) => {
+  const handleSelect = () =>
+    trackSelectItem({
+      slug: a.slug,
+      title: a.title,
+      category: a.category || a.tag,
+      currency: a.currency,
+    });
+
+  return (
   <div className={`group relative flex flex-col overflow-hidden rounded-2xl sm:rounded-3xl bg-card border border-border/60 shadow-soft hover:shadow-lift hover:-translate-y-1 transition-all duration-500 ${large ? "sm:col-span-2 lg:col-span-2" : ""}`}>
-    <Link href={`/campaigns/${a.slug}`} className="relative block overflow-hidden">
+    <Link href={`/campaigns/${a.slug}`} onClick={handleSelect} className="relative block overflow-hidden">
       <div className={`relative overflow-hidden ${large ? "aspect-[8/3]" : "aspect-[4/3]"}`}>
         <img
           src={a.image}
@@ -177,6 +191,7 @@ const AppealCard = ({
       <div className="mt-auto pt-2">
         <Link
           href={`/campaigns/${a.slug}`}
+          onClick={handleSelect}
           className={`w-full px-4 py-2.5 text-sm ${homeDonateButtonClass}`}
         >
           Donate now
@@ -185,7 +200,8 @@ const AppealCard = ({
       </div>
     </div>
   </div>
-);
+  );
+};
 
 const FeaturedCampaigns = () => {
   const { data, isLoading, refetch } = useHomepageAppeals();

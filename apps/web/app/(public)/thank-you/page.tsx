@@ -13,22 +13,24 @@ import { Button } from "@/components/ui/button";
 import { statTotalClass } from "@/lib/home-buttons";
 import { CURRENCIES, type CurrencyCode } from "@/lib/currency";
 import { useEffect, useMemo, useState } from "react";
-import { trackEvent } from "@/components/analytics/GTMScript";
+import { pushDonationEvent } from "@/lib/analytics/push-donation-event";
+import { shouldFirePurchase } from "@/lib/analytics/purchase-dedupe";
+import { parseThankYouParams } from "@/lib/analytics/thank-you-params";
 import { USE_MOCK_DATA } from "@/lib/config";
 import ShareSheet from "@/components/sharing/ShareSheet";
 
 export default function ThankYouPage() {
   const params = useSearchParams();
-  const amount = params.get("amount") || "50";
-  const currency = (params.get("currency") as CurrencyCode) || "GBP";
-  const frequency = params.get("frequency") || "single";
-  const giftAid = params.get("giftAid") === "true";
-  const campaign = params.get("campaign") || "";
-  const donationId = params.get("donationId") || "";
-  const receiptNumber = params.get("receiptNumber") || "";
-  const commitmentTotal = params.get("commitmentTotal");
-  const installmentCount = params.get("installmentCount");
-  const installmentAmount = params.get("installmentAmount");
+  const analytics = parseThankYouParams(params);
+  const amount = analytics.amount;
+  const currency = (analytics.currency as CurrencyCode) || "GBP";
+  const frequency = analytics.frequency;
+  const giftAid = analytics.giftAid === "true";
+  const donationId = analytics.donationId || "";
+  const receiptNumber = analytics.receiptNumber || "";
+  const commitmentTotal = analytics.commitmentTotal;
+  const installmentCount = analytics.installmentCount;
+  const installmentAmount = analytics.installmentAmount;
   const isRamadanSplit = frequency === "ramadan_split";
   const [shareOpen, setShareOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState("");
@@ -38,15 +40,45 @@ export default function ThankYouPage() {
   }, []);
 
   useEffect(() => {
-    trackEvent("donation_complete", {
-      donation_id: donationId || undefined,
-      value: Number(amount) || undefined,
-      currency,
-      frequency,
-      campaign: campaign || undefined,
-      gift_aid: giftAid,
-    });
-  }, [donationId, amount, currency, frequency, campaign, giftAid]);
+    const transactionId = donationId || receiptNumber;
+    if (!transactionId || !shouldFirePurchase(transactionId)) return;
+
+    void pushDonationEvent(
+      "purchase",
+      {
+        appealId: analytics.campaignSlug,
+        appealName: analytics.campaignName,
+        category: analytics.category,
+        donationType: analytics.donationType,
+        amount: Number(amount) || 0,
+        currency,
+        frequency,
+        giftAid,
+        paymentType: analytics.paymentType,
+        firstName: analytics.firstName,
+        lastName: analytics.lastName,
+        email: analytics.email,
+        phone: analytics.phone,
+      },
+      { transaction_id: transactionId }
+    );
+  }, [
+    donationId,
+    receiptNumber,
+    amount,
+    currency,
+    frequency,
+    giftAid,
+    analytics.campaignSlug,
+    analytics.campaignName,
+    analytics.category,
+    analytics.donationType,
+    analytics.paymentType,
+    analytics.firstName,
+    analytics.lastName,
+    analytics.email,
+    analytics.phone,
+  ]);
 
   const currencyInfo = CURRENCIES[currency] || CURRENCIES.GBP;
   const giftAidAmount = giftAid ? (Number(amount) * 0.25).toFixed(2) : "0";
@@ -132,7 +164,7 @@ export default function ThankYouPage() {
                 date.
               </p>
             )}
-            {campaign && <p>Campaign: {campaign}</p>}
+            {analytics.campaignName && <p>Campaign: {analytics.campaignName}</p>}
           </div>
         </div>
 
