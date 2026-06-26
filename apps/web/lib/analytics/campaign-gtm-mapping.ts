@@ -50,12 +50,15 @@ function titleCaseCategory(category: string): string {
 function inferDonationType(
   category?: string,
   campaignMode?: string,
-  donationType?: string
+  donationType?: string,
+  slug?: string
 ): string {
   if (donationType) return donationType.toLowerCase();
+  const s = (slug || "").toLowerCase();
   const c = (category || "").toLowerCase();
   const mode = (campaignMode || "").toLowerCase();
-  if (c === "zakat" || mode === "zakat") return "zakat";
+  if (s.includes("zakat") || c === "zakat" || mode === "zakat") return "zakat";
+  if (mode === "ramadan_split" || s.includes("ramadan")) return "ramadan";
   if (c.includes("jariyah") || c === "water") return "sadaqah_jariyah";
   if (["sadaqah", "lillah", "general", "emergency", "food", "education", "health", "shelter", "orphan"].includes(c)) {
     return c === "general" ? "general" : "sadaqah";
@@ -83,7 +86,12 @@ export function resolveGtmCampaignMeta(input: {
   }
 
   const category = titleCaseCategory(input.category || "general");
-  const donationType = inferDonationType(input.category, input.campaignMode, input.donationType);
+  const donationType = inferDonationType(
+    input.category,
+    input.campaignMode,
+    input.donationType,
+    slug
+  );
 
   return {
     appealId: slug || "unknown",

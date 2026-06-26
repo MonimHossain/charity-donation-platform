@@ -42,7 +42,7 @@ import {
   summarizeRamadanCheckout,
 } from "@/lib/ramadan-split";
 import { buildThankYouSearchParams } from "@/lib/analytics/thank-you-params";
-import { pushDonationEvent } from "@/lib/analytics/push-donation-event";
+import { pushBeginCheckoutFromCart } from "@/lib/analytics/cart-gtm";
 import {
   DEFAULT_CAMPAIGN_CONFIG,
   isGiftAidCheckoutEnabled,
@@ -106,23 +106,6 @@ function DonationCheckoutContent() {
   const [monthlyGift, setMonthlyGift] = useState(false);
   const [stripeReady, setStripeReady] = useState(false);
   const beginCheckoutTracked = useRef(false);
-
-  useEffect(() => {
-    if (beginCheckoutTracked.current || items.length === 0) return;
-    beginCheckoutTracked.current = true;
-    const primary = items[0];
-    if (!primary) return;
-    void pushDonationEvent("begin_checkout", {
-      appealId: primary.campaignSlug || primary.donationPageSlug,
-      appealName: primary.title,
-      category: primary.category,
-      donationType: primary.donationType,
-      amount: subtotal,
-      currency: primary.currency,
-      frequency: primary.recurringFrequency || "single",
-      giftAid,
-    });
-  }, [items, subtotal, giftAid]);
 
   useEffect(() => {
     if (!prefill || prefillApplied.current) return;
@@ -342,6 +325,7 @@ function DonationCheckoutContent() {
     setPendingAutomatedScheduleIds([]);
     setPaymentError("");
     paymentPrepareAttempted.current = false;
+    beginCheckoutTracked.current = false;
   }
 
   const checkoutRecurringParams = useMemo(() => {
@@ -611,6 +595,17 @@ function DonationCheckoutContent() {
     if (flowStep !== "payment") return;
     void preparePayment();
   }, [flowStep, preparePayment, stripeReady]);
+
+  useEffect(() => {
+    if (flowStep !== "payment" || beginCheckoutTracked.current || items.length === 0) return;
+    beginCheckoutTracked.current = true;
+    pushBeginCheckoutFromCart({
+      items,
+      giftAid,
+      amount: donationAmount,
+      currency: displayCurrency,
+    });
+  }, [flowStep, items, giftAid, donationAmount, displayCurrency]);
 
   const effectivePublishableKey =
     stripePublishableKey || process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "";

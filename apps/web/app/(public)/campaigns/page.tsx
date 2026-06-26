@@ -42,6 +42,7 @@ interface Campaign {
   title: string;
   shortDescription: string;
   category: string;
+  campaignMode?: string;
   tags: string[];
   thumbnail?: string;
   banner?: string;
@@ -203,7 +204,9 @@ function CampaignsPageApi() {
                         slug: campaign.slug,
                         title: campaign.title,
                         category: campaign.category,
+                        campaignMode: campaign.campaignMode,
                         currency: campaign.currency,
+                        tags: campaign.tags,
                       })
                     }
                     className="group flex flex-col overflow-hidden rounded-2xl border bg-card shadow-soft transition-all hover:shadow-lift hover:-translate-y-1"

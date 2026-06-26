@@ -22,6 +22,8 @@ type Appeal = {
   title: string;
   tag: string;
   category?: string;
+  campaignMode?: string;
+  tags?: string[];
   currency?: string;
   excerpt: string;
   image: string;
@@ -84,6 +86,8 @@ function mapCampaigns(
     title: String(c.title),
     tag: appealTag(c),
     category: c.category ? String(c.category) : undefined,
+    campaignMode: c.campaignMode ? String(c.campaignMode) : undefined,
+    tags: Array.isArray(c.tags) ? c.tags.map(String) : undefined,
     currency: c.currency ? String(c.currency) : undefined,
     excerpt: String(c.shortDescription ?? c.summary ?? ""),
     image: getCampaignCardImage({
@@ -117,7 +121,9 @@ const AppealCard = ({
       slug: a.slug,
       title: a.title,
       category: a.category || a.tag,
+      campaignMode: a.campaignMode,
       currency: a.currency,
+      tags: a.tags,
     });
 
   return (
