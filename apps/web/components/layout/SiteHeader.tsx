@@ -207,6 +207,14 @@ export default function SiteHeader() {
         >
           <div className="container-wide flex items-center justify-between h-14 gap-2 sm:gap-4">
             <div className="flex items-center gap-3 min-w-0 flex-1 lg:flex-none">
+              {!scrolled && (
+                <img
+                  src="/images/achievements.webp"
+                  alt="100% Policy · Awards"
+                  className="lg:hidden h-8 w-auto flex-1 min-w-0 max-w-full object-contain object-left select-none"
+                  draggable={false}
+                />
+              )}
               <Link
                 href="/"
                 aria-label="Home"
@@ -279,15 +287,7 @@ export default function SiteHeader() {
               </div>
             </div>
 
-            <div className="flex lg:hidden items-center gap-1.5 ml-auto shrink-0">
-              {!scrolled && (
-                <img
-                  src="/images/achievements.webp"
-                  alt="100% Policy · Awards"
-                  className="h-7 w-auto select-none shrink-0 max-w-[5.5rem] object-contain"
-                  draggable={false}
-                />
-              )}
+            <div className="flex lg:hidden items-center gap-1.5 shrink-0">
               {scrolled && (
                 <div className="flex items-center gap-1">
                   <CurrencySwitcher />
