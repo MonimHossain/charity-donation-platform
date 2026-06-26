@@ -116,6 +116,7 @@ export interface CheckoutSettings {
   enableFeeCoverage: boolean;
   enableAdminSavesLife: boolean;
   adminSavesLifeAmount: number;
+  enablePushRecurringDonation: boolean;
 }
 
 export interface VisibilitySettings {
@@ -259,6 +260,7 @@ export class Campaign {
       enableFeeCoverage: false,
       enableAdminSavesLife: false,
       adminSavesLifeAmount: 0,
+      enablePushRecurringDonation: false,
     },
   })
   checkoutSettings!: CheckoutSettings;
@@ -297,6 +299,9 @@ export class Campaign {
 
   @Column({ type: "int", default: 0 })
   sortOrder!: number;
+
+  @Column({ type: "int", default: 0 })
+  displayDonorOffset!: number;
 
   @Column({ type: "int", default: 0 })
   donorCount!: number;

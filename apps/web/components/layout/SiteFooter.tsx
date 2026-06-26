@@ -2,14 +2,18 @@
 
 import Link from "next/link";
 import { Mail, Phone, Facebook, Instagram } from "lucide-react";
+import { SiteLogo } from "./SiteLogo";
+import { useLocale } from "@/lib/i18n";
 
 export default function SiteFooter() {
+  const { t } = useLocale();
+
   return (
     <footer className="mt-24 bg-primary text-primary-foreground">
       <div className="container-wide py-16 grid gap-12 lg:grid-cols-12">
         <div className="lg:col-span-4">
           <Link href="/" className="inline-flex items-center bg-white/95 rounded-xl px-3 py-2" aria-label="Home">
-            <img src="/images/logo-transparent.png" alt="Logo" className="h-10 w-auto" />
+            <SiteLogo heightClass="h-10" />
           </Link>
           <p className="mt-5 text-primary-foreground/80 leading-relaxed max-w-sm">
             A faith-driven international NGO based in the UK, supporting communities affected by conflict, poverty, hunger and injustice.
@@ -21,7 +25,7 @@ export default function SiteFooter() {
         </div>
 
         <div className="lg:col-span-2">
-          <h4 className="font-serif text-lg mb-4">Appeals</h4>
+          <h4 className="font-serif text-lg mb-4">{t("footer.appeals")}</h4>
           <ul className="space-y-2 text-primary-foreground/75 text-sm">
             <li><Link href="/campaigns?category=food" className="hover:text-accent transition-colors">Food Aid</Link></li>
             <li><Link href="/campaigns?category=emergency" className="hover:text-accent transition-colors">Emergency Aid</Link></li>
@@ -32,10 +36,10 @@ export default function SiteFooter() {
         </div>
 
         <div className="lg:col-span-2">
-          <h4 className="font-serif text-lg mb-4">Explore</h4>
+          <h4 className="font-serif text-lg mb-4">{t("footer.explore")}</h4>
           <ul className="space-y-2 text-primary-foreground/75 text-sm">
             <li><Link href="/about" className="hover:text-accent transition-colors">About</Link></li>
-            <li><Link href="/zakat-calculator" className="hover:text-accent transition-colors">Zakat</Link></li>
+            <li><Link href="/zakat-calculator" className="hover:text-accent transition-colors">{t("nav.zakat")}</Link></li>
             <li><Link href="/blog" className="hover:text-accent transition-colors">Stories</Link></li>
             <li><Link href="/namaz-times" className="hover:text-accent transition-colors">Namaz Times</Link></li>
             <li><Link href="/contact" className="hover:text-accent transition-colors">Contact</Link></li>
@@ -45,14 +49,14 @@ export default function SiteFooter() {
         </div>
 
         <div className="lg:col-span-4">
-          <h4 className="font-serif text-lg mb-4">Get in touch</h4>
+          <h4 className="font-serif text-lg mb-4">{t("footer.contact")}</h4>
           <ul className="space-y-3 text-primary-foreground/80 text-sm">
             <li className="flex items-center gap-3"><Phone className="w-4 h-4 text-accent" /><a href="tel:03335330642" className="hover:text-accent transition-colors">0333 533 0642</a></li>
             <li className="flex items-center gap-3"><Mail className="w-4 h-4 text-accent" /><a href="mailto:info@yourcharity.org" className="hover:text-accent break-all transition-colors">info@yourcharity.org</a></li>
           </ul>
           <div className="mt-6 p-4 rounded-2xl bg-primary-foreground/5 border border-primary-foreground/10">
-            <p className="text-xs uppercase tracking-widest text-accent font-semibold">100% Donation Policy</p>
-            <p className="text-sm mt-1 text-primary-foreground/80">Your Zakat goes 100% to those in need.</p>
+            <p className="text-xs uppercase tracking-widest text-accent font-semibold">{t("footer.policy")}</p>
+            <p className="text-sm mt-1 text-primary-foreground/80">{t("footer.policyDesc")}</p>
           </div>
         </div>
       </div>

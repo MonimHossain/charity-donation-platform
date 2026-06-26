@@ -1,12 +1,15 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { ShieldCheck, ChevronDown, HandHeart, CircleDollarSign, Tag } from "lucide-react";
 import { homeDonateButtonClass } from "@/lib/home-buttons";
 import { useQuickDonateForm } from "@/lib/hooks/useQuickDonateForm";
 import { useCurrency } from "@/lib/currency";
+import { useLocale } from "@/lib/i18n";
 import { QuickDonateAttributePills } from "@/components/home/QuickDonateAttributePills";
 import { QuickDonatePricePicker } from "@/components/home/QuickDonatePricePicker";
 import { QuickDonateRamadanSection } from "@/components/home/QuickDonateRamadanSection";
+import { DonateButtonEffect } from "@/components/ui/DonateButtonEffect";
 
 interface Props {
   defaultAmount?: number;
@@ -14,7 +17,28 @@ interface Props {
   variant?: "light" | "dark" | "banner";
 }
 
+function LabeledField({
+  label,
+  icon: Icon,
+  children,
+}: {
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-1 min-w-0">
+      <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-1">
+        <Icon className="w-3 h-3 text-accent-deep" />
+        {label}
+      </span>
+      {children}
+    </div>
+  );
+}
+
 export default function QuickDonate({ campaign = "gaza", variant = "light" }: Props) {
+  const { t } = useLocale();
   const {
     options,
     categories,
@@ -52,24 +76,6 @@ export default function QuickDonate({ campaign = "gaza", variant = "light" }: Pr
   const showPricePicker = showPresets || showCustomAmount;
 
   if (variant === "banner") {
-    const LabeledField = ({
-      label,
-      icon: Icon,
-      children,
-    }: {
-      label: string;
-      icon: React.ComponentType<{ className?: string }>;
-      children: React.ReactNode;
-    }) => (
-      <div className="flex flex-col gap-1 min-w-0">
-        <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-1">
-          <Icon className="w-3 h-3 text-accent-deep" />
-          {label}
-        </span>
-        {children}
-      </div>
-    );
-
     const fieldClass =
       "w-full appearance-none bg-secondary/60 hover:bg-secondary text-foreground font-semibold text-sm rounded-xl px-3 pr-8 h-11 border border-border focus:outline-none focus:ring-2 focus:ring-accent cursor-pointer truncate";
 
@@ -90,7 +96,7 @@ export default function QuickDonate({ campaign = "gaza", variant = "light" }: Pr
               <span className="flex-1" aria-hidden />
             )}
             <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-muted-foreground shrink-0">
-              <ShieldCheck className="w-3.5 h-3.5 text-accent-deep" /> Secure checkout
+              <ShieldCheck className="w-3.5 h-3.5 text-accent-deep" /> {t("donate.secure")}
             </span>
         </div>
 
@@ -128,7 +134,7 @@ export default function QuickDonate({ campaign = "gaza", variant = "light" }: Pr
 
         {showPricePicker && (
           <div className="mt-3">
-            <LabeledField label="Amount" icon={CircleDollarSign}>
+            <LabeledField label={t("donate.amount")} icon={CircleDollarSign}>
               <QuickDonatePricePicker
                 sourceCurrency={sourceCurrency}
                 displayPrices={displayPrices}
@@ -160,16 +166,18 @@ export default function QuickDonate({ campaign = "gaza", variant = "light" }: Pr
           </div>
         )}
 
-        <button
-          type="button"
-          onClick={goToDonate}
-          className={`w-full h-12 mt-3 text-base font-bold ${homeDonateButtonClass}`}
-        >
-          Donate {symbol}{finalAmount}{freq === "monthly" ? "/mo" : ""}
-        </button>
+        <DonateButtonEffect className="w-full mt-3 rounded-full">
+          <button
+            type="button"
+            onClick={goToDonate}
+            className={`w-full h-12 text-base font-bold ${homeDonateButtonClass}`}
+          >
+            {t("nav.donate")} {symbol}{finalAmount}{freq === "monthly" ? "/mo" : ""}
+          </button>
+        </DonateButtonEffect>
 
         <p className="sm:hidden mt-2 flex items-center justify-center gap-1 text-[11px] text-muted-foreground">
-          <ShieldCheck className="w-3.5 h-3.5 text-accent-deep" /> Secure checkout
+          <ShieldCheck className="w-3.5 h-3.5 text-accent-deep" /> {t("donate.secure")}
         </p>
       </div>
     );
@@ -187,7 +195,7 @@ export default function QuickDonate({ campaign = "gaza", variant = "light" }: Pr
     >
       <div className="flex items-center justify-between gap-3 mb-4">
         <p className={`text-xs uppercase tracking-widest font-semibold ${dark ? "text-accent" : "text-accent-deep"}`}>
-          Donate in seconds
+          {t("donate.inSeconds")}
         </p>
         {showAttributePills && (
           <div className="flex-1 min-w-0 max-w-[220px] sm:max-w-xs">
@@ -264,7 +272,7 @@ export default function QuickDonate({ campaign = "gaza", variant = "light" }: Pr
         onClick={goToDonate}
         className={`w-full mt-4 h-12 text-base font-bold ${homeDonateButtonClass}`}
       >
-        Donate {symbol}{finalAmount}
+        {t("nav.donate")} {symbol}{finalAmount}
         {freq === "monthly" && "/mo"}
       </button>
 

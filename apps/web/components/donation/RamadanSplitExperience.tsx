@@ -78,6 +78,7 @@ export function RamadanSplitForm({
   );
   const [amount, setAmount] = useState(100);
   const [customAmount, setCustomAmount] = useState("");
+  const [customAmountMode, setCustomAmountMode] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewNights, setPreviewNights] = useState<ReturnType<typeof buildEqualRamadanNightPreview>>([]);
 
@@ -193,7 +194,7 @@ export function RamadanSplitForm({
         {/* Amount */}
         <div className="grid grid-cols-4 gap-2">
           {PRESET_AMOUNTS.map((a) => {
-            const active = !customAmount && amount === a;
+            const active = !customAmountMode && !customAmount && amount === a;
             return (
               <button
                 key={a}
@@ -201,6 +202,7 @@ export function RamadanSplitForm({
                 onClick={() => {
                   setAmount(a);
                   setCustomAmount("");
+                  setCustomAmountMode(false);
                 }}
                 className={pillClass(active)}
               >
@@ -210,15 +212,16 @@ export function RamadanSplitForm({
           })}
           <button
             type="button"
-            onClick={() =>
-              setCustomAmount(customAmount || String(convertToDisplay(amount, sourceCurrency)))
-            }
-            className={pillClass(Boolean(customAmount))}
+            onClick={() => {
+              setCustomAmountMode(true);
+              setCustomAmount(customAmount || String(convertToDisplay(amount, sourceCurrency)));
+            }}
+            className={pillClass(customAmountMode)}
           >
             Other
           </button>
         </div>
-        {customAmount !== "" && (
+        {customAmountMode && (
           <Input
             type="number"
             inputMode="decimal"

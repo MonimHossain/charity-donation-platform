@@ -45,3 +45,16 @@ export function getCampaignFundraisingProgress(campaign: CampaignFundraisingSour
   if (goal <= 0) return 0;
   return Math.min(100, Math.round((raised / goal) * 100));
 }
+
+type CampaignDonorDisplaySource = {
+  donorCount?: number;
+  donors?: number;
+  displayDonorOffset?: number;
+};
+
+/** Public-facing donor count: cosmetic offset + real completed donations. */
+export function getDisplayDonorCount(campaign: CampaignDonorDisplaySource): number {
+  const offset = Math.max(0, Number(campaign.displayDonorOffset ?? 0) || 0);
+  const real = Math.max(0, Number(campaign.donorCount ?? campaign.donors ?? 0) || 0);
+  return offset + real;
+}

@@ -80,6 +80,7 @@ export interface CheckoutSettings {
   enableFeeCoverage: boolean;
   enableAdminSavesLife: boolean;
   adminSavesLifeAmount: number;
+  enablePushRecurringDonation: boolean;
 }
 
 export interface SeoSettings {
@@ -105,6 +106,7 @@ export interface CampaignData {
   campaignMode: string;
   currency: string;
   donorCount: number;
+  displayDonorOffset?: number;
   experienceConfig?: Record<string, unknown>;
   attributes: CampaignAttribute[];
   upsells: CampaignUpsell[];

@@ -43,6 +43,7 @@ import {
 } from "@/lib/ramadan-split";
 import { buildThankYouSearchParams } from "@/lib/analytics/thank-you-params";
 import { pushBeginCheckoutFromCart } from "@/lib/analytics/cart-gtm";
+import { useLocale } from "@/lib/i18n";
 import {
   DEFAULT_CAMPAIGN_CONFIG,
   isGiftAidCheckoutEnabled,
@@ -75,6 +76,7 @@ function formatCartLineDescription(line: DonationCartItem, displayCurrency: Curr
 
 function DonationCheckoutContent() {
   const router = useRouter();
+  const { t } = useLocale();
   const { items, subtotal, currency, removeItem, clear } = useDonationCart();
   const { prefill, stripeCustomer, loading: donorPrefillLoading } = useCheckoutDonorPrefill();
   const prefillApplied = useRef(false);
@@ -103,7 +105,8 @@ function DonationCheckoutContent() {
   const [pendingDonationId, setPendingDonationId] = useState<string | null>(null);
   const [pendingRecurringDonationId, setPendingRecurringDonationId] = useState<string | null>(null);
   const [pendingAutomatedScheduleIds, setPendingAutomatedScheduleIds] = useState<string[]>([]);
-  const [monthlyGift, setMonthlyGift] = useState(false);
+  const [pushRecurring, setPushRecurring] = useState(false);
+  const [pushRecurringDays, setPushRecurringDays] = useState("30");
   const [stripeReady, setStripeReady] = useState(false);
   const beginCheckoutTracked = useRef(false);
 
@@ -311,6 +314,10 @@ function DonationCheckoutContent() {
 
   function goToPayment() {
     if (!donorName.trim() || !donorEmail.trim()) return;
+    if (pushRecurring && checkoutSettings.enablePushRecurringDonation) {
+      const days = Number(pushRecurringDays);
+      if (!Number.isFinite(days) || days < 1 || days > 365) return;
+    }
     setFlowStep("payment");
   }
 
@@ -329,6 +336,19 @@ function DonationCheckoutContent() {
   }
 
   const checkoutRecurringParams = useMemo(() => {
+    const cartHasRecurring = items.some((i) => i.recurringFrequency || i.recurringInterval);
+    const pushDays = Math.max(1, Math.min(365, Number(pushRecurringDays) || 0));
+    const pushActive =
+      checkoutSettings.enablePushRecurringDonation &&
+      pushRecurring &&
+      pushDays >= 1 &&
+      !cartHasRecurring &&
+      !ramadanSummary.hasRamadanSplit;
+
+    if (pushActive) {
+      return { interval: "day" as const, intervalCount: pushDays };
+    }
+
     const line = items.find((i) => i.recurringFrequency || i.recurringInterval);
     if (!line) return parseStripeRecurringParams("single");
 
@@ -345,9 +365,22 @@ function DonationCheckoutContent() {
       params.cancelAt = line.recurringCancelAt;
     }
     return params;
-  }, [items]);
+  }, [items, checkoutSettings.enablePushRecurringDonation, pushRecurring, pushRecurringDays, ramadanSummary.hasRamadanSplit]);
 
   const checkoutFrequency = useMemo(() => {
+    const cartHasRecurring = items.some((i) => i.recurringFrequency || i.recurringInterval);
+    const pushDays = Math.max(1, Math.min(365, Number(pushRecurringDays) || 0));
+    const pushActive =
+      checkoutSettings.enablePushRecurringDonation &&
+      pushRecurring &&
+      pushDays >= 1 &&
+      !cartHasRecurring &&
+      !ramadanSummary.hasRamadanSplit;
+
+    if (pushActive) {
+      return pushDays === 1 ? "daily" : `custom:${pushDays}:day`;
+    }
+
     const line = items.find((i) => i.recurringFrequency || i.recurringInterval);
     if (line?.recurringFrequency) return line.recurringFrequency;
     if (line?.recurringInterval) {
@@ -360,8 +393,8 @@ function DonationCheckoutContent() {
       }
       return `custom:${count}:${line.recurringInterval}`;
     }
-    return monthlyGift ? "monthly" : "single";
-  }, [items, monthlyGift]);
+    return "single";
+  }, [items, checkoutSettings.enablePushRecurringDonation, pushRecurring, pushRecurringDays, ramadanSummary.hasRamadanSplit]);
 
   const checkoutRecurrenceLabel = useMemo(
     () => stripeRecurringParamsLabel(checkoutRecurringParams),
@@ -858,23 +891,41 @@ function DonationCheckoutContent() {
                 </div>
               )}
 
-              {!isCartRecurring && !ramadanSummary.hasRamadanSplit && (
-                <label className="flex items-start gap-3 rounded-2xl border border-border bg-secondary/30 px-4 py-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={monthlyGift}
-                    onChange={(e) => setMonthlyGift(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 accent-accent rounded shrink-0"
-                  />
-                  <span className="text-sm">
-                    <span className="font-semibold text-primary">Make this a monthly gift</span>
-                    <span className="block text-xs text-muted-foreground mt-0.5">
-                      Sandbox test — charges{" "}
-                      {formatMoney(chargeAmount, { code: displayCurrency })} every month until
-                      cancelled.
+              {!items.some((i) => i.recurringFrequency || i.recurringInterval) &&
+                !ramadanSummary.hasRamadanSplit &&
+                checkoutSettings.enablePushRecurringDonation && (
+                <div className="rounded-2xl border border-border bg-secondary/30 px-4 py-3 space-y-3">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={pushRecurring}
+                      onChange={(e) => setPushRecurring(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 accent-accent rounded shrink-0"
+                    />
+                    <span className="text-sm">
+                      <span className="font-semibold text-primary">{t("checkout.recurring.push")}</span>
+                      <span className="block text-xs text-muted-foreground mt-0.5">
+                        {t("checkout.recurring.help")}
+                      </span>
                     </span>
-                  </span>
-                </label>
+                  </label>
+                  {pushRecurring && (
+                    <div>
+                      <Label htmlFor="push-recurring-days" className="text-xs">
+                        {t("checkout.recurring.days")}
+                      </Label>
+                      <Input
+                        id="push-recurring-days"
+                        type="number"
+                        min={1}
+                        max={365}
+                        value={pushRecurringDays}
+                        onChange={(e) => setPushRecurringDays(e.target.value)}
+                        className="mt-1 rounded-xl h-10 max-w-[8rem]"
+                      />
+                    </div>
+                  )}
+                </div>
               )}
 
               <div className="flex flex-wrap items-center justify-center gap-3">

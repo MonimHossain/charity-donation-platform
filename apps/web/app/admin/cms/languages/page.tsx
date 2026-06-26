@@ -25,9 +25,7 @@ interface TranslationEntry {
 const languages = [
   { code: "en", name: "English" },
   { code: "ar", name: "Arabic" },
-  { code: "fr", name: "French" },
   { code: "ur", name: "Urdu" },
-  { code: "bn", name: "Bengali" },
   { code: "tr", name: "Turkish" },
   { code: "so", name: "Somali" },
 ];

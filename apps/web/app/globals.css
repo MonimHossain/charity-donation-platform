@@ -187,6 +187,35 @@
   50% { transform: translateY(-8px); }
 }
 
+@keyframes donate-shimmer {
+  0% { transform: translateX(-120%) skewX(-18deg); }
+  100% { transform: translateX(220%) skewX(-18deg); }
+}
+
+@keyframes donate-glow-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--accent) / 0.35); }
+  50% { box-shadow: 0 0 18px 2px hsl(var(--accent) / 0.45); }
+}
+
+.donate-button-effect::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    hsl(0 0% 100% / 0.45) 50%,
+    transparent 65%
+  );
+  transform: translateX(-120%) skewX(-18deg);
+  animation: donate-shimmer 2.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.donate-button-effect {
+  animation: donate-glow-pulse 2.8s ease-in-out infinite;
+}
+
 @utility animate-fade-up { animation: fade-up 0.7s var(--transition-smooth) both; }
 @utility animate-float-slow { animation: float-slow 6s ease-in-out infinite; }
 

@@ -14,7 +14,7 @@ import {
   CAMPAIGN_MODE_LABELS,
   isExperienceCampaignMode,
 } from "@/lib/campaign-experience";
-import { getCampaignGoalAmount, getCampaignRaisedAmount } from "@/lib/campaign-fundraising";
+import { getCampaignGoalAmount, getCampaignRaisedAmount, getDisplayDonorCount } from "@/lib/campaign-fundraising";
 import { useCurrency } from "@/lib/currency";
 
 type Appeal = {
@@ -100,7 +100,7 @@ function mapCampaigns(
     featured: Boolean(c.isFeatured ?? c.featured),
     raised: getCampaignRaisedAmount(c),
     goal: Math.max(getCampaignGoalAmount(c), 1),
-    donors: Number(c.donorCount ?? c.donors ?? 0),
+    donors: getDisplayDonorCount(c),
     impact: appealImpact(c, formatFromGbp),
     expirationEnabled: Boolean(c.expirationEnabled),
     expiresAt: (c.expiresAt as string | null | undefined) ?? null,

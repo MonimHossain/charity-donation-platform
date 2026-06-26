@@ -3,21 +3,15 @@
 import { useState, useRef, useEffect } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import { DropdownPortal } from "./DropdownPortal";
-
-const LANGUAGES = [
-  { code: "en", label: "English", native: "English", flag: "🇬🇧" },
-  { code: "ar", label: "Arabic", native: "العربية", flag: "🇸🇦" },
-  { code: "ur", label: "Urdu", native: "اردو", flag: "🇵🇰" },
-  { code: "fr", label: "French", native: "Français", flag: "🇫🇷" },
-  { code: "tr", label: "Turkish", native: "Türkçe", flag: "🇹🇷" },
-  { code: "bn", label: "Bengali", native: "বাংলা", flag: "🇧🇩" },
-];
+import { LOCALE_LIST, useLocale, type Locale } from "@/lib/i18n";
 
 export default function LanguageSwitcher() {
   const [open, setOpen] = useState(false);
-  const [selected, setSelected] = useState(LANGUAGES[0]);
+  const { locale, setLocale, t } = useLocale();
   const ref = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+
+  const selected = LOCALE_LIST.find((l) => l.code === locale) ?? LOCALE_LIST[0];
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -48,24 +42,24 @@ export default function LanguageSwitcher() {
         className="min-w-[200px] bg-card border border-border rounded-2xl shadow-lift py-1 overflow-hidden"
       >
         <div className="px-3 py-2 text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">
-          Language
+          {t("nav.language")}
         </div>
         <div className="border-t border-border" />
-        {LANGUAGES.map((l) => (
+        {LOCALE_LIST.map((l) => (
           <button
             key={l.code}
             onClick={() => {
-              setSelected(l);
+              setLocale(l.code as Locale);
               setOpen(false);
             }}
             className="flex items-center justify-between gap-2 w-full px-3 py-2.5 text-left text-sm cursor-pointer hover:bg-secondary transition-colors"
           >
             <span className="flex items-center gap-2">
               <span aria-hidden>{l.flag}</span>
-              <span>{l.native}</span>
-              <span className="text-muted-foreground text-xs">({l.label})</span>
+              <span>{l.nativeName}</span>
+              <span className="text-muted-foreground text-xs">({l.name})</span>
             </span>
-            {l.code === selected.code && <Check className="w-3.5 h-3.5 text-accent" />}
+            {l.code === locale && <Check className="w-3.5 h-3.5 text-accent" />}
           </button>
         ))}
       </DropdownPortal>

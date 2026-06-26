@@ -128,6 +128,7 @@ interface CheckoutSettings {
   enableFeeCoverage: boolean;
   enableAdminSavesLife: boolean;
   adminSavesLifeAmount: number;
+  enablePushRecurringDonation: boolean;
 }
 
 interface VisibilitySettings {
@@ -176,6 +177,7 @@ interface CampaignForm {
   fundraiserSettings: FundraiserSettings;
   checkoutSettings: CheckoutSettings;
   visibilitySettings: VisibilitySettings;
+  displayDonorOffset: number;
   paymentGateways: string[];
   seoSettings: SeoSettings;
 }
@@ -298,8 +300,10 @@ const defaultForm: CampaignForm = {
     enableFeeCoverage: false,
     enableAdminSavesLife: false,
     adminSavesLifeAmount: 0,
+    enablePushRecurringDonation: false,
   },
   visibilitySettings: { showInHeader: false, showOnHomepage: false, pinToTop: false, headerDisplayName: "" },
+  displayDonorOffset: 0,
   paymentGateways: ["stripe"],
   seoSettings: { metaTitle: "", metaDescription: "", ogTitle: "", ogDescription: "", ogImage: "" },
 };
@@ -567,6 +571,7 @@ export default function CampaignsPage() {
       fundraiserSettings: { ...defaultForm.fundraiserSettings, ...(c.fundraiserSettings || {}) },
       checkoutSettings: { ...defaultForm.checkoutSettings, ...(c.checkoutSettings || {}) },
       visibilitySettings: { ...defaultForm.visibilitySettings, ...(c.visibilitySettings || {}) },
+      displayDonorOffset: Math.max(0, Number((c as Campaign & { displayDonorOffset?: number }).displayDonorOffset ?? 0) || 0),
       paymentGateways: [...(c.paymentGateways || ["stripe"])],
       seoSettings: { ...defaultForm.seoSettings, ...(c.seoSettings || {}) },
     };
@@ -1535,6 +1540,20 @@ export default function CampaignsPage() {
                   </p>
                 </div>
               )}
+              <SwitchRow
+                label="Push for recurring donation"
+                description="Offer single-donation checkout visitors an optional recurring gift on a custom day interval."
+                checked={form.checkoutSettings.enablePushRecurringDonation}
+                onChange={(v) =>
+                  setForm((p) => ({
+                    ...p,
+                    checkoutSettings: {
+                      ...p.checkoutSettings,
+                      enablePushRecurringDonation: v,
+                    },
+                  }))
+                }
+              />
             </div>
           </div>
         )}
@@ -1627,6 +1646,27 @@ export default function CampaignsPage() {
               <strong>published</strong> for any of these to take effect.
             </p>
             <div className="space-y-4 rounded-xl border bg-muted/30 p-4">
+              <div className="space-y-2">
+                <Label htmlFor="display-donor-offset">Display donor count boost</Label>
+                <Input
+                  id="display-donor-offset"
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={form.displayDonorOffset || ""}
+                  onChange={(e) =>
+                    setForm((p) => ({
+                      ...p,
+                      displayDonorOffset: Math.max(0, Number(e.target.value) || 0),
+                    }))
+                  }
+                  className="h-10"
+                  placeholder="0"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Cosmetic only — shown on public campaign cards as this number plus real donations. Does not affect admin reports or analytics.
+                </p>
+              </div>
               <div className="space-y-3">
                 <SwitchRow
                   label="Show in Header Navigation"
