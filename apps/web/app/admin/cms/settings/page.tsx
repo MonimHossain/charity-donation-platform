@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Save, Globe, Shield, Mail, Loader2 } from "lucide-react";
+import { Save, Globe, Shield, Mail, Loader2, BarChart3 } from "lucide-react";
 import { fetchSiteSettings, adminUpdateSiteSettings } from "@/lib/api";
 
 export default function SettingsPage() {
@@ -28,6 +28,7 @@ export default function SettingsPage() {
           contactEmail: "",
           contactPhone: "",
           donationPolicy: "",
+          gtmId: "",
           socialLinks: { facebook: "", instagram: "", twitter: "", youtube: "" },
         });
       } finally {
@@ -143,6 +144,29 @@ export default function SettingsPage() {
               />
             </div>
           ))}
+        </div>
+      </div>
+
+      <div className="rounded-2xl bg-card border border-border p-6 space-y-5">
+        <h2 className="font-semibold text-lg flex items-center gap-2">
+          <BarChart3 className="w-5 h-5 text-primary" /> Analytics
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Google Tag Manager loads on the public site when a container ID is set. Leave blank to
+          disable GTM (or use the <code className="text-xs">NEXT_PUBLIC_GTM_ID</code> env fallback).
+        </p>
+        <div className="max-w-md">
+          <Label htmlFor="gtmId">GTM Container ID</Label>
+          <Input
+            id="gtmId"
+            value={settings.gtmId || ""}
+            onChange={(e) => setSettings({ ...settings, gtmId: e.target.value.trim() })}
+            className="mt-1 font-mono"
+            placeholder="GTM-XXXXXXX"
+          />
+          <p className="text-xs text-muted-foreground mt-1.5">
+            Example: <span className="font-mono">GTM-ABC1234</span>
+          </p>
         </div>
       </div>
 
