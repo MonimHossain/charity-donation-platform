@@ -20,28 +20,36 @@ function apiBaseUrl(): string {
   return "http://localhost:4000/api/v1";
 }
 
-function redirectWithError(res: Response, message: string) {
+function sanitizeReturnTo(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed.startsWith("/") || trimmed.startsWith("//")) return null;
+  return trimmed;
+}
+
+function redirectWithError(res: Response, message: string, returnTo?: string | null) {
   const url = new URL(`${appBaseUrl()}/auth/callback`);
   url.searchParams.set("error", message);
+  if (returnTo) url.searchParams.set("returnTo", returnTo);
   return res.redirect(url.toString());
 }
 
-function redirectWithSession(res: Response, token: string, user: Record<string, unknown>) {
+function redirectWithSession(
+  res: Response,
+  token: string,
+  user: Record<string, unknown>,
+  returnTo?: string | null
+) {
   const url = new URL(`${appBaseUrl()}/auth/callback`);
   url.searchParams.set("token", token);
   url.searchParams.set("profile", Buffer.from(JSON.stringify(user)).toString("base64url"));
+  if (returnTo) url.searchParams.set("returnTo", returnTo);
   return res.redirect(url.toString());
 }
 
 export function getAuthProviders(_req: Request, res: Response) {
   return res.json({
     google: Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
-    apple: Boolean(
-      process.env.APPLE_CLIENT_ID &&
-        process.env.APPLE_TEAM_ID &&
-        process.env.APPLE_KEY_ID &&
-        process.env.APPLE_PRIVATE_KEY
-    ),
     email: true,
   });
 }
@@ -50,10 +58,20 @@ function googleRedirectUri(): string {
   return `${apiBaseUrl()}/auth/google/callback`;
 }
 
-export function startGoogleAuth(_req: Request, res: Response) {
+export function startGoogleAuth(req: Request, res: Response) {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   if (!clientId || !process.env.GOOGLE_CLIENT_SECRET) {
     return res.status(503).json({ message: "Google sign-in is not configured on this server" });
+  }
+
+  const returnTo = sanitizeReturnTo(req.query.returnTo);
+  if (returnTo) {
+    res.cookie("oauth_return_to", returnTo, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 10 * 60 * 1000,
+    });
   }
 
   const state = crypto.randomBytes(16).toString("hex");
@@ -90,6 +108,8 @@ export async function googleAuthCallback(req: Request, res: Response) {
       return redirectWithError(res, "Invalid OAuth state");
     }
     res.clearCookie("oauth_state");
+    const returnTo = sanitizeReturnTo(req.cookies?.oauth_return_to);
+    res.clearCookie("oauth_return_to");
 
     const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
@@ -141,7 +161,7 @@ export async function googleAuthCallback(req: Request, res: Response) {
     });
 
     const session = issueUserSession(res, user);
-    return redirectWithSession(res, session.token, session.user);
+    return redirectWithSession(res, session.token, session.user, returnTo);
   } catch (err) {
     console.error("Google OAuth callback error:", err);
     return redirectWithError(res, "Google sign-in failed");

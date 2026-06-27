@@ -99,3 +99,45 @@ export async function sendRecurringFailedPaymentEmail(recurring: RecurringDonati
     `,
   });
 }
+
+export async function sendAccountActivationEmail(
+  email: string,
+  fullName: string,
+  token: string
+): Promise<void> {
+  const link = `${appUrl()}/auth/activate?token=${encodeURIComponent(token)}`;
+  await sendMail({
+    to: email,
+    subject: "Complete your account to continue donating",
+    html: `
+      <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto;">
+        <h1 style="color: #1a3d2e;">Set your password</h1>
+        <p>Dear ${fullName},</p>
+        <p>Please set a password to continue with your donation. This link expires in 24 hours.</p>
+        <p><a href="${link}" style="display:inline-block;padding:12px 24px;background:#1a3d2e;color:#fff;text-decoration:none;border-radius:8px;">Set password and continue</a></p>
+        <p style="color:#666;font-size:12px;">If you did not request this, you can ignore this email.</p>
+      </div>
+    `,
+  });
+}
+
+export async function sendPasswordResetEmail(
+  email: string,
+  fullName: string,
+  token: string
+): Promise<void> {
+  const link = `${appUrl()}/auth/reset-password?token=${encodeURIComponent(token)}`;
+  await sendMail({
+    to: email,
+    subject: "Reset your password",
+    html: `
+      <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto;">
+        <h1 style="color: #1a3d2e;">Reset your password</h1>
+        <p>Dear ${fullName},</p>
+        <p>We received a request to reset your password. This link expires in 24 hours.</p>
+        <p><a href="${link}" style="display:inline-block;padding:12px 24px;background:#1a3d2e;color:#fff;text-decoration:none;border-radius:8px;">Reset password</a></p>
+        <p style="color:#666;font-size:12px;">If you did not request this, you can ignore this email.</p>
+      </div>
+    `,
+  });
+}

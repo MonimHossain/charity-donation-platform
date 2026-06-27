@@ -6,13 +6,16 @@ import { Loader2 } from "lucide-react";
 
 type AuthProviders = {
   google?: boolean;
-  apple?: boolean;
   email?: boolean;
 };
 
-function providerStartUrl(provider: "google" | "apple"): string {
+function googleStartUrl(returnTo?: string): string {
   const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
-  return `${apiBase.replace(/\/$/, "")}/auth/${provider}`;
+  const url = new URL(`${apiBase.replace(/\/$/, "")}/auth/google`);
+  if (returnTo?.startsWith("/")) {
+    url.searchParams.set("returnTo", returnTo);
+  }
+  return url.toString();
 }
 
 function GoogleIcon() {
@@ -38,15 +41,11 @@ function GoogleIcon() {
   );
 }
 
-function AppleIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current" aria-hidden="true">
-      <path d="M16.365 1.43c0 1.14-.46 2.2-1.23 2.98-.83.84-2.18 1.4-3.28 1.32-.14-1.09.42-2.25 1.16-3.01.83-.87 2.28-1.47 3.35-1.29zM20.88 17.07c-.57 1.28-.85 1.86-1.58 2.99-1.03 1.57-2.48 3.53-4.28 3.54-1.6 0-2.02-1.04-4.19-1.03-2.17.01-2.63 1.05-4.23 1.03-1.8-.01-3.18-1.72-4.21-3.29-2.89-4.22-3.2-9.17-1.41-11.8 1.26-1.86 3.25-2.95 5.09-2.95 2.01 0 3.27 1.05 4.93 1.05 1.59 0 2.56-1.05 4.85-1.05 1.73 0 3.56 1.18 4.82 3.22-4.24 2.3-3.55 8.28.91 9.99z" />
-    </svg>
-  );
-}
+type Props = {
+  returnTo?: string;
+};
 
-export default function SsoButtons() {
+export default function SsoButtons({ returnTo }: Props) {
   const [providers, setProviders] = useState<AuthProviders | null>(null);
 
   useEffect(() => {
@@ -54,52 +53,39 @@ export default function SsoButtons() {
     fetch(`${apiBase}/auth/providers`)
       .then((res) => res.json())
       .then((data) => setProviders(data))
-      .catch(() => setProviders({ google: false, apple: false, email: true }));
+      .catch(() => setProviders({ google: false, email: true }));
   }, []);
 
   const googleReady = providers?.google === true;
-  const appleReady = providers?.apple === true;
+
+  if (!providers) {
+    return (
+      <div className="flex justify-center py-2">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!googleReady) {
+    return (
+      <p className="text-center text-xs text-muted-foreground px-2">
+        Google sign-in is not configured on this server. Use email and password instead.
+      </p>
+    );
+  }
 
   return (
-    <div className="space-y-3">
-      {!providers ? (
-        <div className="flex justify-center py-2">
-          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-        </div>
-      ) : (
-        <>
-          <Button
-            type="button"
-            variant="outline"
-            size="lg"
-            className="w-full rounded-full h-12 gap-3"
-            onClick={() => {
-              window.location.href = providerStartUrl("google");
-            }}
-          >
-            <GoogleIcon />
-            Continue with Google
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="lg"
-            className="w-full rounded-full h-12 gap-3 bg-foreground text-background hover:bg-foreground/90"
-            onClick={() => {
-              window.location.href = providerStartUrl("apple");
-            }}
-          >
-            <AppleIcon />
-            Continue with Apple
-          </Button>
-          {!googleReady && !appleReady && (
-            <p className="text-center text-xs text-muted-foreground px-2">
-              Social sign-in requires Google or Apple credentials in the server environment.
-              Email sign-in works without them.
-            </p>
-          )}
-        </>
-      )}
-    </div>
+    <Button
+      type="button"
+      variant="outline"
+      size="lg"
+      className="w-full rounded-full h-12 gap-3"
+      onClick={() => {
+        window.location.href = googleStartUrl(returnTo);
+      }}
+    >
+      <GoogleIcon />
+      Continue with Google
+    </Button>
   );
 }

@@ -5,7 +5,7 @@ import { Donation } from "../../components/donation/donation.entity.js";
 import { Campaign } from "../../components/campaign/campaign.entity.js";
 import { PaymentLog } from "../../components/paymentLog/paymentLog.entity.js";
 import { logAudit } from "../../helper/auditLog.js";
-import { ensureDonorUserForDonation } from "../user-auth/userAuth.service.js";
+import { ensureDonorUserForDonation, normalizeEmail } from "../user-auth/userAuth.service.js";
 import { resolveCampaignId } from "../campaigns/resolveCampaignId.js";
 
 const repo = () => AppDataSource.getRepository(Donation);
@@ -65,6 +65,14 @@ export async function createDonation(req: Request, res: Response) {
     const totalAmount = +(numericAmount + giftAidAmount).toFixed(2);
 
     const authUserId = (req as any).user?.id as string | undefined;
+    const authUserEmail = (req as any).user?.email as string | undefined;
+    if (!authUserId || !authUserEmail) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+    if (normalizeEmail(donorEmail) !== normalizeEmail(authUserEmail)) {
+      return res.status(403).json({ message: "Donor email must match your account email" });
+    }
+
     const donorUser = await ensureDonorUserForDonation({
       donorEmail,
       donorName,

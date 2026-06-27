@@ -43,7 +43,7 @@ export default function SiteFooter() {
             <li><Link href="/blog" className="hover:text-accent transition-colors">Stories</Link></li>
             <li><Link href="/namaz-times" className="hover:text-accent transition-colors">Namaz Times</Link></li>
             <li><Link href="/contact" className="hover:text-accent transition-colors">Contact</Link></li>
-            <li><Link href="/login" className="hover:text-accent transition-colors">Sign in</Link></li>
+            <li><Link href="/auth/login" className="hover:text-accent transition-colors">Sign in</Link></li>
             <li><Link href="/admin" className="hover:text-accent transition-colors">Admin</Link></li>
           </ul>
         </div>

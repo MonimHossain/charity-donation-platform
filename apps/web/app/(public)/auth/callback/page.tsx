@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Heart, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { sanitizeReturnTo } from "@/lib/auth-redirect";
 
 function decodeProfile(raw: string) {
   try {
@@ -44,7 +45,7 @@ function AuthCallbackContent() {
       if (profile) localStorage.setItem("user_profile", JSON.stringify(profile));
     }
 
-    router.replace("/account");
+    router.replace(sanitizeReturnTo(params.get("returnTo")) || "/account");
   }, [params, router]);
 
   if (error) {

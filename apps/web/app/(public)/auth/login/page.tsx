@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Heart, Eye, EyeOff, LogIn, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,9 +12,12 @@ import { USE_MOCK_DATA } from "@/lib/config";
 import { setDemoSession } from "@/lib/mock-auth";
 import { DEMO_DONOR } from "@/lib/mock/users";
 import SsoButtons from "@/components/auth/SsoButtons";
+import { buildAuthHref, sanitizeReturnTo } from "@/lib/auth-redirect";
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnTo = sanitizeReturnTo(searchParams.get("returnTo"));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -34,7 +37,7 @@ export default function LoginPage() {
         );
         localStorage.setItem("user_token", "demo-token");
         localStorage.setItem("user_profile", JSON.stringify(DEMO_DONOR));
-        router.push("/account");
+        router.push(returnTo || "/account");
         return;
       }
       const res = await userLogin(email, password);
@@ -47,7 +50,7 @@ export default function LoginPage() {
           );
         }
       }
-      router.push("/account");
+      router.push(returnTo || "/account");
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data
@@ -171,7 +174,7 @@ export default function LoginPage() {
           </div>
 
           <div className="mt-4">
-            <SsoButtons />
+            <SsoButtons returnTo={returnTo || undefined} />
           </div>
 
           <div className="mt-6 flex items-center gap-3 text-xs text-muted-foreground">
@@ -180,28 +183,32 @@ export default function LoginPage() {
             <span className="flex-1 h-px bg-border" />
           </div>
 
-          <div className="mt-4 space-y-3">
+          <div className="mt-4">
             <Button
               asChild
               variant="outline"
               size="lg"
               className="w-full rounded-full h-12"
             >
-              <Link href="/auth/register">Create an Account</Link>
-            </Button>
-            <Button
-              asChild
-              variant="ghost"
-              size="lg"
-              className="w-full rounded-full h-12"
-            >
-              <Link href="/donate">
-                <Heart className="w-4 h-4" /> Continue as Guest
-              </Link>
+              <Link href={buildAuthHref("/auth/register", returnTo)}>Create an Account</Link>
             </Button>
           </div>
         </div>
       </div>
     </section>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <section className="min-h-[80vh] flex items-center justify-center py-12 px-6">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </section>
+      }
+    >
+      <LoginPageContent />
+    </Suspense>
   );
 }

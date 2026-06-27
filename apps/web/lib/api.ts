@@ -289,6 +289,33 @@ export async function changeUserPassword(currentPassword: string, newPassword: s
   return data;
 }
 
+export type DonorEmailStatus = "new" | "password" | "google" | "needs_password_setup";
+
+export async function checkDonorEmail(email: string): Promise<{ status: DonorEmailStatus }> {
+  const { data } = await api.post("/auth/donor/check-email", { email });
+  return data;
+}
+
+export async function requestDonorAccess(email: string, fullName?: string) {
+  const { data } = await api.post("/auth/donor/request-access", { email, fullName });
+  return data as { message: string };
+}
+
+export async function activateAccount(token: string, password: string) {
+  const { data } = await api.post("/auth/activate-account", { token, password });
+  return data;
+}
+
+export async function forgotPassword(email: string) {
+  const { data } = await api.post("/auth/forgot-password", { email });
+  return data as { message: string };
+}
+
+export async function resetPassword(token: string, newPassword: string) {
+  const { data } = await api.post("/auth/reset-password", { token, newPassword });
+  return data as { message: string };
+}
+
 export async function fetchUserDonations(params?: Record<string, string>) {
   const { data } = await api.get("/my/donations", { params });
   if (Array.isArray(data)) return { items: data, total: data.length };

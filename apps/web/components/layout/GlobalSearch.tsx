@@ -17,7 +17,7 @@ const items = [
   { group: "Appeals", label: "Clean Water Wells", to: "/donate?cause=water" },
   { group: "Appeals", label: "Food Aid", to: "/donate?cause=food" },
   { group: "Actions", label: "Donate Now", to: "/donate" },
-  { group: "Account", label: "Sign In", to: "/login" },
+  { group: "Account", label: "Sign In", to: "/auth/login" },
   { group: "Account", label: "My Account", to: "/account" },
 ];
 
