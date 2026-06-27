@@ -6,6 +6,8 @@ function isEmailEnabled(): boolean {
   return process.env.EMAIL_ENABLED === "true" || process.env.EMAIL_ENABLED === "1";
 }
 
+export { isEmailEnabled };
+
 function getTransporter() {
   const host = process.env.SMTP_HOST;
   const user = process.env.SMTP_USER;
@@ -36,6 +38,11 @@ export async function sendMail(options: {
   subject: string;
   html: string;
   text?: string;
+  attachments?: Array<{
+    filename: string;
+    content: Buffer | string;
+    contentType?: string;
+  }>;
 }): Promise<void> {
   if (!isEmailEnabled()) {
     console.info("[mailer] Skipped (EMAIL_ENABLED is not true):", options.subject, "→", options.to);
@@ -49,6 +56,7 @@ export async function sendMail(options: {
       subject: options.subject,
       html: options.html,
       text: options.text || options.html.replace(/<[^>]+>/g, " "),
+      attachments: options.attachments,
     });
   } catch (err) {
     console.error("[mailer] Send failed:", err);

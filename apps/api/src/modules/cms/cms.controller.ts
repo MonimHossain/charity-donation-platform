@@ -139,6 +139,17 @@ export async function getSiteSettings(_req: Request, res: Response) {
     const response = {
       ...settings,
       currencyRates: normalizeCurrencyRates(settings.currencyRates),
+      email: {
+        donationConfirmation: settings.emailSettings?.donationConfirmation ?? true,
+        recurringReminders: settings.emailSettings?.recurringReminders ?? true,
+        campaignUpdates: settings.emailSettings?.campaignUpdates ?? false,
+        newsletterDigest: settings.emailSettings?.newsletterDigest ?? false,
+        adminAlerts: settings.emailSettings?.adminAlerts ?? true,
+        senderName: settings.emailSettings?.senderName ?? "",
+        senderEmail: settings.emailSettings?.senderEmail ?? "",
+        reminderHoursMin: settings.emailSettings?.reminderHoursMin ?? 24,
+        reminderHoursMax: settings.emailSettings?.reminderHoursMax ?? 32,
+      },
       payment: settings.paymentConfig
         ? {
             enabledProviders: settings.paymentConfig.enabledProviders || ["stripe"],
@@ -182,6 +193,21 @@ export async function updateSiteSettings(req: Request, res: Response) {
     }
     if (body.currencyRates) {
       body.currencyRates = normalizeCurrencyRates(body.currencyRates);
+    }
+    if (body.email) {
+      body.emailSettings = {
+        ...(settings?.emailSettings || {}),
+        donationConfirmation: body.email.donationConfirmation,
+        recurringReminders: body.email.recurringReminders,
+        campaignUpdates: body.email.campaignUpdates,
+        newsletterDigest: body.email.newsletterDigest,
+        adminAlerts: body.email.adminAlerts,
+        senderName: body.email.senderName,
+        senderEmail: body.email.senderEmail,
+        reminderHoursMin: body.email.reminderHoursMin,
+        reminderHoursMax: body.email.reminderHoursMax,
+      };
+      delete body.email;
     }
     if (!settings) {
       settings = createEntity(repo, body);

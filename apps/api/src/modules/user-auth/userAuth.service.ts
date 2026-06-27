@@ -114,10 +114,11 @@ export async function findOrCreateDonorUser(input: {
   avatarUrl?: string;
   emailVerified?: boolean;
   passwordHash?: string | null;
-}): Promise<User> {
+}): Promise<{ user: User; isNew: boolean }> {
   const repo = AppDataSource.getRepository(User);
   const email = normalizeEmail(input.email);
   let user = await repo.findOne({ where: { email } });
+  let isNew = false;
 
   if (!user && input.providerSubject && input.authProvider && input.authProvider !== "local") {
     user = await repo.findOne({
@@ -129,6 +130,7 @@ export async function findOrCreateDonorUser(input: {
   }
 
   if (!user) {
+    isNew = true;
     const unusablePassword =
       input.passwordHash ??
       (await bcrypt.hash(`${email}-${Date.now()}-${Math.random()}`, 12));
@@ -162,7 +164,7 @@ export async function findOrCreateDonorUser(input: {
 
   await linkDonationsToUser(user.id, email);
   await refreshUserDonationStats(user.id);
-  return user;
+  return { user, isNew };
 }
 
 export async function ensureDonorUserForDonation(input: {
@@ -182,7 +184,7 @@ export async function ensureDonorUserForDonation(input: {
     }
   }
 
-  return findOrCreateDonorUser({
+  const { user } = await findOrCreateDonorUser({
     email: input.donorEmail,
     fullName: input.donorName,
     phone: input.donorPhone,
@@ -192,4 +194,5 @@ export async function ensureDonorUserForDonation(input: {
     emailVerified: false,
     passwordHash: null,
   });
+  return user;
 }

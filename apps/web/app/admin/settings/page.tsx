@@ -168,6 +168,7 @@ export default function AdminSettingsPage() {
         contactPhone: settings.contact.phone,
         address: settings.contact.address,
         socialLinks: settings.social,
+        email: settings.email,
         payment: settings.payment,
         currencyRates: settings.currency.rates,
       });

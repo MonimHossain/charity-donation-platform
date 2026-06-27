@@ -27,7 +27,12 @@ import { DonationPreset } from "../components/donation/donationPreset.entity.js"
 import { QuickDonateOption } from "../components/donation/quickDonateOption.entity.js";
 import { QuickDonateSettings } from "../components/donation/quickDonateSettings.entity.js";
 import { DonationDedication } from "../components/donationDedication/donationDedication.entity.js";
+import { EmailCampaign } from "../components/email/emailCampaign.entity.js";
+import { EmailLog } from "../components/email/emailLog.entity.js";
+import { EmailTemplate } from "../components/email/emailTemplate.entity.js";
+import { RecurringReminderLog } from "../components/email/recurringReminderLog.entity.js";
 import { DonationPage } from "../components/donationPage/donationPage.entity.js";
+import { Notification } from "../components/notification/notification.entity.js";
 import { NewsletterSubscriber } from "../components/newsletter/subscriber.entity.js";
 import { PaymentLog } from "../components/paymentLog/paymentLog.entity.js";
 import { RecurringDonation } from "../components/recurringDonation/recurringDonation.entity.js";
@@ -74,6 +79,11 @@ const entities = [
   QuickDonateSettings,
   DonationDedication,
   DonationPage,
+  EmailCampaign,
+  EmailLog,
+  EmailTemplate,
+  Notification,
+  RecurringReminderLog,
   NewsletterSubscriber,
   PaymentLog,
   RecurringDonation,

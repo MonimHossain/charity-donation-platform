@@ -150,7 +150,7 @@ export async function googleAuthCallback(req: Request, res: Response) {
       return redirectWithError(res, "Google account did not return an email address");
     }
 
-    const user = await findOrCreateDonorUser({
+    const { user, isNew } = await findOrCreateDonorUser({
       email: normalizeEmail(profile.email),
       fullName: profile.name || profile.email.split("@")[0] || "Donor",
       authProvider: "google",
@@ -159,6 +159,13 @@ export async function googleAuthCallback(req: Request, res: Response) {
       emailVerified: profile.email_verified ?? true,
       passwordHash: null,
     });
+
+    if (isNew) {
+      const { dispatchEvent } = await import("../notifications/notification.service.js");
+      void dispatchEvent("registration", { user }).catch((err) =>
+        console.error("[oauth] registration notification error:", err)
+      );
+    }
 
     const session = issueUserSession(res, user);
     return redirectWithSession(res, session.token, session.user, returnTo);
@@ -278,7 +285,7 @@ export async function appleAuthCallback(req: Request, res: Response) {
       ? normalizeEmail(payload.email)
       : `${payload.sub}@privaterelay.appleid.com`;
 
-    const user = await findOrCreateDonorUser({
+    const { user, isNew } = await findOrCreateDonorUser({
       email,
       fullName,
       authProvider: "apple",
@@ -286,6 +293,13 @@ export async function appleAuthCallback(req: Request, res: Response) {
       emailVerified: payload.email_verified === true || payload.email_verified === "true",
       passwordHash: null,
     });
+
+    if (isNew) {
+      const { dispatchEvent } = await import("../notifications/notification.service.js");
+      void dispatchEvent("registration", { user }).catch((err) =>
+        console.error("[oauth] registration notification error:", err)
+      );
+    }
 
     const session = issueUserSession(res, user);
     return redirectWithSession(res, session.token, session.user);

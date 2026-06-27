@@ -6,7 +6,7 @@ import { Donation } from "../../components/donation/donation.entity.js";
 import { RecurringDonation } from "../../components/recurringDonation/recurringDonation.entity.js";
 import { PaymentLog } from "../../components/paymentLog/paymentLog.entity.js";
 import { completeDonation, failDonation } from "./paymentCompletion.js";
-import { sendRecurringFailedPaymentEmail } from "../../helper/mailer.js";
+import { dispatchEvent } from "../notifications/notification.service.js";
 import { createStripeClient } from "../../helper/stripeClient.js";
 import { User } from "../../components/user/user.entity.js";
 import { issueUserSession, createUserToken } from "../user-auth/userAuth.service.js";
@@ -492,9 +492,16 @@ export async function handleWebhook(req: Request, res: Response) {
             await recurringRepo().save(recurring);
 
             try {
-              await sendRecurringFailedPaymentEmail(recurring);
+              await dispatchEvent("payment_failed", {
+                donorEmail: recurring.donorEmail,
+                donorName: recurring.donorName,
+                amount: Number(recurring.amount),
+                currency: recurring.currency,
+                userId: recurring.userId,
+                isRecurring: true,
+              });
             } catch (emailErr) {
-              console.error("[webhook] Failed payment email error:", emailErr);
+              console.error("[webhook] Failed payment notification error:", emailErr);
             }
 
             await paymentLogRepo().save(

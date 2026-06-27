@@ -64,13 +64,14 @@ export async function requestDonorAccess(input: {
   let user = await repo.findOne({ where: { email: normalized } });
 
   if (!user) {
-    user = await findOrCreateDonorUser({
+    const created = await findOrCreateDonorUser({
       email: normalized,
       fullName: input.fullName?.trim() || normalized.split("@")[0] || "Donor",
       authProvider: "local",
       emailVerified: false,
       passwordHash: null,
     });
+    user = created.user;
   } else if (input.fullName?.trim() && !user.fullName) {
     user.fullName = input.fullName.trim();
     await repo.save(user);

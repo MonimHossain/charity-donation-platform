@@ -955,4 +955,121 @@ router.post("/track", async (req, res) => {
   return trackActivity(req, res);
 });
 
+// ═══════════════════════════════════
+// NOTIFICATIONS (user)
+// ═══════════════════════════════════
+router.get("/notifications", async (req, res) => {
+  const { requireUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  return requireUser(req, res, async () => {
+    const { listNotifications } = await import("../modules/notifications/notifications.controller.js");
+    return listNotifications(req, res);
+  });
+});
+router.get("/notifications/unread-count", async (req, res) => {
+  const { requireUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  return requireUser(req, res, async () => {
+    const { getUnreadCount } = await import("../modules/notifications/notifications.controller.js");
+    return getUnreadCount(req, res);
+  });
+});
+router.patch("/notifications/:id/read", async (req, res) => {
+  const { requireUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  return requireUser(req, res, async () => {
+    const { markNotificationRead } = await import("../modules/notifications/notifications.controller.js");
+    return markNotificationRead(req, res);
+  });
+});
+router.post("/notifications/read-all", async (req, res) => {
+  const { requireUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  return requireUser(req, res, async () => {
+    const { markAllNotificationsRead } = await import("../modules/notifications/notifications.controller.js");
+    return markAllNotificationsRead(req, res);
+  });
+});
+
+router.get("/admin/notifications", requireAdmin, async (req, res) => {
+  const { listNotifications } = await import("../modules/notifications/notifications.controller.js");
+  return listNotifications(req, res);
+});
+router.get("/admin/notifications/unread-count", requireAdmin, async (req, res) => {
+  const { getUnreadCount } = await import("../modules/notifications/notifications.controller.js");
+  return getUnreadCount(req, res);
+});
+router.patch("/admin/notifications/:id/read", requireAdmin, async (req, res) => {
+  const { markNotificationRead } = await import("../modules/notifications/notifications.controller.js");
+  return markNotificationRead(req, res);
+});
+router.post("/admin/notifications/read-all", requireAdmin, async (req, res) => {
+  const { markAllNotificationsRead } = await import("../modules/notifications/notifications.controller.js");
+  return markAllNotificationsRead(req, res);
+});
+
+// ═══════════════════════════════════
+// ADMIN EMAIL MANAGEMENT
+// ═══════════════════════════════════
+router.get("/admin/email-management/smtp", requireAdmin, async (req, res) => {
+  const { getSmtpConfig } = await import("../modules/email-management/emailManagement.controller.js");
+  return getSmtpConfig(req, res);
+});
+router.patch("/admin/email-management/smtp", requireAdmin, async (req, res) => {
+  const { updateSmtpConfig } = await import("../modules/email-management/emailManagement.controller.js");
+  return updateSmtpConfig(req, res);
+});
+router.post("/admin/email-management/test-smtp", requireAdmin, async (req, res) => {
+  const { sendTestSmtp } = await import("../modules/email-management/emailManagement.controller.js");
+  return sendTestSmtp(req, res);
+});
+router.get("/admin/email-management/templates", requireAdmin, async (req, res) => {
+  const { listEmailTemplates } = await import("../modules/email-management/emailManagement.controller.js");
+  return listEmailTemplates(req, res);
+});
+router.get("/admin/email-management/templates/:id", requireAdmin, async (req, res) => {
+  const { getEmailTemplate } = await import("../modules/email-management/emailManagement.controller.js");
+  return getEmailTemplate(req, res);
+});
+router.post("/admin/email-management/templates", requireAdmin, async (req, res) => {
+  const { createEmailTemplate } = await import("../modules/email-management/emailManagement.controller.js");
+  return createEmailTemplate(req, res);
+});
+router.patch("/admin/email-management/templates/:id", requireAdmin, async (req, res) => {
+  const { updateEmailTemplate } = await import("../modules/email-management/emailManagement.controller.js");
+  return updateEmailTemplate(req, res);
+});
+router.delete("/admin/email-management/templates/:id", requireAdmin, async (req, res) => {
+  const { deleteEmailTemplate } = await import("../modules/email-management/emailManagement.controller.js");
+  return deleteEmailTemplate(req, res);
+});
+router.get("/admin/email-management/reminder-settings", requireAdmin, async (req, res) => {
+  const { getReminderSettings } = await import("../modules/email-management/emailManagement.controller.js");
+  return getReminderSettings(req, res);
+});
+router.patch("/admin/email-management/reminder-settings", requireAdmin, async (req, res) => {
+  const { updateReminderSettings } = await import("../modules/email-management/emailManagement.controller.js");
+  return updateReminderSettings(req, res);
+});
+router.get("/admin/email-management/logs", requireAdmin, async (req, res) => {
+  const { listEmailLogs } = await import("../modules/email-management/emailManagement.controller.js");
+  return listEmailLogs(req, res);
+});
+router.post("/admin/email-management/preview", requireAdmin, async (req, res) => {
+  const { previewEmailTemplate } = await import("../modules/email-management/emailManagement.controller.js");
+  return previewEmailTemplate(req, res);
+});
+router.post("/admin/email-management/send-bulk", requireAdmin, async (req, res) => {
+  const { sendBulkEmail } = await import("../modules/email-management/emailManagement.controller.js");
+  return sendBulkEmail(req, res);
+});
+router.get("/admin/email-management/campaigns", requireAdmin, async (req, res) => {
+  const { listEmailCampaigns } = await import("../modules/email-management/emailManagement.controller.js");
+  return listEmailCampaigns(req, res);
+});
+router.post("/admin/email-management/campaigns", requireAdmin, async (req, res) => {
+  const { createEmailCampaign } = await import("../modules/email-management/emailManagement.controller.js");
+  return createEmailCampaign(req, res);
+});
+router.get("/admin/email-management/campaigns/:id", requireAdmin, async (req, res) => {
+  const { getEmailCampaign } = await import("../modules/email-management/emailManagement.controller.js");
+  return getEmailCampaign(req, res);
+});
+
 export default router;

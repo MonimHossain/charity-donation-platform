@@ -30,7 +30,7 @@ export async function registerUser(req: Request, res: Response) {
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
-    const user = await findOrCreateDonorUser({
+    const { user } = await findOrCreateDonorUser({
       email: normalized,
       fullName,
       phone,
@@ -40,6 +40,15 @@ export async function registerUser(req: Request, res: Response) {
       emailVerified: false,
       passwordHash,
     });
+
+    try {
+      const { dispatchEvent } = await import("../notifications/notification.service.js");
+      void dispatchEvent("registration", { user }).catch((err) =>
+        console.error("[register] notification error:", err)
+      );
+    } catch {
+      /* notification module optional at compile time */
+    }
 
     const session = issueUserSession(res, user);
     return res.status(201).json(session);

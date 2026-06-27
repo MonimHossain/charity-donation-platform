@@ -17,6 +17,7 @@ import { useCurrency } from "@/lib/currency";
 import { useLocale } from "@/lib/i18n";
 import { DropdownPortal } from "./DropdownPortal";
 import { DonateButtonEffect } from "@/components/ui/DonateButtonEffect";
+import { UserNotificationBell } from "@/components/notifications/UserNotificationBell";
 import { cn } from "@/lib/utils";
 
 const mockNav = [
@@ -180,6 +181,7 @@ export default function SiteHeader() {
               <ShoppingBasket className="w-4 h-4" />
               <span className="tabular-nums hidden sm:inline">{basketLabel}</span>
             </Link>
+            {isSignedIn && <UserNotificationBell />}
             <Link
               href={isSignedIn ? "/account" : "/auth/login"}
               className="hidden sm:inline-flex h-9 px-3 items-center rounded-full border border-border text-xs font-semibold text-primary hover:bg-secondary transition"

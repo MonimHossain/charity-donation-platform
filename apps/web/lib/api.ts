@@ -44,6 +44,7 @@ api.interceptors.request.use((config) => {
     const isUserRoute =
       apiPath.startsWith("/auth/") ||
       apiPath.startsWith("/my/") ||
+      apiPath.startsWith("/notifications") ||
       apiPath.startsWith("/recurring/my") ||
       apiPath.startsWith("/zakat/history") ||
       apiPath.startsWith("/automated-donations/my") ||
@@ -1286,7 +1287,7 @@ export async function fetchEmailTemplates() {
   return data;
 }
 
-export async function fetchEmailTemplate(id: number) {
+export async function fetchEmailTemplate(id: string) {
   const { data } = await api.get(`/admin/email-management/templates/${id}`);
   return data;
 }
@@ -1296,12 +1297,12 @@ export async function createEmailTemplate(payload: Record<string, unknown>) {
   return data;
 }
 
-export async function updateEmailTemplate(id: number, payload: Record<string, unknown>) {
+export async function updateEmailTemplate(id: string, payload: Record<string, unknown>) {
   const { data } = await api.patch(`/admin/email-management/templates/${id}`, payload);
   return data;
 }
 
-export async function deleteEmailTemplate(id: number) {
+export async function deleteEmailTemplate(id: string) {
   const { data } = await api.delete(`/admin/email-management/templates/${id}`);
   return data;
 }
@@ -1318,6 +1319,71 @@ export async function updateReminderSettings(payload: Record<string, unknown>) {
 
 export async function fetchEmailLogs(params?: Record<string, string>) {
   const { data } = await api.get("/admin/email-management/logs", { params });
+  return data;
+}
+
+export async function previewEmailTemplate(payload: Record<string, unknown>) {
+  const { data } = await api.post("/admin/email-management/preview", payload);
+  return data;
+}
+
+export async function sendBulkEmail(payload: Record<string, unknown>) {
+  const { data } = await api.post("/admin/email-management/send-bulk", payload);
+  return data;
+}
+
+export async function fetchEmailCampaigns() {
+  const { data } = await api.get("/admin/email-management/campaigns");
+  return data;
+}
+
+export async function createEmailCampaign(payload: Record<string, unknown>) {
+  const { data } = await api.post("/admin/email-management/campaigns", payload);
+  return data;
+}
+
+export async function fetchEmailCampaign(id: string) {
+  const { data } = await api.get(`/admin/email-management/campaigns/${id}`);
+  return data;
+}
+
+export async function fetchNotifications(params?: Record<string, string>) {
+  const { data } = await api.get("/notifications", { params });
+  return data;
+}
+
+export async function fetchNotificationUnreadCount() {
+  const { data } = await api.get("/notifications/unread-count");
+  return data;
+}
+
+export async function markNotificationRead(id: string) {
+  const { data } = await api.patch(`/notifications/${id}/read`);
+  return data;
+}
+
+export async function markAllNotificationsRead() {
+  const { data } = await api.post("/notifications/read-all");
+  return data;
+}
+
+export async function fetchAdminNotifications(params?: Record<string, string>) {
+  const { data } = await api.get("/admin/notifications", { params });
+  return data;
+}
+
+export async function fetchAdminNotificationUnreadCount() {
+  const { data } = await api.get("/admin/notifications/unread-count");
+  return data;
+}
+
+export async function markAdminNotificationRead(id: string) {
+  const { data } = await api.patch(`/admin/notifications/${id}/read`);
+  return data;
+}
+
+export async function markAllAdminNotificationsRead() {
+  const { data } = await api.post("/admin/notifications/read-all");
   return data;
 }
 

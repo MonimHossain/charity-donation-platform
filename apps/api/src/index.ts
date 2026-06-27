@@ -13,6 +13,7 @@ import { seedHomepageSections } from "./modules/seed/seedHomepageSections.js";
 import { seedCharities } from "./modules/seed/seedCharities.js";
 import { seedQuickDonate } from "./modules/seed/seedQuickDonate.js";
 import { seedZakatPage } from "./modules/seed/seedZakatPage.js";
+import { seedEmailTemplates } from "./modules/seed/seedEmailTemplates.js";
 import { securityHeaders, csrfProtection, sanitizeInput } from "./modules/security/securityHeaders.js";
 import { apiRateLimit } from "./modules/security/rateLimiter.js";
 import routes from "./routes/index.js";
@@ -119,6 +120,7 @@ const startServer = async () => {
     await seedCharities(AppDataSource);
     await seedQuickDonate(AppDataSource);
     await seedZakatPage(AppDataSource);
+    await seedEmailTemplates(AppDataSource);
   } catch (error) {
     console.error("Seeding failed:", error);
   }
@@ -140,6 +142,13 @@ const startServer = async () => {
     startAutomatedPaymentWorker();
   } catch (error) {
     console.warn("Automated payment worker not started:", (error as Error).message);
+  }
+
+  try {
+    const { startNotificationWorker } = await import("./modules/notifications/notificationWorker.js");
+    startNotificationWorker();
+  } catch (error) {
+    console.warn("Notification worker not started:", (error as Error).message);
   }
 
   process.on("SIGTERM", () => {

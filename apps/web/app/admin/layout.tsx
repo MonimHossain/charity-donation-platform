@@ -34,8 +34,7 @@ import {
   HelpCircle,
   Calculator,
   Globe,
-  Activity,
-  Clock,
+  Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -43,6 +42,7 @@ import { cn } from "@/lib/utils";
 import { fetchAdminProfile, adminLogout } from "@/lib/api";
 import { AdminSessionProvider } from "@/components/admin/AdminSessionProvider";
 import { AdminAccountMenu } from "@/components/admin/AdminAccountMenu";
+import { AdminNotificationBell } from "@/components/notifications/AdminNotificationBell";
 import {
   DEFAULT_DEMO_ADMIN_PROFILE,
   isMockAdminSession,
@@ -97,7 +97,18 @@ const navItems: NavItem[] = [
       { label: "Settings", href: "/admin/cms/settings", icon: Settings },
     ],
   },
-  { label: "Newsletter", href: "/admin/newsletter", icon: Mail },
+  {
+    label: "Email",
+    href: "/admin/email/templates",
+    icon: Mail,
+    children: [
+      { label: "Templates", href: "/admin/email/templates", icon: FileText },
+      { label: "Send", href: "/admin/email/send", icon: Send },
+      { label: "Campaigns", href: "/admin/email/campaigns", icon: Megaphone },
+      { label: "Logs", href: "/admin/email/logs", icon: Activity },
+      { label: "Subscribers", href: "/admin/newsletter", icon: Users },
+    ],
+  },
   { label: "Activity Log", href: "/admin/activity", icon: Activity },
   { label: "Settings", href: "/admin/settings", icon: Settings },
 ];
@@ -367,6 +378,8 @@ export default function AdminLayout({
           </Button>
 
           <div className="flex-1" />
+
+          <AdminNotificationBell />
 
           <AdminAccountMenu
             name={admin?.name || (admin as { fullName?: string })?.fullName}
