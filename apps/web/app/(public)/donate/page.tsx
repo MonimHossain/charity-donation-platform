@@ -222,6 +222,11 @@ function DonatePageApi() {
       const intervalParam = params.get("interval");
       const intervalCountParam = params.get("intervalCount");
       const parsedIntervalCount = intervalCountParam ? Number(intervalCountParam) : undefined;
+      const zakatMonthsParam = params.get("zakatMonths");
+      const zakatTotalParam = params.get("zakatTotal");
+      const parsedZakatMonths = zakatMonthsParam ? Number(zakatMonthsParam) : undefined;
+      const parsedZakatTotal = zakatTotalParam ? Number(zakatTotalParam) : undefined;
+      const isZakat = cause === "zakat";
       const selectedUpsellIds = upsellsParam
         ? upsellsParam.split(",").map((id) => id.trim()).filter(Boolean)
         : undefined;
@@ -231,12 +236,21 @@ function DonatePageApi() {
         donationPageSlug: cause,
         title: isQuickDonate
           ? quickLabel || cause.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
-          : cause.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+          : isZakat
+            ? "Zakat"
+            : cause.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
         amount: parsed,
         currency: (params.get("currency") || getCurrencyCode()).toUpperCase(),
         description: isQuickDonate
           ? `Quick donation — ${getCurrency().symbol}${parsed.toFixed(2)}`
-          : `Donation — ${getCurrency().symbol}${parsed.toFixed(2)}`,
+          : isZakat &&
+              Number.isFinite(parsedZakatMonths) &&
+              parsedZakatMonths! > 1 &&
+              Number.isFinite(parsedZakatTotal)
+            ? `Zakat — ${parsedZakatMonths} monthly payments of ${getCurrency().symbol}${parsed} (${getCurrency().symbol}${parsedZakatTotal} due)`
+            : isZakat
+              ? `Zakat — ${getCurrency().symbol}${parsed}`
+              : `Donation — ${getCurrency().symbol}${parsed.toFixed(2)}`,
         campaignId: campaignId || undefined,
         campaignSlug:
           campaignSlugParam || (!campaignId && isQuickDonate ? cause : undefined),

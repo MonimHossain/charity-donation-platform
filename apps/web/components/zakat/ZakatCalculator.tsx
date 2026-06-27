@@ -11,6 +11,13 @@ import { USE_MOCK_DATA } from "@/lib/config";
 import { statTotalClass } from "@/lib/home-buttons";
 import { useCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
+import {
+  buildZakatDonateHref,
+  zakatInstallmentAmount,
+  zakatInstallmentPlanLabel,
+  ZAKAT_INSTALLMENT_MONTHS,
+  type ZakatInstallmentMonths,
+} from "@/lib/zakat-installments";
 
 export type NisabBasis = "gold" | "silver";
 
@@ -94,6 +101,7 @@ export default function ZakatCalculator() {
   const [pricesLoading, setPricesLoading] = useState(true);
   const [metalPrices, setMetalPrices] = useState<MetalPrices | null>(null);
   const [result, setResult] = useState<ZakatResult | null>(null);
+  const [paymentPlan, setPaymentPlan] = useState<ZakatInstallmentMonths>(1);
 
   const loadMetalPrices = useCallback(async () => {
     setPricesLoading(true);
@@ -160,6 +168,7 @@ export default function ZakatCalculator() {
   );
 
   const handleCalculate = async () => {
+    setPaymentPlan(1);
     setLoading(true);
     try {
       if (USE_MOCK_DATA) {
@@ -202,9 +211,18 @@ export default function ZakatCalculator() {
     }
   };
 
-  const donateHref = result?.zakatPayable
-    ? `/donate?cause=zakat&amount=${encodeURIComponent(String(result.zakatPayable))}&currency=${currency}`
-    : "/donate?cause=zakat";
+  const zakatTotal = result?.zakatPayable ?? 0;
+  const installmentAmount = zakatInstallmentAmount(zakatTotal, paymentPlan);
+  const installmentTotal = installmentAmount * paymentPlan;
+
+  const donateHref =
+    result?.zakatPayable && result.zakatPayable > 0
+      ? buildZakatDonateHref({
+          totalDue: result.zakatPayable,
+          currency,
+          months: paymentPlan,
+        })
+      : "/donate?cause=zakat";
 
   const priceUpdatedLabel = metalPrices?.updatedAt
     ? new Date(metalPrices.updatedAt).toLocaleString("en-GB", {
@@ -399,12 +417,67 @@ export default function ZakatCalculator() {
               : " · Below nisab threshold — consult a scholar"}
           </p>
           {result.isAboveNisab && result.zakatPayable > 0 && (
-            <Button
-              asChild
-              className="mt-4 rounded-full bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground"
-            >
-              <Link href={donateHref}>Pay your Zakat now</Link>
-            </Button>
+            <div className="mt-5 space-y-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide opacity-80">
+                  How would you like to pay?
+                </p>
+                <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {ZAKAT_INSTALLMENT_MONTHS.map((months) => (
+                    <button
+                      key={months}
+                      type="button"
+                      onClick={() => setPaymentPlan(months)}
+                      className={cn(
+                        "rounded-xl px-3 py-2.5 text-sm font-semibold transition-all border",
+                        paymentPlan === months
+                          ? "bg-accent text-accent-foreground border-accent"
+                          : "border-white/25 bg-white/10 hover:bg-white/15"
+                      )}
+                    >
+                      {zakatInstallmentPlanLabel(months)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {paymentPlan > 1 ? (
+                <p className="text-sm opacity-90">
+                  Pay{" "}
+                  <span className="font-bold">
+                    {formatMoney(installmentAmount, {
+                      from: result.currency || currency,
+                      code: currency,
+                    })}
+                  </span>{" "}
+                  per month for {paymentPlan} months
+                  {installmentTotal > zakatTotal && (
+                    <span className="block text-xs opacity-75 mt-1">
+                      ({formatMoney(installmentTotal, {
+                        from: result.currency || currency,
+                        code: currency,
+                      })}{" "}
+                      total — rounded up per instalment)
+                    </span>
+                  )}
+                </p>
+              ) : (
+                <p className="text-sm opacity-90">
+                  Pay the full amount in one payment today.
+                </p>
+              )}
+
+              <Button
+                asChild
+                className="w-full rounded-full bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground"
+              >
+                <Link href={donateHref}>
+                  {paymentPlan > 1
+                    ? `Start ${paymentPlan}-month plan`
+                    : "Pay your Zakat now"}
+                </Link>
+              </Button>
+            </div>
           )}
         </div>
       )}
