@@ -12,6 +12,7 @@ import { seedDonationPresets } from "./modules/seed/seedDonationPresets.js";
 import { seedHomepageSections } from "./modules/seed/seedHomepageSections.js";
 import { seedCharities } from "./modules/seed/seedCharities.js";
 import { seedQuickDonate } from "./modules/seed/seedQuickDonate.js";
+import { seedZakatPage } from "./modules/seed/seedZakatPage.js";
 import { securityHeaders, csrfProtection, sanitizeInput } from "./modules/security/securityHeaders.js";
 import { apiRateLimit } from "./modules/security/rateLimiter.js";
 import routes from "./routes/index.js";
@@ -117,6 +118,7 @@ const startServer = async () => {
     await seedHomepageSections(AppDataSource);
     await seedCharities(AppDataSource);
     await seedQuickDonate(AppDataSource);
+    await seedZakatPage(AppDataSource);
   } catch (error) {
     console.error("Seeding failed:", error);
   }

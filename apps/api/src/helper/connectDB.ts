@@ -35,6 +35,7 @@ import { Testimonial } from "../components/testimonial/testimonial.entity.js";
 import { Upsell } from "../components/upsell/upsell.entity.js";
 import { User } from "../components/user/user.entity.js";
 import { ZakatCalculation } from "../components/zakat/zakatCalculation.entity.js";
+import { ZakatPage } from "../components/cms/zakatPage.entity.js";
 
 const dbHost = process.env.DB_HOST ?? "localhost";
 const dbPort = Number(process.env.DB_PORT ?? 54322);
@@ -80,6 +81,7 @@ const entities = [
   Upsell,
   User,
   ZakatCalculation,
+  ZakatPage,
 ];
 
 export const AppDataSource = new DataSource({

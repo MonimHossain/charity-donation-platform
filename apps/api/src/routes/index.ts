@@ -393,6 +393,10 @@ router.get("/cms/page-blocks", async (req, res) => {
   const { getPageBlocks } = await import("../modules/cms/cmsExtended.controller.js");
   return getPageBlocks(req, res);
 });
+router.get("/cms/zakat-page", async (req, res) => {
+  const { getPublicZakatPage } = await import("../modules/cms/zakatPage.controller.js");
+  return getPublicZakatPage(req, res);
+});
 router.get("/cms/translations", async (req, res) => {
   const { getTranslations } = await import("../modules/cms/cmsExtended.controller.js");
   return getTranslations(req, res);
@@ -605,6 +609,14 @@ router.get("/admin/cms/footer", requireAdmin, async (req, res) => {
 router.put("/admin/cms/footer", requireAdmin, async (req, res) => {
   const { updateFooterContent } = await import("../modules/cms/cmsExtended.controller.js");
   return updateFooterContent(req, res);
+});
+router.get("/admin/cms/zakat-page", requireAdmin, async (req, res) => {
+  const { getAdminZakatPage } = await import("../modules/cms/zakatPage.controller.js");
+  return getAdminZakatPage(req, res);
+});
+router.put("/admin/cms/zakat-page", requireAdmin, async (req, res) => {
+  const { updateZakatPage } = await import("../modules/cms/zakatPage.controller.js");
+  return updateZakatPage(req, res);
 });
 
 // Admin CMS Pages (aliases for page-block operations, grouped by page)

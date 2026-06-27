@@ -549,6 +549,35 @@ export async function fetchZakatHistory() {
   return data;
 }
 
+export type ZakatPageContent = {
+  id?: string;
+  heroEyebrow: string;
+  heroTitle: string;
+  heroDescription: string;
+  introHtml: string;
+  featureCardsHeading: string;
+  featureCards: Array<{ title: string; description: string }>;
+  contentBelowHtml: string;
+  showQuote: boolean;
+  status: "draft" | "published";
+  updatedAt?: string;
+};
+
+export async function fetchZakatPageContent() {
+  const { data } = await api.get("/cms/zakat-page");
+  return data as ZakatPageContent;
+}
+
+export async function fetchAdminZakatPageContent() {
+  const { data } = await api.get("/admin/cms/zakat-page");
+  return data as ZakatPageContent;
+}
+
+export async function updateZakatPageContent(payload: Partial<ZakatPageContent>) {
+  const { data } = await api.put("/admin/cms/zakat-page", payload);
+  return data as ZakatPageContent;
+}
+
 // ═══════════════════════════════════
 // AUTOMATED DONATIONS
 // ═══════════════════════════════════
