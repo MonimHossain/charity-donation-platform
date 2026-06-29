@@ -66,11 +66,10 @@ export async function createDonation(req: Request, res: Response) {
 
     const authUserId = (req as any).user?.id as string | undefined;
     const authUserEmail = (req as any).user?.email as string | undefined;
-    if (!authUserId || !authUserEmail) {
-      return res.status(401).json({ message: "Authentication required" });
-    }
-    if (normalizeEmail(donorEmail) !== normalizeEmail(authUserEmail)) {
-      return res.status(403).json({ message: "Donor email must match your account email" });
+    if (authUserId && authUserEmail) {
+      if (normalizeEmail(donorEmail) !== normalizeEmail(authUserEmail)) {
+        return res.status(403).json({ message: "Donor email must match your account email" });
+      }
     }
 
     const donorUser = await ensureDonorUserForDonation({

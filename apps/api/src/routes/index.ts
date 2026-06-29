@@ -69,8 +69,8 @@ router.get("/campaigns/:slug", getCampaignBySlug);
 
 // Donations
 router.post("/donations", async (req, res) => {
-  const { requireUser } = await import("../modules/user-auth/userAuth.middleware.js");
-  requireUser(req, res, async () => {
+  const { optionalUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  optionalUser(req, res, async () => {
     const { createDonation } = await import("../modules/donations/donations.controller.js");
     return createDonation(req, res);
   });
@@ -250,8 +250,8 @@ router.get("/recurring/my", async (req, res) => {
   });
 });
 router.post("/recurring", async (req, res) => {
-  const { requireUser } = await import("../modules/user-auth/userAuth.middleware.js");
-  requireUser(req, res, async () => {
+  const { optionalUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  optionalUser(req, res, async () => {
     const { createRecurringDonation } = await import("../modules/recurring/recurring.controller.js");
     return createRecurringDonation(req, res);
   });
@@ -284,15 +284,15 @@ router.post("/recurring/:id/billing-portal", async (req, res) => {
 // PAYMENT ROUTES (lazy-loaded)
 // ═══════════════════════════════════
 router.post("/payments/stripe/create-intent", async (req, res) => {
-  const { requireUser } = await import("../modules/user-auth/userAuth.middleware.js");
-  requireUser(req, res, async () => {
+  const { optionalUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  optionalUser(req, res, async () => {
     const { createPaymentIntent } = await import("../modules/payments/stripe.controller.js");
     return createPaymentIntent(req, res);
   });
 });
 router.post("/payments/stripe/confirm", async (req, res) => {
-  const { requireUser } = await import("../modules/user-auth/userAuth.middleware.js");
-  requireUser(req, res, async () => {
+  const { optionalUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  optionalUser(req, res, async () => {
     const { confirmStripePayment } = await import("../modules/payments/stripe.controller.js");
     return confirmStripePayment(req, res);
   });
@@ -302,22 +302,22 @@ router.post("/payments/stripe/create-subscription", async (req, res) => {
   return createSubscription(req, res);
 });
 router.post("/payments/stripe/create-subscription-checkout", async (req, res) => {
-  const { requireUser } = await import("../modules/user-auth/userAuth.middleware.js");
-  requireUser(req, res, async () => {
+  const { optionalUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  optionalUser(req, res, async () => {
     const { createSubscriptionCheckout } = await import("../modules/payments/stripe.controller.js");
     return createSubscriptionCheckout(req, res);
   });
 });
 router.post("/payments/stripe/create-setup-intent", async (req, res) => {
-  const { requireUser } = await import("../modules/user-auth/userAuth.middleware.js");
-  requireUser(req, res, async () => {
+  const { optionalUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  optionalUser(req, res, async () => {
     const { createSetupIntent } = await import("../modules/payments/stripe.controller.js");
     return createSetupIntent(req, res);
   });
 });
 router.post("/payments/stripe/confirm-setup", async (req, res) => {
-  const { requireUser } = await import("../modules/user-auth/userAuth.middleware.js");
-  requireUser(req, res, async () => {
+  const { optionalUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  optionalUser(req, res, async () => {
     const { confirmStripeSetup } = await import("../modules/payments/stripe.controller.js");
     return confirmStripeSetup(req, res);
   });
@@ -910,8 +910,8 @@ router.get("/zakat/history", async (req, res) => {
 // AUTOMATED DONATIONS (public/user)
 // ═══════════════════════════════════
 router.post("/automated-donations", async (req, res) => {
-  const { requireUser } = await import("../modules/user-auth/userAuth.middleware.js");
-  requireUser(req, res, async () => {
+  const { optionalUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  optionalUser(req, res, async () => {
     const { createAutomatedSchedule } = await import("../modules/automated/automated.controller.js");
     return createAutomatedSchedule(req, res);
   });

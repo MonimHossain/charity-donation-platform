@@ -111,6 +111,7 @@ function DonationCheckoutContent() {
   const [pushRecurringDays, setPushRecurringDays] = useState("30");
   const [stripeReady, setStripeReady] = useState(false);
   const [authenticated, setAuthenticated] = useState(() => isUserAuthenticated());
+  const [guestMode, setGuestMode] = useState(false);
   const beginCheckoutTracked = useRef(false);
 
   useEffect(() => {
@@ -442,7 +443,7 @@ function DonationCheckoutContent() {
       installmentCount: ramadanSummary.hasRamadanSplit ? ramadanSummary.installmentCount : undefined,
       installmentAmount: ramadanSummary.hasRamadanSplit ? ramadanSummary.firstInstallmentAmount : undefined,
     });
-    router.push(`/thank-you?${summaryParams.toString()}`);
+    router.push(`/thank-you?${summaryParams.toString()}${!authenticated && guestMode ? "&guest=1" : ""}`);
   };
 
   const paymentPrepareAttempted = useRef(false);
@@ -668,7 +669,7 @@ function DonationCheckoutContent() {
     );
   }
 
-  if (!authenticated) {
+  if (!authenticated && !guestMode) {
     return (
       <>
         <section className="bg-secondary/40 border-b border-border">
@@ -687,7 +688,10 @@ function DonationCheckoutContent() {
           </div>
         </section>
         <section className="container-wide py-8 lg:py-12">
-          <CheckoutAuthGate onAuthenticated={() => setAuthenticated(true)} />
+          <CheckoutAuthGate
+            onAuthenticated={() => setAuthenticated(true)}
+            onGuestContinue={() => setGuestMode(true)}
+          />
         </section>
       </>
     );
@@ -765,10 +769,10 @@ function DonationCheckoutContent() {
                     id="donor-email"
                     type="email"
                     required
-                    readOnly={authenticated}
+                    readOnly={authenticated && !guestMode}
                     value={donorEmail}
                     onChange={(e) => setDonorEmail(e.target.value)}
-                    className={cn("mt-1 h-12 rounded-xl", authenticated && "bg-muted")}
+                    className={cn("mt-1 h-12 rounded-xl", authenticated && !guestMode && "bg-muted")}
                     placeholder="you@email.com"
                   />
                 </div>

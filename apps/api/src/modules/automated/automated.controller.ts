@@ -89,11 +89,10 @@ export async function createAutomatedSchedule(req: Request, res: Response) {
 
     const authUserId = (req as { user?: { id?: string; email?: string } }).user?.id;
     const authUserEmail = (req as { user?: { id?: string; email?: string } }).user?.email;
-    if (!authUserId || !authUserEmail) {
-      return res.status(401).json({ message: "Authentication required" });
-    }
-    if (normalizeEmail(donorEmail) !== normalizeEmail(authUserEmail)) {
-      return res.status(403).json({ message: "Donor email must match your account email" });
+    if (authUserId && authUserEmail) {
+      if (normalizeEmail(donorEmail) !== normalizeEmail(authUserEmail)) {
+        return res.status(403).json({ message: "Donor email must match your account email" });
+      }
     }
 
     const donorUser = await ensureDonorUserForDonation({

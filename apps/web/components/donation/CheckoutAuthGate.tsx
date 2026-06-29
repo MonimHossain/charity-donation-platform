@@ -23,11 +23,12 @@ const CHECKOUT_RETURN = "/donation/checkout";
 
 type Props = {
   onAuthenticated: () => void;
+  onGuestContinue: () => void;
 };
 
 type Step = "email" | "login" | "setup" | "sent";
 
-export default function CheckoutAuthGate({ onAuthenticated }: Props) {
+export default function CheckoutAuthGate({ onAuthenticated, onGuestContinue }: Props) {
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
@@ -112,7 +113,7 @@ export default function CheckoutAuthGate({ onAuthenticated }: Props) {
       <div className="space-y-1">
         <h1 className="font-serif text-2xl md:text-3xl text-primary">Sign in to continue</h1>
         <p className="text-sm text-muted-foreground">
-          Your cart is saved. Sign in or create an account to complete your donation.
+          Your cart is saved. Sign in for faster checkout, or continue as a guest.
         </p>
       </div>
 
@@ -139,6 +140,20 @@ export default function CheckoutAuthGate({ onAuthenticated }: Props) {
           </div>
           <Button type="submit" disabled={loading} size="lg" className="w-full rounded-full h-12">
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Continue"}
+          </Button>
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <span className="flex-1 h-px bg-border" />
+            or
+            <span className="flex-1 h-px bg-border" />
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="w-full rounded-full h-12"
+            onClick={onGuestContinue}
+          >
+            Continue as guest
           </Button>
         </form>
       )}
@@ -284,6 +299,21 @@ export default function CheckoutAuthGate({ onAuthenticated }: Props) {
             }}
           >
             <ArrowLeft className="w-4 h-4 mr-2" /> Use a different email
+          </Button>
+
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <span className="flex-1 h-px bg-border" />
+            or
+            <span className="flex-1 h-px bg-border" />
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full rounded-full h-12"
+            onClick={onGuestContinue}
+          >
+            Continue as guest
           </Button>
         </div>
       )}

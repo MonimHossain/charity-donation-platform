@@ -32,11 +32,15 @@ export default function ThankYouPage() {
   const installmentCount = analytics.installmentCount;
   const installmentAmount = analytics.installmentAmount;
   const isRamadanSplit = frequency === "ramadan_split";
+  const isGuestParam = params.get("guest") === "1";
+  const [hasSession, setHasSession] = useState<boolean | null>(null);
+  const isGuest = isGuestParam || hasSession === false;
   const [shareOpen, setShareOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState("");
 
   useEffect(() => {
     setShareUrl(`${window.location.origin}/donate`);
+    setHasSession(!!localStorage.getItem("user_token"));
   }, []);
 
   useEffect(() => {
@@ -115,6 +119,18 @@ export default function ThankYouPage() {
           <p className="text-muted-foreground mt-3 text-lg">
             Your kindness is making a real difference in people&apos;s lives.
           </p>
+          {isGuest && (
+            <p className="text-muted-foreground mt-2 text-sm">
+              A receipt has been sent to your email
+              {analytics.email ? (
+                <>
+                  {" "}
+                  at <strong className="text-foreground">{analytics.email}</strong>
+                </>
+              ) : null}
+              .
+            </p>
+          )}
         </div>
 
         {/* Donation summary */}
@@ -198,22 +214,30 @@ export default function ThankYouPage() {
           className="flex flex-col sm:flex-row justify-center gap-3 animate-fade-up"
           style={{ animationDelay: "0.6s" }}
         >
-          {donationId && !USE_MOCK_DATA ? (
+          {!isGuest && donationId && !USE_MOCK_DATA ? (
             <Button asChild variant="outline" size="lg" className="rounded-full gap-2">
               <Link href={`/account/receipt/${donationId}`}>
                 <Download className="w-4 h-4" /> View Receipt
               </Link>
             </Button>
-          ) : (
+          ) : !isGuest ? (
             <Button variant="outline" size="lg" className="rounded-full gap-2" disabled>
               <Download className="w-4 h-4" /> View Receipt
             </Button>
+          ) : null}
+          {isGuest ? (
+            <Button asChild variant="default" size="lg" className="rounded-full gap-2">
+              <Link href="/auth/login">
+                <UserPlus className="w-4 h-4" /> Create an account to track donations
+              </Link>
+            </Button>
+          ) : (
+            <Button asChild variant="default" size="lg" className="rounded-full gap-2">
+              <Link href="/account">
+                <UserPlus className="w-4 h-4" /> View My Dashboard
+              </Link>
+            </Button>
           )}
-          <Button asChild variant="default" size="lg" className="rounded-full gap-2">
-            <Link href="/account">
-              <UserPlus className="w-4 h-4" /> View My Dashboard
-            </Link>
-          </Button>
           <Button asChild variant="accent" size="lg" className="rounded-full gap-2">
             <Link href="/donate">
               <Heart className="w-4 h-4" /> Make Another Donation
