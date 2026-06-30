@@ -115,7 +115,7 @@ const AppealCard = ({
   large?: boolean;
   onExpired?: () => void;
 }) => (
-  <div className={`group relative flex flex-col overflow-hidden rounded-2xl sm:rounded-3xl bg-card border border-border/60 shadow-soft hover:shadow-lift hover:-translate-y-1 transition-all duration-500 ${large ? "sm:col-span-2 lg:col-span-2" : ""}`}>
+  <div className={`group relative flex flex-col overflow-hidden rounded-2xl sm:rounded-3xl bg-card border border-border/60 shadow-soft hover:shadow-lift hover:-translate-y-1 transition-all duration-500 min-w-0 ${large ? "sm:col-span-2 2xl:col-span-2" : ""}`}>
     <Link href={`/campaigns/${a.slug}`} className="relative block overflow-hidden">
       <div className={`relative overflow-hidden ${large ? "aspect-[8/3]" : "aspect-[4/3]"}`}>
         <img
@@ -230,7 +230,7 @@ const FeaturedCampaigns = () => {
   }
 
   return (
-  <section className="container-wide px-4 sm:px-6 lg:px-8 pt-16 pb-10 sm:pt-20 sm:pb-12 lg:pt-28 lg:pb-14">
+  <section className="container-wide overflow-x-hidden pt-16 pb-10 sm:pt-20 sm:pb-12 lg:pt-28 lg:pb-14">
     <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-10 sm:mb-14">
       <div className="max-w-2xl">
         <p className="text-sm uppercase tracking-[0.25em] text-accent-deep font-semibold">Our Appeals</p>
@@ -256,7 +256,7 @@ const FeaturedCampaigns = () => {
       </div>
     </div>
 
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6 lg:gap-8">
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5 sm:gap-6 lg:gap-8 min-w-0">
       {appeals.map((a, i) => (
         <AppealCard
           key={a.slug}
@@ -270,7 +270,9 @@ const FeaturedCampaigns = () => {
     <div className="mt-10 sm:mt-14 flex flex-col sm:flex-row items-center justify-between gap-4 p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-secondary to-mint-soft border border-border/60">
       <div className="flex items-center gap-3 text-sm text-foreground">
         <Shield className="w-5 h-5 text-accent-deep shrink-0" />
-        <span><strong className="font-semibold">Your donation is secure.</strong> Gift Aid eligible. Zakat compliant. Reports delivered to your inbox.</span>
+        <span className="flex-1 min-w-0 text-sm text-foreground">
+          <strong className="font-semibold">Your donation is secure.</strong> Gift Aid eligible. Zakat compliant. Reports delivered to your inbox.
+        </span>
       </div>
       <Link
         href="/campaigns"

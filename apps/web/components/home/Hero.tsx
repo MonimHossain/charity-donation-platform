@@ -74,7 +74,7 @@ const Hero = () => {
 
   return (
     <section ref={sectionRef} className="relative overflow-hidden bg-background">
-      <div aria-hidden className="absolute -top-32 -right-24 w-[420px] h-[420px] rounded-full bg-mint-soft/60 blur-3xl -z-10" />
+      <div aria-hidden className="absolute -top-32 right-0 w-[min(420px,55vw)] h-[420px] rounded-full bg-mint-soft/60 blur-3xl -z-10 pointer-events-none" />
 
       <div className="container-wide pt-2 pb-5 lg:pt-4 lg:pb-8 grid lg:grid-cols-12 gap-6 items-center">
         {/* LEFT: focused copy */}
