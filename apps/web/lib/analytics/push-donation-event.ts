@@ -7,7 +7,6 @@ import {
 import { hashUserData } from "./pii-hash";
 
 export type DonationEcommerceEvent =
-  | "select_item"
   | "view_item"
   | "begin_checkout"
   | "purchase";
@@ -85,34 +84,4 @@ export async function pushDonationEvent(
   const dataLayer = getDataLayer();
   dataLayer.push({ ecommerce: null });
   dataLayer.push(payload);
-}
-
-/** Convenience for appeal card clicks on home / campaigns listing (amount = 0). */
-export function trackSelectItem(campaign: {
-  slug: string;
-  title: string;
-  category?: string;
-  campaignMode?: string;
-  currency?: string;
-  tags?: string[];
-}) {
-  const slug = campaign.slug?.trim();
-  const title = campaign.title?.trim();
-  if (!slug || !title) return;
-
-  const tagType = campaign.tags?.find((t) =>
-    ["zakat", "sadaqah", "lillah", "general", "emergency"].includes(t.toLowerCase())
-  );
-
-  void pushDonationEvent("select_item", {
-    appealId: slug,
-    appealName: title,
-    category: campaign.category,
-    campaignMode: campaign.campaignMode,
-    donationType: tagType,
-    amount: 0,
-    currency: campaign.currency || "GBP",
-    frequency: "one_time",
-    giftAid: false,
-  });
 }
