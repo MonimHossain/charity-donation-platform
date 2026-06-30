@@ -44,7 +44,6 @@ import {
 import { buildThankYouSearchParams } from "@/lib/analytics/thank-you-params";
 import { pushBeginCheckoutFromCart } from "@/lib/analytics/cart-gtm";
 import { useLocale } from "@/lib/i18n";
-import CheckoutAuthGate from "@/components/donation/CheckoutAuthGate";
 import { isUserAuthenticated } from "@/lib/user-session";
 import {
   DEFAULT_CAMPAIGN_CONFIG,
@@ -110,8 +109,7 @@ function DonationCheckoutContent() {
   const [pushRecurring, setPushRecurring] = useState(false);
   const [pushRecurringDays, setPushRecurringDays] = useState("30");
   const [stripeReady, setStripeReady] = useState(false);
-  const [authenticated, setAuthenticated] = useState(() => isUserAuthenticated());
-  const [guestMode, setGuestMode] = useState(false);
+  const authenticated = isUserAuthenticated();
   const beginCheckoutTracked = useRef(false);
 
   useEffect(() => {
@@ -443,7 +441,7 @@ function DonationCheckoutContent() {
       installmentCount: ramadanSummary.hasRamadanSplit ? ramadanSummary.installmentCount : undefined,
       installmentAmount: ramadanSummary.hasRamadanSplit ? ramadanSummary.firstInstallmentAmount : undefined,
     });
-    router.push(`/thank-you?${summaryParams.toString()}${!authenticated && guestMode ? "&guest=1" : ""}`);
+    router.push(`/thank-you?${summaryParams.toString()}${!authenticated ? "&guest=1" : ""}`);
   };
 
   const paymentPrepareAttempted = useRef(false);
@@ -669,34 +667,6 @@ function DonationCheckoutContent() {
     );
   }
 
-  if (!authenticated && !guestMode) {
-    return (
-      <>
-        <section className="bg-secondary/40 border-b border-border">
-          <div className="container-wide py-4 flex flex-wrap items-center justify-between gap-3">
-            <Link
-              href="/campaigns"
-              className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
-            >
-              <ArrowLeft className="w-4 h-4" /> Continue giving
-            </Link>
-            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1.5">
-                <Lock className="w-3.5 h-3.5" /> Secure checkout
-              </span>
-            </div>
-          </div>
-        </section>
-        <section className="container-wide py-8 lg:py-12">
-          <CheckoutAuthGate
-            onAuthenticated={() => setAuthenticated(true)}
-            onGuestContinue={() => setGuestMode(true)}
-          />
-        </section>
-      </>
-    );
-  }
-
   return (
     <>
       <section className="bg-secondary/40 border-b border-border">
@@ -769,10 +739,10 @@ function DonationCheckoutContent() {
                     id="donor-email"
                     type="email"
                     required
-                    readOnly={authenticated && !guestMode}
+                    readOnly={authenticated}
                     value={donorEmail}
                     onChange={(e) => setDonorEmail(e.target.value)}
-                    className={cn("mt-1 h-12 rounded-xl", authenticated && !guestMode && "bg-muted")}
+                    className={cn("mt-1 h-12 rounded-xl", authenticated && "bg-muted")}
                     placeholder="you@email.com"
                   />
                 </div>

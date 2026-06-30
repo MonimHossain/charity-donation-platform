@@ -364,21 +364,12 @@ function CheckoutForm({
 
   const finalizePayment = useCallback(
     async (paymentIntentId: string, subscriptionId?: string) => {
-      const result = await confirmStripePayment({
+      await confirmStripePayment({
         paymentIntentId,
         donationId,
         recurringDonationId,
         subscriptionId,
       });
-      if (result.token) {
-        localStorage.setItem("user_token", result.token);
-        if (result.user) {
-          localStorage.setItem(
-            "user_profile",
-            JSON.stringify({ ...result.user, name: result.user.fullName || result.user.name })
-          );
-        }
-      }
       onSuccess();
     },
     [donationId, onSuccess, recurringDonationId]
@@ -425,21 +416,12 @@ function CheckoutForm({
       if (!setupIntent?.id) {
         throw new Error("Payment method could not be saved");
       }
-      const result = await confirmStripeSetup({
+      await confirmStripeSetup({
         setupIntentId: setupIntent.id,
         automatedScheduleId: primaryScheduleId,
         automatedScheduleIds,
         donationId,
       });
-      if (result.token) {
-        localStorage.setItem("user_token", result.token);
-        if (result.user) {
-          localStorage.setItem(
-            "user_profile",
-            JSON.stringify({ ...result.user, name: result.user.fullName || result.user.name })
-          );
-        }
-      }
       onSuccess();
       return;
     }
