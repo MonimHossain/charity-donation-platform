@@ -31,9 +31,11 @@ async function sendDonationNotificationsIfNeeded(donation: Donation): Promise<vo
   }
 
   try {
-    await dispatchEvent("donation_success", { donation, campaignTitle });
-    donation.receiptEmailSent = true;
-    await donationRepo().save(donation);
+    const result = await dispatchEvent("donation_success", { donation, campaignTitle });
+    if (result.donationEmailStatus === "sent") {
+      donation.receiptEmailSent = true;
+      await donationRepo().save(donation);
+    }
   } catch (err) {
     console.error("[completeDonation] Notification dispatch failed:", err);
   }

@@ -191,14 +191,14 @@ async function notifyAllAdmins(input: {
 export async function dispatchEvent(
   type: NotificationEventType,
   payload: Record<string, unknown>
-): Promise<void> {
+): Promise<{ donationEmailStatus?: "sent" | "skipped" | "failed" }> {
   const settings = await getEmailSettings();
 
   switch (type) {
     case "donation_success": {
       const donation = payload.donation as Donation;
       const campaignTitle = (payload.campaignTitle as string) || "General Donation";
-      if (!donation?.donorEmail) return;
+      if (!donation?.donorEmail) return {};
 
       const mergeData = buildDonationMergeData({
         donorName: donation.donorName,
@@ -213,6 +213,7 @@ export async function dispatchEvent(
         donationId: donation.id,
       });
 
+      let donationEmailStatus: "sent" | "skipped" | "failed" = "skipped";
       if (isEventEnabled(settings, "donation")) {
         let pdfAttachment: Array<{ filename: string; content: Buffer; contentType?: string }> =
           [];
@@ -229,7 +230,7 @@ export async function dispatchEvent(
           console.error("[notification] PDF generation failed:", err);
         }
 
-        await sendTemplatedEmail({
+        donationEmailStatus = await sendTemplatedEmail({
           templateKey: EVENT_TEMPLATE_MAP.donation_success,
           to: donation.donorEmail,
           mergeData,
@@ -280,12 +281,12 @@ export async function dispatchEvent(
         actionUrl: `/admin/donations`,
         metadata: { donationId: donation.id },
       });
-      break;
+      return { donationEmailStatus };
     }
 
     case "registration": {
       const user = payload.user as User;
-      if (!user?.email) return;
+      if (!user?.email) return {};
 
       const mergeData: MergeData = {
         donorName: user.fullName,
@@ -322,7 +323,7 @@ export async function dispatchEvent(
     }
 
     case "recurring_reminder": {
-      if (!isEventEnabled(settings, "recurring_reminder")) return;
+      if (!isEventEnabled(settings, "recurring_reminder")) return {};
 
       const donorEmail = payload.donorEmail as string;
       const donorName = payload.donorName as string;
@@ -412,7 +413,7 @@ export async function dispatchEvent(
     }
 
     case "admin_alert": {
-      if (!isEventEnabled(settings, "admin_alert")) return;
+      if (!isEventEnabled(settings, "admin_alert")) return {};
 
       const title = (payload.title as string) || "Admin alert";
       const body = (payload.body as string) || "";
@@ -454,6 +455,7 @@ export async function dispatchEvent(
       break;
     }
   }
+  return {};
 }
 
 export async function sendBulkUserEmail(input: {

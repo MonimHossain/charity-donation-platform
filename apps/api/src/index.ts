@@ -1,6 +1,6 @@
+import "./load-env.js";
 import cookieParser from "cookie-parser";
 import cors from "cors";
-import "dotenv/config";
 import express from "express";
 import http from "http";
 import morgan from "morgan";
