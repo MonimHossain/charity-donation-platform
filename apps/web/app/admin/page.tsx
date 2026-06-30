@@ -34,7 +34,11 @@ import {
   fetchCampaigns,
   fetchAdminDashboardOverview,
 } from "@/lib/api";
-import { formatDonationTypeLabel, QUICK_DONATION_TYPE } from "@/lib/quick-donate";
+import {
+  formatDonationTypeLabel,
+  QUICK_DONATION_TYPE,
+  resolveDonationCampaignName,
+} from "@/lib/quick-donate";
 
 const statusBadge: Record<string, string> = {
   completed: "bg-green-100 text-green-700",
@@ -418,8 +422,7 @@ function AdminDashboardPageApi() {
                           £{Number(d.amount || 0).toLocaleString("en-GB", { minimumFractionDigits: 2 })}
                         </td>
                         <td className="px-5 py-3 text-muted-foreground">
-                          {d.campaignTitle || d.campaign?.title ||
-                            (d.donationType === QUICK_DONATION_TYPE ? "Quick Donation" : "—")}
+                          {resolveDonationCampaignName(d) || "—"}
                         </td>
                         <td className="px-5 py-3">
                           <span

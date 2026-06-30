@@ -14,7 +14,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { fetchAdminDonations } from "@/lib/api";
-import { formatDonationTypeLabel, QUICK_DONATION_TYPE } from "@/lib/quick-donate";
+import {
+  formatDonationTypeLabel,
+  QUICK_DONATION_TYPE,
+  resolveDonationCampaignName,
+} from "@/lib/quick-donate";
 import { DONATION_STATUS_STYLES } from "@/lib/payment-utils";
 import { formatMoney, normalizeCurrencyCode } from "@/lib/currency";
 
@@ -78,9 +82,7 @@ export default function DonationsPage() {
         d.donorEmail || d.email || "",
         String(d.amount),
         d.currency || "GBP",
-        d.donationType === QUICK_DONATION_TYPE
-          ? "Quick Donation"
-          : d.campaignTitle || d.campaign?.title || "",
+        resolveDonationCampaignName(d) || "",
         formatDonationTypeLabel(d.donationType),
         d.frequency || "one-time",
         d.status,
@@ -178,14 +180,9 @@ export default function DonationsPage() {
                       </td>
                       <td className="px-5 py-3">
                         {(() => {
-                          const campaignName =
-                            d.campaignTitle || d.campaign?.title ||
-                            (d.donationType === QUICK_DONATION_TYPE ? "Quick Donation" : null);
-                          if (!campaignName || campaignName === "—") {
+                          const campaignName = resolveDonationCampaignName(d);
+                          if (!campaignName) {
                             return <span className="text-muted-foreground">—</span>;
-                          }
-                          if (campaignName === "Quick Donation") {
-                            return <span className="text-muted-foreground">Quick Donation</span>;
                           }
                           return (
                             <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-teal-50 text-teal-700 ring-1 ring-inset ring-teal-600/20">

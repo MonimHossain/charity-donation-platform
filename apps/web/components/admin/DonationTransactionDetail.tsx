@@ -11,7 +11,7 @@ import {
   stripeDashboardPaymentUrl,
   formatPaymentProvider,
 } from "@/lib/payment-utils";
-import PaymentLogsTable, { type PaymentLogRow } from "@/components/admin/PaymentLogsTable";
+import { resolveDonationCampaignName } from "@/lib/quick-donate";
 
 export type DonationDetail = {
   id: string;
@@ -51,8 +51,7 @@ export default function DonationTransactionDetail({
 }) {
   const [copied, setCopied] = useState(false);
   const currency = normalizeCurrencyCode(donation.currency);
-  const campaignTitle =
-    donation.campaignTitle || donation.campaign?.title || "General";
+  const campaignTitle = resolveDonationCampaignName(donation) || "General";
   const stripeUrl = stripeDashboardPaymentUrl(donation.stripePaymentIntentId);
   const failedLogs =
     donation.paymentLogs?.filter((l) =>

@@ -12,6 +12,18 @@ const repo = () => AppDataSource.getRepository(Donation);
 const campaignRepo = () => AppDataSource.getRepository(Campaign);
 const paymentLogRepo = () => AppDataSource.getRepository(PaymentLog);
 
+function mapDonationListItem(donation: Donation) {
+  return {
+    ...donation,
+    amount: Number(donation.amount),
+    totalAmount: Number(donation.totalAmount),
+    giftAidAmount: Number(donation.giftAidAmount),
+    upsellTotal: Number(donation.upsellTotal),
+    unitPrice: donation.unitPrice != null ? Number(donation.unitPrice) : undefined,
+    campaignTitle: donation.campaign?.title,
+  };
+}
+
 function mapDonationDetail(donation: Donation, paymentLogs: PaymentLog[] = []) {
   return {
     ...donation,
@@ -146,7 +158,12 @@ export async function getDonations(req: Request, res: Response) {
     }
 
     const [items, total] = await qb.getManyAndCount();
-    return res.json({ items, total, page: Number(page), limit: Number(limit) });
+    return res.json({
+      items: items.map(mapDonationListItem),
+      total,
+      page: Number(page),
+      limit: Number(limit),
+    });
   } catch (error) {
     console.error("getDonations error:", error);
     return res.status(500).json({ message: "Internal server error" });

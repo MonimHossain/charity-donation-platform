@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowUpRight, Calendar, Heart, Moon, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { resolveDonationCampaignName } from "@/lib/quick-donate";
 import { cn } from "@/lib/utils";
 import {
   fetchAdminAutomatedSchedules,
@@ -297,7 +298,7 @@ export function RamadanSplitDashboardSection() {
                           £{Number(d.totalAmount ?? d.amount ?? 0).toLocaleString("en-GB", { minimumFractionDigits: 2 })}
                         </td>
                         <td className="px-4 py-3 text-muted-foreground truncate max-w-[120px]">
-                          {d.campaignTitle || d.campaign?.title || "—"}
+                          {resolveDonationCampaignName(d) || "—"}
                         </td>
                         <td className="px-4 py-3">
                           <span
@@ -342,7 +343,7 @@ export function RamadanSplitDashboardSection() {
                         <div className="min-w-0">
                           <p className="font-medium text-sm truncate">{s.donorName}</p>
                           <p className="text-xs text-muted-foreground truncate">
-                            {s.campaign?.title || "General"}
+                            {resolveDonationCampaignName(s) || "—"}
                           </p>
                         </div>
                         <span className="text-xs font-medium capitalize text-amber-800">{s.status}</span>

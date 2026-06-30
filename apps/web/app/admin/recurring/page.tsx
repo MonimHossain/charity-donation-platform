@@ -13,10 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
-import {
-  recurringAmountToMonthlyEquivalent,
-  recurringIntervalLabel,
-} from "@/lib/stripe-recurring";
+import { resolveDonationCampaignName } from "@/lib/quick-donate";
 
 interface RecurringDonation {
   id: string;
@@ -25,7 +22,8 @@ interface RecurringDonation {
   amount: number;
   currency: string;
   frequency: string;
-  campaignTitle: string;
+  campaignTitle?: string;
+  campaign?: { title?: string };
   status: string;
   nextPaymentDate: string;
   totalPaid: number;
@@ -185,7 +183,7 @@ export default function RecurringPage() {
                     <td className="px-5 py-3 text-muted-foreground capitalize">
                       {recurringIntervalLabel(d.frequency)}
                     </td>
-                    <td className="px-5 py-3 text-muted-foreground">{d.campaignTitle || "—"}</td>
+                    <td className="px-5 py-3 text-muted-foreground">{resolveDonationCampaignName(d) || "—"}</td>
                     <td className="px-5 py-3">
                       <span className={cn("inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize", statusStyles[d.status] || "bg-slate-100 text-slate-600")}>
                         {d.status}

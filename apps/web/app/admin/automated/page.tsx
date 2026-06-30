@@ -25,7 +25,7 @@ import {
 } from "@/lib/automation-list";
 import { SCHEDULE_STATUS_STYLES } from "@/lib/payment-utils";
 import { formatMoney, normalizeCurrencyCode } from "@/lib/currency";
-import { recurringIntervalLabel } from "@/lib/stripe-recurring";
+import { resolveDonationCampaignName } from "@/lib/quick-donate";
 
 const statusIcons: Record<string, React.ElementType> = {
   scheduled: Clock,
@@ -157,7 +157,7 @@ export default function AutomatedDonationsPage() {
                           {formatAutomationType(s)}
                         </span>
                       </td>
-                      <td className="px-5 py-3 text-muted-foreground">{s.campaign?.title || "General"}</td>
+                      <td className="px-5 py-3 text-muted-foreground">{resolveDonationCampaignName(s) || "—"}</td>
                       <td className="px-5 py-3 font-semibold tabular-nums">
                         {formatMoney(s.totalAmount, { from: currency, code: currency })}
                         {isRecurring && s.frequency ? (

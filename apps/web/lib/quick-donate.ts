@@ -110,6 +110,14 @@ export function slugifyLabel(text: string): string {
 
 export const QUICK_DONATION_TYPE = "quick_donation";
 
+export function resolveDonationCampaignName(donation: {
+  campaignTitle?: string | null;
+  campaign?: { title?: string | null } | null;
+}): string | null {
+  const title = donation.campaignTitle || donation.campaign?.title;
+  return title?.trim() ? title.trim() : null;
+}
+
 export function formatDonationTypeLabel(donationType?: string): string {
   if (!donationType) return "—";
   if (donationType === QUICK_DONATION_TYPE) return "Quick Donation";
