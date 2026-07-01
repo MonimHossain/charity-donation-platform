@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { adminHasPermission, loadAdminContext } from "./adminPermissionUtils.js";
-import { isSuperAdminRole } from "@repo/shared-types";
+import { isSuperAdminRole } from "../../constants/adminPermissions.js";
 
 type RouteRule = {
   pattern: RegExp;
@@ -62,43 +62,48 @@ function findRouteRule(path: string): RouteRule | undefined {
 
 export function adminRoutePermissionMiddleware() {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const path = req.path;
-    if (EXEMPT_PATHS.has(path) || path.startsWith("/admin/profile/")) {
-      return next();
-    }
-    if (!path.startsWith("/admin/")) {
-      return next();
-    }
-
-    const rule = findRouteRule(path);
-    if (!rule) {
-      return next();
-    }
-
-    const ctx = await loadAdminContext(req);
-    if (!ctx) {
-      return res.status(401).json({ message: "Authentication required" });
-    }
-
-    if (rule.superAdminOnly || rule.view === "__super_admin__") {
-      if (!isSuperAdminRole(ctx.role)) {
-        return res.status(403).json({ message: "Super admin access required" });
+    try {
+      const path = req.path;
+      if (EXEMPT_PATHS.has(path) || path.startsWith("/admin/profile/")) {
+        return next();
       }
+      if (!path.startsWith("/admin/")) {
+        return next();
+      }
+
+      const rule = findRouteRule(path);
+      if (!rule) {
+        return next();
+      }
+
+      const ctx = await loadAdminContext(req);
+      if (!ctx) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      if (rule.superAdminOnly || rule.view === "__super_admin__") {
+        if (!isSuperAdminRole(ctx.role)) {
+          return res.status(403).json({ message: "Super admin access required" });
+        }
+        return next();
+      }
+
+      const required = permissionForMethod(rule, req.method);
+      if (required && !adminHasPermission(ctx, required)) {
+        if (req.method.toUpperCase() === "PUT" && path.includes("/refund")) {
+          if (adminHasPermission(ctx, "donations.refund")) return next();
+        }
+        if (req.method.toUpperCase() === "POST" && path.includes("/send")) {
+          if (adminHasPermission(ctx, "email.send")) return next();
+        }
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      (req as any).adminContext = ctx;
       return next();
+    } catch (error) {
+      console.error("adminRoutePermissionMiddleware error:", error);
+      return res.status(500).json({ message: "Internal server error" });
     }
-
-    const required = permissionForMethod(rule, req.method);
-    if (required && !adminHasPermission(ctx, required)) {
-      if (req.method.toUpperCase() === "PUT" && path.includes("/refund")) {
-        if (adminHasPermission(ctx, "donations.refund")) return next();
-      }
-      if (req.method.toUpperCase() === "POST" && path.includes("/send")) {
-        if (adminHasPermission(ctx, "email.send")) return next();
-      }
-      return res.status(403).json({ message: "Insufficient permissions" });
-    }
-
-    (req as any).adminContext = ctx;
-    return next();
   };
 }

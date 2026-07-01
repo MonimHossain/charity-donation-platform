@@ -4,7 +4,7 @@ import { Admin } from "../../components/admin/admin.entity.js";
 import {
   effectiveAdminPermissions,
   isSuperAdminRole,
-} from "@repo/shared-types";
+} from "../../constants/adminPermissions.js";
 
 export interface AdminRequestContext {
   id: string;

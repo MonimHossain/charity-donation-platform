@@ -1,0 +1,15 @@
+{
+  "extends": "../typescript-config/base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "noEmit": false,
+    "allowImportingTsExtensions": false,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "declaration": true,
+    "declarationMap": true
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

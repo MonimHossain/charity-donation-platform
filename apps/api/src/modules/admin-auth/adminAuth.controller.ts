@@ -4,7 +4,7 @@ import { signJwt } from "../../helper/jwt.js";
 import { AppDataSource } from "../../helper/connectDB.js";
 import { Admin } from "../../components/admin/admin.entity.js";
 import { logAudit } from "../../helper/auditLog.js";
-import { buildAdminAuthPayload } from "./adminStaff.controller.js";
+import { buildAdminAuthPayload } from "./adminAuthPayload.js";
 
 function requireDatabase(res: Response): boolean {
   if (!AppDataSource.isInitialized) {

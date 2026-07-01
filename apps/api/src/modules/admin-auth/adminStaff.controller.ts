@@ -4,28 +4,20 @@ import bcrypt from "bcryptjs";
 import { AppDataSource } from "../../helper/connectDB.js";
 import { Admin } from "../../components/admin/admin.entity.js";
 import {
-  adminRolesFromDbRole,
-  effectiveAdminPermissions,
   formatAdminPermissionsCatalog,
-  isSuperAdminRole,
   validatePermissionCodes,
-} from "@repo/shared-types";
+} from "../../constants/adminPermissions.js";
 import { assertSuperAdmin, getTargetAdmin, isProtectedSuperAdmin } from "./adminPermissionUtils.js";
+import { buildAdminAuthPayload } from "./adminAuthPayload.js";
 
 const repo = () => AppDataSource.getRepository(Admin);
 
 function serializeAdmin(a: Admin) {
-  const roles = adminRolesFromDbRole(a.role);
-  const permissions = effectiveAdminPermissions(a.role, a.permissions);
+  const payload = buildAdminAuthPayload(a);
   return {
-    id: a.id,
-    email: a.email,
-    fullName: a.fullName,
+    ...payload,
     isActive: a.isActive,
-    role: a.role,
-    roles,
-    permissions,
-    permissionCount: permissions.length,
+    permissionCount: payload.permissions.length,
     createdAt: a.createdAt,
   };
 }
@@ -192,18 +184,4 @@ export async function listAdminPermissions(req: Request, res: Response) {
 
   const catalog = formatAdminPermissionsCatalog().filter((m) => !m.superAdminOnly);
   return res.json({ data: catalog });
-}
-
-export function buildAdminAuthPayload(admin: Admin) {
-  const roles = adminRolesFromDbRole(admin.role);
-  const permissions = effectiveAdminPermissions(admin.role, admin.permissions);
-  return {
-    id: admin.id,
-    email: admin.email,
-    fullName: admin.fullName,
-    role: admin.role,
-    roles,
-    permissions,
-    isSuperAdmin: isSuperAdminRole(admin.role),
-  };
 }
