@@ -8,6 +8,14 @@ import {
 import RequirePermission from "@/components/admin/RequirePermission";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
   createAdminUser,
@@ -18,7 +26,7 @@ import {
   updateAdminUser,
   updateAdminUserStatus,
 } from "@/lib/api";
-import { Eye, EyeOff, KeyRound, Loader2, Pencil, ShieldCheck, Trash2, UserCheck, UserX } from "lucide-react";
+import { Eye, EyeOff, KeyRound, Loader2, Pencil, Plus, ShieldCheck, Trash2, UserCheck, UserX } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -84,6 +92,7 @@ export default function AdminUsersPage() {
   const [saving, setSaving] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
 
   const canCreate = hasAdminPermission(session, "admins.create");
   const canUpdate = hasAdminPermission(session, "admins.update");
@@ -146,11 +155,22 @@ export default function AdminUsersPage() {
       isActive: u.isActive,
       permissions: u.permissions ?? [],
     });
+    setShowPassword(false);
+    setModalOpen(true);
   }
 
-  function resetForm() {
+  function openCreateModal() {
     setEditingUser(null);
     setForm(initialForm);
+    setShowPassword(false);
+    setModalOpen(true);
+  }
+
+  function closeModal() {
+    setModalOpen(false);
+    setEditingUser(null);
+    setForm(initialForm);
+    setShowPassword(false);
   }
 
   async function submit() {
@@ -188,7 +208,7 @@ export default function AdminUsersPage() {
         });
       }
       toast.success(editingUser ? "User updated." : "User created.");
-      resetForm();
+      closeModal();
       await loadUsers();
     } catch {
       toast.error("Failed to save.");
@@ -214,7 +234,7 @@ export default function AdminUsersPage() {
     try {
       await deleteAdminUser(u.id);
       toast.success("Deleted.");
-      if (editingUser?.id === u.id) resetForm();
+      if (editingUser?.id === u.id) closeModal();
       await loadUsers();
     } catch {
       toast.error("Failed.");
@@ -250,122 +270,20 @@ export default function AdminUsersPage() {
   return (
     <RequirePermission permission="admins.view">
       <div className="space-y-6">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold text-foreground">User Management</h1>
-          <p className="text-sm text-muted-foreground">
-            Create admin accounts and assign sidebar access plus action permissions.
-          </p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1">
+            <h1 className="text-2xl font-semibold text-foreground">User Management</h1>
+            <p className="text-sm text-muted-foreground">
+              Manage admin accounts and assign sidebar access plus action permissions.
+            </p>
+          </div>
+          {canCreate && (
+            <Button onClick={openCreateModal} className="shrink-0">
+              <Plus className="h-4 w-4" />
+              Add New Admin
+            </Button>
+          )}
         </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold">
-              {editingUser ? "Update Admin User" : "Create Admin User"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid gap-3 md:grid-cols-2">
-              <Input
-                value={form.fullName}
-                onChange={(e) => setForm((p) => ({ ...p, fullName: e.target.value }))}
-                placeholder="Full Name"
-                disabled={!canEditCurrent}
-              />
-              <Input
-                value={form.email}
-                onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
-                placeholder="Email"
-                disabled={!canEditCurrent}
-              />
-            </div>
-            {!editingUser && (
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="relative">
-                  <Input
-                    value={form.password}
-                    onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
-                    placeholder="Password"
-                    type={showPassword ? "text" : "password"}
-                    className="pr-10"
-                  />
-                  <button
-                    type="button"
-                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-                <Input
-                  value={form.confirmPassword}
-                  onChange={(e) => setForm((p) => ({ ...p, confirmPassword: e.target.value }))}
-                  placeholder="Confirm Password"
-                  type="password"
-                />
-              </div>
-            )}
-            {(!editingUser || !isSuperAdminUser(editingUser)) && (
-              <>
-                <div className="max-h-96 space-y-4 overflow-y-auto rounded-md border p-3">
-                  {permissionModules.map((mod) => (
-                    <div key={mod.module} className="space-y-2">
-                      <h3 className="text-xs font-semibold uppercase text-muted-foreground">
-                        {mod.label}
-                      </h3>
-                      <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-                        {mod.permissions.map((perm) => (
-                          <label
-                            key={perm.code}
-                            className="flex items-center gap-2 rounded-md border px-3 py-2 text-xs"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={form.permissions.includes(perm.code)}
-                              disabled={!canEditCurrent}
-                              onChange={(e) =>
-                                setForm((p) => ({
-                                  ...p,
-                                  permissions: togglePermissionCode(
-                                    p.permissions,
-                                    perm.code,
-                                    mod.permissions,
-                                    e.target.checked
-                                  ),
-                                }))
-                              }
-                            />
-                            <span>{perm.label}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <label className="flex items-center gap-2 text-xs">
-                  <input
-                    type="checkbox"
-                    checked={form.isActive}
-                    disabled={!canEditCurrent}
-                    onChange={(e) => setForm((p) => ({ ...p, isActive: e.target.checked }))}
-                  />
-                  Active
-                </label>
-              </>
-            )}
-            {canEditCurrent && (
-              <div className="flex gap-2">
-                <Button onClick={submit} disabled={saving}>
-                  {saving ? "Saving..." : editingUser ? "Update" : "Create"}
-                </Button>
-                {editingUser && (
-                  <Button variant="outline" onClick={resetForm}>
-                    Cancel
-                  </Button>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
 
         <Card>
           <CardHeader>
@@ -511,6 +429,127 @@ export default function AdminUsersPage() {
             </div>
           </CardContent>
         </Card>
+
+        <Dialog
+          open={modalOpen}
+          onOpenChange={(open) => {
+            if (!open) closeModal();
+            else setModalOpen(true);
+          }}
+        >
+          <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{editingUser ? "Update Admin User" : "Create Admin User"}</DialogTitle>
+              <DialogDescription>
+                {editingUser
+                  ? "Update account details and permissions for this admin."
+                  : "Set up a new admin account and choose which areas they can access."}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-2">
+              <div className="grid gap-3 md:grid-cols-2">
+                <Input
+                  value={form.fullName}
+                  onChange={(e) => setForm((p) => ({ ...p, fullName: e.target.value }))}
+                  placeholder="Full Name"
+                  disabled={!canEditCurrent}
+                />
+                <Input
+                  value={form.email}
+                  onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
+                  placeholder="Email"
+                  disabled={!canEditCurrent}
+                />
+              </div>
+              {!editingUser && (
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="relative">
+                    <Input
+                      value={form.password}
+                      onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
+                      placeholder="Password"
+                      type={showPassword ? "text" : "password"}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                  <Input
+                    value={form.confirmPassword}
+                    onChange={(e) => setForm((p) => ({ ...p, confirmPassword: e.target.value }))}
+                    placeholder="Confirm Password"
+                    type="password"
+                  />
+                </div>
+              )}
+              {(!editingUser || !isSuperAdminUser(editingUser)) && (
+                <>
+                  <div className="max-h-72 space-y-4 overflow-y-auto rounded-md border p-3">
+                    {permissionModules.map((mod) => (
+                      <div key={mod.module} className="space-y-2">
+                        <h3 className="text-xs font-semibold uppercase text-muted-foreground">
+                          {mod.label}
+                        </h3>
+                        <div className="grid gap-2 md:grid-cols-2">
+                          {mod.permissions.map((perm) => (
+                            <label
+                              key={perm.code}
+                              className="flex items-center gap-2 rounded-md border px-3 py-2 text-xs"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={form.permissions.includes(perm.code)}
+                                disabled={!canEditCurrent}
+                                onChange={(e) =>
+                                  setForm((p) => ({
+                                    ...p,
+                                    permissions: togglePermissionCode(
+                                      p.permissions,
+                                      perm.code,
+                                      mod.permissions,
+                                      e.target.checked
+                                    ),
+                                  }))
+                                }
+                              />
+                              <span>{perm.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={form.isActive}
+                      disabled={!canEditCurrent}
+                      onChange={(e) => setForm((p) => ({ ...p, isActive: e.target.checked }))}
+                    />
+                    Active
+                  </label>
+                </>
+              )}
+            </div>
+
+            {canEditCurrent && (
+              <DialogFooter>
+                <Button variant="outline" onClick={closeModal} disabled={saving}>
+                  Cancel
+                </Button>
+                <Button onClick={submit} disabled={saving}>
+                  {saving ? "Saving..." : editingUser ? "Update" : "Create"}
+                </Button>
+              </DialogFooter>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </RequirePermission>
   );
