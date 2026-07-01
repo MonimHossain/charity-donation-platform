@@ -4,6 +4,7 @@ import { signJwt } from "../../helper/jwt.js";
 import { AppDataSource } from "../../helper/connectDB.js";
 import { Admin } from "../../components/admin/admin.entity.js";
 import { logAudit } from "../../helper/auditLog.js";
+import { buildAdminAuthPayload } from "./adminStaff.controller.js";
 
 function requireDatabase(res: Response): boolean {
   if (!AppDataSource.isInitialized) {
@@ -55,12 +56,7 @@ export async function loginAdmin(req: Request, res: Response) {
     await logAudit(req, { action: "login", entityType: "admin", entityId: admin.id, details: { email: admin.email } });
 
     return res.json({
-      user: {
-        id: admin.id,
-        email: admin.email,
-        fullName: admin.fullName,
-        role: admin.role,
-      },
+      user: buildAdminAuthPayload(admin),
       token,
     });
   } catch (error) {
@@ -79,12 +75,7 @@ export async function getAdminProfile(req: Request, res: Response) {
     const admin = await repo.findOne({ where: { id: adminId } });
     if (!admin) return res.status(404).json({ message: "Admin not found" });
 
-    return res.json({
-      id: admin.id,
-      email: admin.email,
-      fullName: admin.fullName,
-      role: admin.role,
-    });
+    return res.json(buildAdminAuthPayload(admin));
   } catch (error) {
     return res.status(500).json({ message: "Internal server error" });
   }

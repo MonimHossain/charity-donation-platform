@@ -3,18 +3,38 @@ import { routeParam } from "../../helper/requestParams.js";
 import bcrypt from "bcryptjs";
 import { AppDataSource } from "../../helper/connectDB.js";
 import { Admin } from "../../components/admin/admin.entity.js";
+import {
+  adminRolesFromDbRole,
+  effectiveAdminPermissions,
+  formatAdminPermissionsCatalog,
+  isSuperAdminRole,
+  validatePermissionCodes,
+} from "@repo/shared-types";
+import { assertSuperAdmin, getTargetAdmin, isProtectedSuperAdmin } from "./adminPermissionUtils.js";
 
 const repo = () => AppDataSource.getRepository(Admin);
 
-const ROLES = [
-  { id: 1, name: "Super Admin", code: "SUPER_ADMIN", label: "Super Admin" },
-  { id: 2, name: "Admin", code: "ADMIN", label: "Admin" },
-  { id: 3, name: "Editor", code: "EDITOR", label: "Editor" },
-  { id: 4, name: "Viewer", code: "VIEWER", label: "Viewer" },
-];
+function serializeAdmin(a: Admin) {
+  const roles = adminRolesFromDbRole(a.role);
+  const permissions = effectiveAdminPermissions(a.role, a.permissions);
+  return {
+    id: a.id,
+    email: a.email,
+    fullName: a.fullName,
+    isActive: a.isActive,
+    role: a.role,
+    roles,
+    permissions,
+    permissionCount: permissions.length,
+    createdAt: a.createdAt,
+  };
+}
 
 export async function listAdminStaff(req: Request, res: Response) {
   try {
+    const ctx = await assertSuperAdmin(req, res);
+    if (!ctx) return;
+
     const { search, isActive, page = "1", limit = "20" } = req.query;
     const qb = repo().createQueryBuilder("a").orderBy("a.createdAt", "DESC");
 
@@ -33,16 +53,7 @@ export async function listAdminStaff(req: Request, res: Response) {
       .getMany();
 
     return res.json({
-      data: items.map((a) => ({
-        id: a.id,
-        email: a.email,
-        fullName: a.fullName,
-        isActive: a.isActive,
-        role: a.role,
-        roles: [{ code: ROLES.find((r) => r.name.toLowerCase() === a.role || r.code.toLowerCase() === a.role)?.code ?? "ADMIN" }],
-        roleIds: [ROLES.find((r) => r.name.toLowerCase() === a.role || r.code.toLowerCase() === a.role)?.id ?? 2],
-        createdAt: a.createdAt,
-      })),
+      data: items.map(serializeAdmin),
       total,
       page: Number(page),
       limit: Number(limit),
@@ -54,25 +65,30 @@ export async function listAdminStaff(req: Request, res: Response) {
 
 export async function createAdminStaff(req: Request, res: Response) {
   try {
-    const { email, password, fullName, isActive = true, roleIds } = req.body;
+    const ctx = await assertSuperAdmin(req, res);
+    if (!ctx) return;
+
+    const { email, password, fullName, isActive = true, permissions } = req.body;
     if (!email || !password || !fullName) {
       return res.status(400).json({ message: "email, password, fullName required" });
     }
     const existing = await repo().findOne({ where: { email } });
     if (existing) return res.status(409).json({ message: "Email already exists" });
 
-    const roleId = Array.isArray(roleIds) ? roleIds[0] : roleIds;
-    const role = ROLES.find((r) => r.id === Number(roleId))?.name ?? "admin";
+    const validatedPermissions = validatePermissionCodes(
+      Array.isArray(permissions) ? permissions : []
+    );
 
     const admin = repo().create({
       email,
       fullName,
       passwordHash: await bcrypt.hash(password, 12),
       isActive: Boolean(isActive),
-      role: role === "SUPER_ADMIN" ? "super_admin" : role.toLowerCase(),
+      role: "admin",
+      permissions: validatedPermissions,
     });
     await repo().save(admin);
-    return res.status(201).json({ id: admin.id, email: admin.email, fullName: admin.fullName });
+    return res.status(201).json(serializeAdmin(admin));
   } catch {
     return res.status(500).json({ message: "Internal server error" });
   }
@@ -80,21 +96,28 @@ export async function createAdminStaff(req: Request, res: Response) {
 
 export async function updateAdminStaff(req: Request, res: Response) {
   try {
-    const admin = await repo().findOne({ where: { id: routeParam(req, 'id') } });
-    if (!admin) return res.status(404).json({ message: "Not found" });
+    const ctx = await assertSuperAdmin(req, res);
+    if (!ctx) return;
 
-    const { fullName, email, isActive, roleIds, password } = req.body;
+    const admin = await repo().findOne({ where: { id: routeParam(req, "id") } });
+    if (!admin) return res.status(404).json({ message: "Not found" });
+    if (isProtectedSuperAdmin(admin)) {
+      return res.status(403).json({ message: "Super admin account cannot be modified" });
+    }
+
+    const { fullName, email, isActive, permissions, password } = req.body;
     if (fullName) admin.fullName = fullName;
     if (email) admin.email = email;
     if (isActive !== undefined) admin.isActive = Boolean(isActive);
-    if (roleIds?.length) {
-      const role = ROLES.find((r) => r.id === Number(roleIds[0]))?.name ?? "ADMIN";
-      admin.role = role === "SUPER_ADMIN" ? "super_admin" : role.toLowerCase();
+    if (permissions !== undefined) {
+      admin.permissions = validatePermissionCodes(
+        Array.isArray(permissions) ? permissions : []
+      );
     }
     if (password) admin.passwordHash = await bcrypt.hash(password, 12);
 
     await repo().save(admin);
-    return res.json({ id: admin.id });
+    return res.json(serializeAdmin(admin));
   } catch {
     return res.status(500).json({ message: "Internal server error" });
   }
@@ -102,7 +125,16 @@ export async function updateAdminStaff(req: Request, res: Response) {
 
 export async function deleteAdminStaff(req: Request, res: Response) {
   try {
-    await repo().delete({ id: routeParam(req, 'id') });
+    const ctx = await assertSuperAdmin(req, res);
+    if (!ctx) return;
+
+    const admin = await getTargetAdmin(routeParam(req, "id"));
+    if (!admin) return res.status(404).json({ message: "Not found" });
+    if (isProtectedSuperAdmin(admin)) {
+      return res.status(403).json({ message: "Super admin account cannot be deleted" });
+    }
+
+    await repo().delete({ id: admin.id });
     return res.json({ message: "Deleted" });
   } catch {
     return res.status(500).json({ message: "Internal server error" });
@@ -111,8 +143,15 @@ export async function deleteAdminStaff(req: Request, res: Response) {
 
 export async function updateAdminStaffStatus(req: Request, res: Response) {
   try {
-    const admin = await repo().findOne({ where: { id: routeParam(req, 'id') } });
+    const ctx = await assertSuperAdmin(req, res);
+    if (!ctx) return;
+
+    const admin = await repo().findOne({ where: { id: routeParam(req, "id") } });
     if (!admin) return res.status(404).json({ message: "Not found" });
+    if (isProtectedSuperAdmin(admin)) {
+      return res.status(403).json({ message: "Super admin account cannot be modified" });
+    }
+
     admin.isActive = Boolean(req.body.isActive);
     await repo().save(admin);
     return res.json({ id: admin.id, isActive: admin.isActive });
@@ -123,10 +162,18 @@ export async function updateAdminStaffStatus(req: Request, res: Response) {
 
 export async function resetAdminStaffPassword(req: Request, res: Response) {
   try {
+    const ctx = await assertSuperAdmin(req, res);
+    if (!ctx) return;
+
     const { password } = req.body;
     if (!password) return res.status(400).json({ message: "password required" });
-    const admin = await repo().findOne({ where: { id: routeParam(req, 'id') } });
+
+    const admin = await repo().findOne({ where: { id: routeParam(req, "id") } });
     if (!admin) return res.status(404).json({ message: "Not found" });
+    if (isProtectedSuperAdmin(admin)) {
+      return res.status(403).json({ message: "Super admin password must be changed via profile" });
+    }
+
     admin.passwordHash = await bcrypt.hash(password, 12);
     await repo().save(admin);
     return res.json({ message: "Password updated" });
@@ -136,23 +183,27 @@ export async function resetAdminStaffPassword(req: Request, res: Response) {
 }
 
 export async function listAdminRoles(_req: Request, res: Response) {
-  return res.json({ data: ROLES });
+  return res.json({ data: [] });
 }
 
-export async function listAdminPermissions(_req: Request, res: Response) {
-  return res.json({
-    data: [
-      "campaigns:read",
-      "campaigns:write",
-      "donations:read",
-      "donations:write",
-      "cms:read",
-      "cms:write",
-      "charities:read",
-      "charities:write",
-      "users:read",
-      "users:write",
-      "analytics:read",
-    ],
-  });
+export async function listAdminPermissions(req: Request, res: Response) {
+  const ctx = await assertSuperAdmin(req, res);
+  if (!ctx) return;
+
+  const catalog = formatAdminPermissionsCatalog().filter((m) => !m.superAdminOnly);
+  return res.json({ data: catalog });
+}
+
+export function buildAdminAuthPayload(admin: Admin) {
+  const roles = adminRolesFromDbRole(admin.role);
+  const permissions = effectiveAdminPermissions(admin.role, admin.permissions);
+  return {
+    id: admin.id,
+    email: admin.email,
+    fullName: admin.fullName,
+    role: admin.role,
+    roles,
+    permissions,
+    isSuperAdmin: isSuperAdminRole(admin.role),
+  };
 }
