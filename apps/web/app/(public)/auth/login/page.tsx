@@ -218,6 +218,11 @@ function LoginPageContent() {
                 We also sent a sign-in link to <span className="font-medium text-foreground">{email}</span>.
                 Check your inbox, or enter your password below.
               </div>
+
+              <div>
+                <Label htmlFor="email" className="text-sm font-medium">
+                  Email Address
+                </Label>
                 <Input
                   id="email"
                   type="email"
