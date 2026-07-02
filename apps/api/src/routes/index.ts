@@ -453,6 +453,18 @@ router.get("/admin/donations", requireAdmin, adminPermCheck, getDonations);
 router.get("/admin/donations/stats", requireAdmin, adminPermCheck, getDonationStats);
 router.get("/admin/donations/:id", requireAdmin, adminPermCheck, getDonationById);
 router.put("/admin/donations/:id/refund", requireAdmin, adminPermCheck, refundDonation);
+router.get("/admin/donor-segments/count", requireAdmin, adminPermCheck, async (req, res) => {
+  const { getDonorSegmentCount } = await import("../modules/donors/donorSegment.controller.js");
+  return getDonorSegmentCount(req, res);
+});
+router.get("/admin/donor-segments/users", requireAdmin, adminPermCheck, async (req, res) => {
+  const { getDonorSegmentUsers } = await import("../modules/donors/donorSegment.controller.js");
+  return getDonorSegmentUsers(req, res);
+});
+router.get("/admin/donor-segments/all-ids", requireAdmin, adminPermCheck, async (req, res) => {
+  const { getDonorSegmentAllIds } = await import("../modules/donors/donorSegment.controller.js");
+  return getDonorSegmentAllIds(req, res);
+});
 router.get("/admin/payment-logs", requireAdmin, adminPermCheck, async (req, res) => {
   const { getAdminPaymentLogs } = await import("../modules/payments/paymentLogs.controller.js");
   return getAdminPaymentLogs(req, res);

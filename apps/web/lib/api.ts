@@ -667,6 +667,37 @@ export async function fetchAdminDonations(params?: Record<string, string>) {
   return data;
 }
 
+export async function fetchDonorSegmentCount(params: {
+  segment: string;
+  campaignId?: string;
+  startDate?: string;
+  endDate?: string;
+}) {
+  const { data } = await api.get("/admin/donor-segments/count", { params });
+  return data as { donorCount: number; userAccountCount: number };
+}
+
+export async function fetchDonorSegmentUsers(params?: Record<string, string | number>) {
+  const { data } = await api.get("/admin/donor-segments/users", { params });
+  return data as {
+    items: Array<{
+      id: string;
+      email: string;
+      fullName?: string;
+      donationCount?: number;
+      totalDonated?: number;
+    }>;
+    total: number;
+    page: number;
+    limit: number;
+  };
+}
+
+export async function fetchDonorSegmentAllIds(params?: Record<string, string>) {
+  const { data } = await api.get("/admin/donor-segments/all-ids", { params });
+  return data as { ids: string[]; total: number };
+}
+
 export async function fetchAdminDonationById(id: string) {
   const { data } = await api.get(`/admin/donations/${id}`);
   return data;

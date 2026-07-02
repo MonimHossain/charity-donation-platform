@@ -26,6 +26,21 @@ const donationRepo = () => AppDataSource.getRepository(Donation);
 const recurringRepo = () => AppDataSource.getRepository(RecurringDonation);
 const paymentLogRepo = () => AppDataSource.getRepository(PaymentLog);
 
+async function syncRecurringStripeSubscription(
+  recurringDonationId: string,
+  subscription: Stripe.Subscription,
+  customerId: string
+): Promise<void> {
+  const update: Partial<RecurringDonation> = {
+    stripeSubscriptionId: subscription.id,
+    stripeCustomerId: customerId,
+  };
+  if (subscription.cancel_at) {
+    update.cancelAt = new Date(subscription.cancel_at * 1000);
+  }
+  await recurringRepo().update(recurringDonationId, update);
+}
+
 async function buildDonorSessionPayload(donationId?: string) {
   if (!donationId) return {};
   const donation = await donationRepo().findOne({ where: { id: donationId } });
@@ -256,10 +271,7 @@ export async function createSubscriptionCheckout(req: Request, res: Response) {
     });
 
     if (recurringDonationId) {
-      await recurringRepo().update(recurringDonationId, {
-        stripeSubscriptionId: subscription.id,
-        stripeCustomerId: customer.id,
-      });
+      await syncRecurringStripeSubscription(recurringDonationId, subscription, customer.id);
     }
 
     if (userId && customer.id) {
@@ -331,10 +343,7 @@ export async function createSubscription(req: Request, res: Response) {
     });
 
     if (recurringDonationId) {
-      await recurringRepo().update(recurringDonationId, {
-        stripeSubscriptionId: subscription.id,
-        stripeCustomerId: customer.id,
-      });
+      await syncRecurringStripeSubscription(recurringDonationId, subscription, customer.id);
     }
 
     return res.json({
@@ -430,7 +439,15 @@ export async function handleWebhook(req: Request, res: Response) {
         const sub = event.data.object as Stripe.Subscription;
         const recurringId = sub.metadata.recurringDonationId;
         if (recurringId) {
-          await recurringRepo().update(recurringId, { status: sub.status === "active" ? "active" : "paused" });
+          const update: Record<string, unknown> = {
+            status: sub.status === "active" ? "active" : "paused",
+          };
+          if (sub.cancel_at) {
+            update.cancelAt = new Date(sub.cancel_at * 1000);
+          } else {
+            update.cancelAt = null;
+          }
+          await recurringRepo().update(recurringId, update);
         }
         break;
       }

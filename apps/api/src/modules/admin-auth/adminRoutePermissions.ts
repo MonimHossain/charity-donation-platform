@@ -19,6 +19,7 @@ const ROUTE_RULES: RouteRule[] = [
   { pattern: /^\/admin\/upsells(?:\/|$)/, view: "upsells.view", create: "upsells.create", update: "upsells.update", delete: "upsells.delete" },
   { pattern: /^\/admin\/quick-donate(?:\/|$)/, view: "quick_donate.view", create: "quick_donate.create", update: "quick_donate.update", delete: "quick_donate.delete" },
   { pattern: /^\/admin\/donations(?:\/|$)/, view: "donations.view", update: "donations.update" },
+  { pattern: /^\/admin\/donor-segments(?:\/|$)/, view: "donations.view" },
   { pattern: /^\/admin\/payment-logs(?:\/|$)/, view: "payments.view" },
   { pattern: /^\/admin\/payments(?:\/|$)/, view: "payments.view" },
   { pattern: /^\/admin\/recurring(?:\/|$)/, view: "recurring.view" },

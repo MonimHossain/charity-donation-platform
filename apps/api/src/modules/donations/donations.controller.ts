@@ -7,6 +7,10 @@ import { PaymentLog } from "../../components/paymentLog/paymentLog.entity.js";
 import { logAudit } from "../../helper/auditLog.js";
 import { ensureDonorUserForDonation, normalizeEmail } from "../user-auth/userAuth.service.js";
 import { resolveCampaignId } from "../campaigns/resolveCampaignId.js";
+import {
+  applySegmentToDonations,
+  parseSegmentParams,
+} from "../donors/donorSegment.service.js";
 
 const repo = () => AppDataSource.getRepository(Donation);
 const campaignRepo = () => AppDataSource.getRepository(Campaign);
@@ -138,19 +142,42 @@ export async function createDonation(req: Request, res: Response) {
 
 export async function getDonations(req: Request, res: Response) {
   try {
-    const { status, frequency, campaign, page = "1", limit = "20", search, failedOnly } = req.query;
-    const qb = repo().createQueryBuilder("d")
-      .leftJoinAndSelect("d.campaign", "campaign")
-      .orderBy("d.createdAt", "DESC")
+    const {
+      status,
+      frequency,
+      campaign,
+      page = "1",
+      limit = "20",
+      search,
+      failedOnly,
+      sort,
+    } = req.query;
+
+    const segmentParams = parseSegmentParams(req.query as Record<string, unknown>);
+
+    const qb = repo()
+      .createQueryBuilder("d")
+      .leftJoinAndSelect("d.campaign", "campaign");
+
+    const sortDir = sort === "createdAt:asc" ? "ASC" : "DESC";
+    qb.orderBy("d.createdAt", sortDir)
       .skip((Number(page) - 1) * Number(limit))
       .take(Number(limit));
 
-    if (status) qb.andWhere("d.status = :status", { status });
-    if (failedOnly === "true" || failedOnly === "1") {
-      qb.andWhere("d.status IN (:...badStatuses)", { badStatuses: ["failed", "pending"] });
+    if (segmentParams) {
+      if (segmentParams.segment === "campaign" && !segmentParams.campaignId) {
+        return res.status(400).json({ message: "campaignId is required for campaign segment" });
+      }
+      applySegmentToDonations(qb, segmentParams);
+    } else {
+      if (status) qb.andWhere("d.status = :status", { status });
+      if (failedOnly === "true" || failedOnly === "1") {
+        qb.andWhere("d.status IN (:...badStatuses)", { badStatuses: ["failed", "pending"] });
+      }
+      if (frequency) qb.andWhere("d.frequency = :frequency", { frequency });
+      if (campaign) qb.andWhere("d.campaignId = :campaign", { campaign });
     }
-    if (frequency) qb.andWhere("d.frequency = :frequency", { frequency });
-    if (campaign) qb.andWhere("d.campaignId = :campaign", { campaign });
+
     if (search) {
       qb.andWhere("(d.donorName ILIKE :search OR d.donorEmail ILIKE :search)", {
         search: `%${search}%`,
@@ -163,6 +190,7 @@ export async function getDonations(req: Request, res: Response) {
       total,
       page: Number(page),
       limit: Number(limit),
+      totalPages: Math.ceil(total / Number(limit)),
     });
   } catch (error) {
     console.error("getDonations error:", error);

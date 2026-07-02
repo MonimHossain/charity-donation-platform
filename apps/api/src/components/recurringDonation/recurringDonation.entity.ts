@@ -76,6 +76,9 @@ export class RecurringDonation {
   cancelledAt?: Date;
 
   @Column({ type: "timestamp", nullable: true })
+  cancelAt?: Date;
+
+  @Column({ type: "timestamp", nullable: true })
   pausedAt?: Date;
 
   @CreateDateColumn()
