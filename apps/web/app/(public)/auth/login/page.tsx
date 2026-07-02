@@ -45,7 +45,9 @@ function LoginPageContent() {
         return;
       }
       setEmailStatus(result.status);
-      setStep("link-sent");
+      if (result.status !== "password") {
+        setStep("link-sent");
+      }
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
@@ -71,11 +73,12 @@ function LoginPageContent() {
         setStep("google");
         return;
       }
+      // Always email a sign-in link (activation or reset). Password users can still use the password step.
+      await sendSignInLink();
       if (status === "password") {
         setStep("password");
         return;
       }
-      await sendSignInLink();
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
@@ -211,10 +214,10 @@ function LoginPageContent() {
                 </div>
               )}
 
-              <div>
-                <Label htmlFor="email" className="text-sm font-medium">
-                  Email Address
-                </Label>
+              <div className="p-3 rounded-xl bg-primary/5 border border-primary/20 text-sm text-muted-foreground">
+                We also sent a sign-in link to <span className="font-medium text-foreground">{email}</span>.
+                Check your inbox, or enter your password below.
+              </div>
                 <Input
                   id="email"
                   type="email"

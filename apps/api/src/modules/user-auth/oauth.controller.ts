@@ -14,9 +14,16 @@ function appBaseUrl(): string {
   );
 }
 
+/** Public API base including `/api/v1` — used for OAuth redirect_uri. */
 function apiBaseUrl(): string {
   const fromEnv = process.env.BACKEND_API_URL || process.env.NEXT_PUBLIC_API_URL;
-  if (fromEnv) return fromEnv.replace(/\/$/, "");
+  if (fromEnv) {
+    const trimmed = fromEnv.replace(/\/$/, "");
+    if (trimmed.endsWith("/api/v1")) return trimmed;
+    return `${trimmed}/api/v1`;
+  }
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL;
+  if (appUrl) return `${appUrl.replace(/\/$/, "")}/api/v1`;
   return "http://localhost:4000/api/v1";
 }
 

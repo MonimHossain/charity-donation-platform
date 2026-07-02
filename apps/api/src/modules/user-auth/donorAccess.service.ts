@@ -25,8 +25,8 @@ export type DonorEmailStatus = "new" | "password" | "google" | "needs_password_s
 
 export function resolveDonorEmailStatus(user: User | null): DonorEmailStatus {
   if (!user) return "new";
-  if (user.passwordHash) return "password";
   if (user.authProvider === "google") return "google";
+  if (user.passwordHash) return "password";
   return "needs_password_setup";
 }
 
