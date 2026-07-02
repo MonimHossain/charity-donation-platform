@@ -5,6 +5,8 @@ import {
   getAdminProfile,
   logoutAdmin,
   changeAdminPassword,
+  forgotAdminPassword,
+  resetAdminPasswordHandler,
 } from "../modules/admin-auth/adminAuth.controller.js";
 import { requireAdmin } from "../modules/admin-auth/adminAuth.middleware.js";
 import { adminRoutePermissionMiddleware } from "../modules/admin-auth/adminRoutePermissions.js";
@@ -413,6 +415,8 @@ router.get("/blog/categories", async (req, res) => {
 const adminPermCheck = adminRoutePermissionMiddleware();
 
 router.post("/admin/login", authRateLimit, loginAdmin);
+router.post("/admin/forgot-password", authRateLimit, forgotAdminPassword);
+router.post("/admin/reset-password", authRateLimit, resetAdminPasswordHandler);
 router.post("/admin/logout", requireAdmin, logoutAdmin);
 router.get("/admin/profile", requireAdmin, getAdminProfile);
 router.put("/admin/profile/password", requireAdmin, changeAdminPassword);
