@@ -1242,12 +1242,12 @@ export async function fetchAdminContactMessages(params?: Record<string, string>)
   return data;
 }
 
-export async function updateAdminContactMessage(id: number, payload: Record<string, unknown>) {
+export async function updateAdminContactMessage(id: string, payload: Record<string, unknown>) {
   const { data } = await api.patch(`/admin/contact-messages/${id}`, payload);
   return data;
 }
 
-export async function deleteAdminContactMessage(id: number) {
+export async function deleteAdminContactMessage(id: string) {
   const { data } = await api.delete(`/admin/contact-messages/${id}`);
   return data;
 }

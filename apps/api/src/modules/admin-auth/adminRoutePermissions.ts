@@ -39,7 +39,7 @@ const ROUTE_RULES: RouteRule[] = [
   { pattern: /^\/admin\/donation-pages(?:\/|$)/, view: "donation_pages.view", create: "donation_pages.create", update: "donation_pages.update", delete: "donation_pages.delete" },
   { pattern: /^\/admin\/notifications(?:\/|$)/, view: "dashboard.view" },
   { pattern: /^\/admin\/experts(?:\/|$)/, view: "experts.view", create: "experts.create", update: "experts.update", delete: "experts.delete" },
-  { pattern: /^\/admin\/contact(?:\/|$)/, view: "contact_messages.view", update: "contact_messages.review", delete: "contact_messages.delete" },
+  { pattern: /^\/admin\/contact-messages(?:\/|$)/, view: "contact_messages.view", update: "contact_messages.review", delete: "contact_messages.delete" },
 ];
 
 const EXEMPT_PATHS = new Set([

@@ -129,7 +129,7 @@ router.get("/public/verify/:certificateId", async (req, res) => {
   const { verifyCertificationById } = await import("../modules/charities/charities.controller.js");
   return verifyCertificationById(req, res);
 });
-router.post("/public/contact-messages", async (req, res) => {
+router.post("/public/contact-messages", authRateLimit, async (req, res) => {
   const { submitContactMessage } = await import("../modules/charities/charities.controller.js");
   return submitContactMessage(req, res);
 });
@@ -836,6 +836,18 @@ router.patch("/admin/apply-review/:id", requireAdmin, adminPermCheck, async (req
 router.delete("/admin/apply-review/:id", requireAdmin, adminPermCheck, async (req, res) => {
   const { deleteAdminApplyReview } = await import("../modules/charities/charities.controller.js");
   return deleteAdminApplyReview(req, res);
+});
+router.get("/admin/contact-messages", requireAdmin, adminPermCheck, async (req, res) => {
+  const { getAdminContactMessages } = await import("../modules/charities/charities.controller.js");
+  return getAdminContactMessages(req, res);
+});
+router.patch("/admin/contact-messages/:id", requireAdmin, adminPermCheck, async (req, res) => {
+  const { updateAdminContactMessage } = await import("../modules/charities/charities.controller.js");
+  return updateAdminContactMessage(req, res);
+});
+router.delete("/admin/contact-messages/:id", requireAdmin, adminPermCheck, async (req, res) => {
+  const { deleteAdminContactMessage } = await import("../modules/charities/charities.controller.js");
+  return deleteAdminContactMessage(req, res);
 });
 
 // Admin donation pages

@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from "typeorm";
 
 @Entity("contact_messages")
 export class ContactMessage {
@@ -17,9 +17,16 @@ export class ContactMessage {
   @Column({ type: "text" })
   message!: string;
 
-  @Column({ type: "varchar", length: 30, default: "new" })
-  status!: string;
+  /** Maps to legacy `status` column in existing databases. */
+  @Column({ name: "status", type: "varchar", length: 30, default: "NEW" })
+  submissionStatus!: string;
+
+  @Column({ type: "text", nullable: true })
+  internalNotes?: string | null;
 
   @CreateDateColumn()
   createdAt!: Date;
+
+  @UpdateDateColumn()
+  updatedAt!: Date;
 }

@@ -181,15 +181,45 @@ export async function verifyCertificationById(req: Request, res: Response) {
 
 export async function submitContactMessage(req: Request, res: Response) {
   try {
-    const { name, email, subject, message } = req.body;
+    if (!AppDataSource.isInitialized) {
+      return res.status(503).json({
+        message: "Database is not connected. Start PostgreSQL and restart the API.",
+      });
+    }
+
+    const name = String(req.body?.name ?? "").trim();
+    const email = String(req.body?.email ?? "").trim().toLowerCase();
+    const subject = String(req.body?.subject ?? "").trim();
+    const message = String(req.body?.message ?? "").trim();
+
     if (!name || !email || !subject || !message) {
       return res.status(400).json({ message: "All fields are required" });
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ message: "A valid email address is required" });
+    }
+    if (message.length < 10) {
+      return res.status(400).json({ message: "Message must be at least 10 characters" });
+    }
+
     const repo = AppDataSource.getRepository(ContactMessage);
-    const row = repo.create({ name, email, subject, message });
+    const row = repo.create({ name, email, subject, message, submissionStatus: "NEW" });
     await repo.save(row);
+
+    try {
+      const { dispatchEvent } = await import("../notifications/notification.service.js");
+      void dispatchEvent("admin_alert", {
+        title: "New contact message",
+        body: `${name} (${email}): ${subject}`,
+        actionUrl: "/admin/contact-messages",
+      });
+    } catch (notifyErr) {
+      console.error("submitContactMessage notification error:", notifyErr);
+    }
+
     return res.status(201).json({ message: "Message received", id: row.id });
-  } catch {
+  } catch (error) {
+    console.error("submitContactMessage error:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 }
@@ -479,6 +509,91 @@ export async function deleteAdminApplyReview(req: Request, res: Response) {
     });
     return res.json({ message: "Deleted" });
   } catch {
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+function mapContactMessage(row: ContactMessage) {
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    subject: row.subject,
+    message: row.message,
+    submissionStatus: (row.submissionStatus || "NEW").toUpperCase(),
+    internalNotes: row.internalNotes ?? null,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+export async function getAdminContactMessages(req: Request, res: Response) {
+  try {
+    const page = Math.max(1, Number(req.query.page ?? 1));
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit ?? 25)));
+    const repo = AppDataSource.getRepository(ContactMessage);
+    const [items, total] = await repo.findAndCount({
+      order: { createdAt: "DESC" },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    return res.json({
+      data: items.map(mapContactMessage),
+      meta: { page, limit, total, totalPages },
+    });
+  } catch (error) {
+    console.error("getAdminContactMessages error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+export async function updateAdminContactMessage(req: Request, res: Response) {
+  try {
+    const repo = AppDataSource.getRepository(ContactMessage);
+    const row = await repo.findOne({ where: { id: routeParam(req, "id") } });
+    if (!row) return res.status(404).json({ message: "Not found" });
+
+    const { submissionStatus, internalNotes } = req.body ?? {};
+    if (submissionStatus !== undefined) {
+      row.submissionStatus = String(submissionStatus).trim() || row.submissionStatus;
+    }
+    if (internalNotes !== undefined) {
+      row.internalNotes =
+        internalNotes === null || String(internalNotes).trim() === ""
+          ? null
+          : String(internalNotes).trim();
+    }
+
+    await repo.save(row);
+    await logAudit(req, {
+      action: "update",
+      entityType: "contact_message",
+      entityId: row.id,
+      details: { name: row.name, subject: row.subject },
+    });
+    return res.json(mapContactMessage(row));
+  } catch (error) {
+    console.error("updateAdminContactMessage error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+export async function deleteAdminContactMessage(req: Request, res: Response) {
+  try {
+    const repo = AppDataSource.getRepository(ContactMessage);
+    const row = await repo.findOne({ where: { id: routeParam(req, "id") } });
+    if (!row) return res.status(404).json({ message: "Not found" });
+    await repo.delete({ id: row.id });
+    await logAudit(req, {
+      action: "delete",
+      entityType: "contact_message",
+      entityId: row.id,
+      details: { name: row.name, subject: row.subject },
+    });
+    return res.json({ message: "Deleted" });
+  } catch (error) {
+    console.error("deleteAdminContactMessage error:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 }
