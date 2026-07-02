@@ -289,3 +289,44 @@
 .stripe-payment-fields .p-TabList {
   display: none;
 }
+
+/* Google Translate language switcher — match site header controls */
+.ngt-site-header {
+  --ngt-bg: hsl(var(--secondary) / 0.7);
+  --ngt-bg-hover: hsl(var(--secondary));
+  --ngt-border: hsl(var(--border));
+  --ngt-text: hsl(var(--foreground));
+  --ngt-menu-bg: hsl(var(--card));
+  --ngt-menu-border: hsl(var(--border));
+  --ngt-active-bg: hsl(var(--accent) / 0.15);
+}
+
+.ngt-site-header .ngtButton {
+  height: 2.25rem;
+  padding: 0 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.ngt-site-header .ngtMenu {
+  min-width: 11rem;
+  border-radius: 1rem;
+  box-shadow: 0 10px 30px hsl(var(--foreground) / 0.08);
+}
+
+.ngt-site-header .ngtOption {
+  font-size: 0.875rem;
+}
+
+/* Keep layout stable when Google injects translate UI */
+body {
+  top: 0 !important;
+}
+
+.skiptranslate,
+.goog-te-banner-frame {
+  display: none !important;
+}

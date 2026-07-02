@@ -864,7 +864,8 @@ export function StripeCheckoutForm({
   const elementsKey = `${donationId}-${paymentMode}-${stripeCustomerId ?? "guest"}-${customerSessionClientSecret ?? "none"}`;
 
   return (
-    <Elements key={elementsKey} stripe={stripePromise} options={elementsOptions}>
+    <div className="notranslate" translate="no">
+      <Elements key={elementsKey} stripe={stripePromise} options={elementsOptions}>
       <CheckoutForm
         donationId={donationId}
         donorName={donorName}
@@ -887,5 +888,6 @@ export function StripeCheckoutForm({
         onError={onError}
       />
     </Elements>
+    </div>
   );
 }
