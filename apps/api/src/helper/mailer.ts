@@ -33,6 +33,15 @@ function appUrl(): string {
   return process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || "http://localhost:3001";
 }
 
+function authLink(path: string, token: string, returnTo?: string): string {
+  const url = new URL(`${appUrl().replace(/\/$/, "")}${path}`);
+  url.searchParams.set("token", token);
+  if (returnTo?.startsWith("/") && !returnTo.startsWith("//")) {
+    url.searchParams.set("returnTo", returnTo);
+  }
+  return url.toString();
+}
+
 export async function sendMail(options: {
   to: string;
   subject: string;
@@ -111,18 +120,19 @@ export async function sendRecurringFailedPaymentEmail(recurring: RecurringDonati
 export async function sendAccountActivationEmail(
   email: string,
   fullName: string,
-  token: string
+  token: string,
+  returnTo?: string
 ): Promise<void> {
-  const link = `${appUrl()}/auth/activate?token=${encodeURIComponent(token)}`;
+  const link = authLink("/auth/activate", token, returnTo);
   await sendMail({
     to: email,
-    subject: "Complete your account to continue donating",
+    subject: "Sign in to your account",
     html: `
       <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto;">
         <h1 style="color: #1a3d2e;">Set your password</h1>
         <p>Dear ${fullName},</p>
-        <p>Please set a password to continue with your donation. This link expires in 24 hours.</p>
-        <p><a href="${link}" style="display:inline-block;padding:12px 24px;background:#1a3d2e;color:#fff;text-decoration:none;border-radius:8px;">Set password and continue</a></p>
+        <p>Click the link below to set your password and sign in. This link expires in 24 hours.</p>
+        <p><a href="${link}" style="display:inline-block;padding:12px 24px;background:#1a3d2e;color:#fff;text-decoration:none;border-radius:8px;">Set password and sign in</a></p>
         <p style="color:#666;font-size:12px;">If you did not request this, you can ignore this email.</p>
       </div>
     `,
@@ -132,18 +142,19 @@ export async function sendAccountActivationEmail(
 export async function sendPasswordResetEmail(
   email: string,
   fullName: string,
-  token: string
+  token: string,
+  returnTo?: string
 ): Promise<void> {
-  const link = `${appUrl()}/auth/reset-password?token=${encodeURIComponent(token)}`;
+  const link = authLink("/auth/reset-password", token, returnTo);
   await sendMail({
     to: email,
-    subject: "Reset your password",
+    subject: "Sign in to your account",
     html: `
       <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto;">
-        <h1 style="color: #1a3d2e;">Reset your password</h1>
+        <h1 style="color: #1a3d2e;">Sign in to your account</h1>
         <p>Dear ${fullName},</p>
-        <p>We received a request to reset your password. This link expires in 24 hours.</p>
-        <p><a href="${link}" style="display:inline-block;padding:12px 24px;background:#1a3d2e;color:#fff;text-decoration:none;border-radius:8px;">Reset password</a></p>
+        <p>Click the link below to set a new password and sign in. This link expires in 24 hours.</p>
+        <p><a href="${link}" style="display:inline-block;padding:12px 24px;background:#1a3d2e;color:#fff;text-decoration:none;border-radius:8px;">Sign in</a></p>
         <p style="color:#666;font-size:12px;">If you did not request this, you can ignore this email.</p>
       </div>
     `,

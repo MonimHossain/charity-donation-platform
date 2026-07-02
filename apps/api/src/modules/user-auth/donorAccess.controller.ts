@@ -23,11 +23,11 @@ export async function checkDonorEmailHandler(req: Request, res: Response) {
 
 export async function requestDonorAccessHandler(req: Request, res: Response) {
   try {
-    const { email, fullName } = req.body;
+    const { email, fullName, returnTo } = req.body;
     if (!email || typeof email !== "string") {
       return res.status(400).json({ message: "Email is required" });
     }
-    const result = await requestDonorAccess({ email, fullName });
+    const result = await requestDonorAccess({ email, fullName, returnTo });
     return res.json(result);
   } catch (error) {
     console.error("requestDonorAccess error:", error);

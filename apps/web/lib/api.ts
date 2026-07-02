@@ -297,9 +297,17 @@ export async function checkDonorEmail(email: string): Promise<{ status: DonorEma
   return data;
 }
 
-export async function requestDonorAccess(email: string, fullName?: string) {
-  const { data } = await api.post("/auth/donor/request-access", { email, fullName });
-  return data as { message: string };
+export async function requestDonorAccess(
+  email: string,
+  fullName?: string,
+  returnTo?: string | null
+) {
+  const { data } = await api.post("/auth/donor/request-access", {
+    email,
+    fullName,
+    returnTo: returnTo ?? undefined,
+  });
+  return data as { message: string; status: DonorEmailStatus };
 }
 
 export async function activateAccount(token: string, password: string) {

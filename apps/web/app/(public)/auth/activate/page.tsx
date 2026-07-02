@@ -8,14 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { activateAccount, getApiErrorMessage } from "@/lib/api";
-import { sanitizeReturnTo } from "@/lib/auth-redirect";
+import { sanitizeReturnTo, buildAuthHref } from "@/lib/auth-redirect";
 import { storeUserSession } from "@/lib/user-session";
 
 function ActivateAccountContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = useMemo(() => searchParams.get("token")?.trim() ?? "", [searchParams]);
-  const returnTo = sanitizeReturnTo(searchParams.get("returnTo")) || "/donation/checkout";
+  const returnTo = sanitizeReturnTo(searchParams.get("returnTo")) || "/account";
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -66,7 +66,7 @@ function ActivateAccountContent() {
           </div>
           <h1 className="font-serif text-2xl md:text-3xl text-primary">Set your password</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Create a password to continue with your donation.
+            Create a password to sign in to your account.
           </p>
         </div>
 
@@ -75,7 +75,7 @@ function ActivateAccountContent() {
             <div className="space-y-4 text-center text-sm text-muted-foreground">
               <p>This activation link is invalid or has expired.</p>
               <Button asChild className="rounded-full">
-                <Link href="/donation/checkout">Back to checkout</Link>
+                <Link href={buildAuthHref("/auth/login", returnTo)}>Back to sign in</Link>
               </Button>
             </div>
           ) : (
@@ -142,7 +142,7 @@ function ActivateAccountContent() {
                 size="lg"
                 className="w-full rounded-full h-12"
               >
-                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Continue to checkout"}
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Continue"}
               </Button>
             </form>
           )}

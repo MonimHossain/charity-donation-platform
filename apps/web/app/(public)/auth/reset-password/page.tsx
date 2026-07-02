@@ -7,12 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getApiErrorMessage, resetPassword } from "@/lib/api";
-import { buildAuthHref } from "@/lib/auth-redirect";
+import { buildAuthHref, sanitizeReturnTo } from "@/lib/auth-redirect";
 import { useSearchParams } from "next/navigation";
 
 function ResetPasswordContent() {
   const searchParams = useSearchParams();
   const token = useMemo(() => searchParams.get("token")?.trim() ?? "", [searchParams]);
+  const returnTo = sanitizeReturnTo(searchParams.get("returnTo")) || "/account";
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -67,7 +68,7 @@ function ResetPasswordContent() {
             <div className="space-y-4 text-center text-sm text-muted-foreground">
               <p>Your password has been updated. You can sign in now.</p>
               <Button asChild className="rounded-full">
-                <Link href="/auth/login">Sign in</Link>
+                <Link href={buildAuthHref("/auth/login", returnTo)}>Sign in</Link>
               </Button>
             </div>
           ) : !token ? (

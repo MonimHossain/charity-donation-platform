@@ -55,11 +55,20 @@ export function verifyAccessToken(token: string, purpose: TokenPurpose): { userI
   return { userId: decoded.userId, email: decoded.email };
 }
 
+function sanitizeReturnTo(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  if (!trimmed.startsWith("/") || trimmed.startsWith("//")) return undefined;
+  return trimmed;
+}
+
 export async function requestDonorAccess(input: {
   email: string;
   fullName?: string;
-}): Promise<{ message: string }> {
+  returnTo?: string;
+}): Promise<{ message: string; status: DonorEmailStatus }> {
   const normalized = normalizeEmail(input.email);
+  const returnTo = sanitizeReturnTo(input.returnTo);
   const repo = AppDataSource.getRepository(User);
   let user = await repo.findOne({ where: { email: normalized } });
 
@@ -78,17 +87,35 @@ export async function requestDonorAccess(input: {
   }
 
   const status = resolveDonorEmailStatus(user);
-  if (status === "password" || status === "google") {
+
+  if (status === "google") {
     return {
+      status: "google",
+      message: "This account uses Google sign-in. Please continue with Google.",
+    };
+  }
+
+  if (status === "password") {
+    if (!user.isActive) {
+      return {
+        status: "password",
+        message: "If an account with that email exists, a sign-in link has been sent.",
+      };
+    }
+    const token = signAccessToken(user.id, user.email, "reset");
+    await sendPasswordResetEmail(user.email, user.fullName, token, returnTo);
+    return {
+      status: "password",
       message: "If an account with that email exists, a sign-in link has been sent.",
     };
   }
 
   const token = signAccessToken(user.id, user.email, "activate");
-  await sendAccountActivationEmail(user.email, user.fullName, token);
+  await sendAccountActivationEmail(user.email, user.fullName, token, returnTo);
 
   return {
-    message: "If an account with that email exists, an activation link has been sent.",
+    status,
+    message: "If an account with that email exists, a sign-in link has been sent.",
   };
 }
 
