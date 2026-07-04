@@ -1,15 +1,26 @@
 import { Request, Response, NextFunction } from "express";
 
+function buildContentSecurityPolicy(): string {
+  const sgtmHost = process.env.NEXT_PUBLIC_SGTM_HOST?.trim().replace(/\/+$/, "");
+  const sgtmOrigin = sgtmHost ? ` https://${sgtmHost}` : "";
+  return [
+    "default-src 'self'",
+    `script-src 'self' 'unsafe-inline' https://js.stripe.com https://www.paypal.com https://www.googletagmanager.com${sgtmOrigin}`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: https:",
+    "font-src 'self' https://fonts.gstatic.com",
+    `frame-src https://js.stripe.com https://www.paypal.com https://secure.telr.com https://secure.paytabs.com https://secure-egypt.paytabs.com${sgtmOrigin}`,
+    `connect-src 'self' https://api.stripe.com https://www.paypal.com https://secure.telr.com https://secure.paytabs.com${sgtmOrigin}`,
+  ].join("; ");
+}
+
 export function securityHeaders(_req: Request, res: Response, next: NextFunction) {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("X-XSS-Protection", "1; mode=block");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
-  res.setHeader(
-    "Content-Security-Policy",
-    "default-src 'self'; script-src 'self' 'unsafe-inline' https://js.stripe.com https://www.paypal.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; frame-src https://js.stripe.com https://www.paypal.com https://secure.telr.com https://secure.paytabs.com https://secure-egypt.paytabs.com; connect-src 'self' https://api.stripe.com https://www.paypal.com https://secure.telr.com https://secure.paytabs.com"
-  );
+  res.setHeader("Content-Security-Policy", buildContentSecurityPolicy());
   res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
 
   next();
