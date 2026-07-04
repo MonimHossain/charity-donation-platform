@@ -131,10 +131,10 @@ export default function SiteHeader() {
   return (
     <>
       <div className="bg-background border-b border-border/40">
-        <div className="container-wide flex items-center justify-between gap-3 sm:gap-4 h-16">
-          <div className="flex items-center gap-3 sm:gap-4 min-w-0 shrink">
+        <div className="container-wide flex items-center justify-between gap-2 sm:gap-4 h-14 md:h-16">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
             <Link href="/" aria-label="Home" className="flex items-center shrink-0">
-              <SiteLogo heightClass="h-9 sm:h-10" />
+              <SiteLogo heightClass="h-8 sm:h-9 md:h-10" />
             </Link>
             <img
               src="/images/achievements.webp"
@@ -169,22 +169,28 @@ export default function SiteHeader() {
             )}
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            <GlobalSearch variant="icon" />
-            <LanguageSwitcher />
-            <CurrencySwitcher />
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            <div className="hidden md:flex items-center gap-2">
+              <GlobalSearch variant="icon" />
+              <LanguageSwitcher />
+              <CurrencySwitcher />
+            </div>
             <Link
               href="/donate"
-              className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full bg-secondary text-primary text-xs font-semibold hover:bg-secondary/70"
+              className="inline-flex items-center justify-center gap-1 h-9 min-w-9 px-2 sm:px-3 rounded-full bg-secondary text-primary text-xs font-semibold hover:bg-secondary/70"
               aria-label="Basket"
             >
-              <ShoppingBasket className="w-4 h-4" />
+              <ShoppingBasket className="w-4 h-4 shrink-0" />
               <span className="tabular-nums hidden sm:inline">{basketLabel}</span>
             </Link>
-            {isSignedIn && <UserNotificationBell />}
+            {isSignedIn && (
+              <span className="hidden sm:inline-flex">
+                <UserNotificationBell />
+              </span>
+            )}
             <Link
               href={isSignedIn ? "/account" : "/auth/login"}
-              className="hidden sm:inline-flex h-9 px-3 items-center rounded-full border border-border text-xs font-semibold text-primary hover:bg-secondary transition"
+              className="hidden md:inline-flex h-9 px-3 items-center rounded-full border border-border text-xs font-semibold text-primary hover:bg-secondary transition"
             >
               {isSignedIn ? t("nav.account") : t("nav.login")}
             </Link>
@@ -207,13 +213,13 @@ export default function SiteHeader() {
               : "bg-background border-border/40"
           }`}
         >
-          <div className="container-wide flex items-center justify-between h-14 gap-2 sm:gap-4">
-            <div className="flex items-center gap-3 min-w-0 flex-1 lg:flex-none">
+          <div className="container-wide flex items-center justify-between h-12 sm:h-14 gap-2">
+            <div className="flex items-center gap-2 min-w-0 flex-1 lg:flex-none">
               {!scrolled && (
                 <img
                   src="/images/achievements.webp"
                   alt="100% Policy · Awards"
-                  className="lg:hidden h-8 w-auto flex-1 min-w-0 max-w-full object-contain object-left select-none"
+                  className="lg:hidden h-7 sm:h-8 w-auto max-w-[min(100%,10rem)] object-contain object-left select-none shrink"
                   draggable={false}
                 />
               )}
@@ -290,19 +296,6 @@ export default function SiteHeader() {
             </div>
 
             <div className="flex lg:hidden items-center gap-1.5 shrink-0">
-              {scrolled && (
-                <div className="flex items-center gap-1">
-                  <CurrencySwitcher />
-                  <Link
-                    href="/donate"
-                    className="inline-flex items-center gap-1 h-9 px-2 rounded-full bg-secondary text-primary text-xs font-semibold hover:bg-secondary/70"
-                    aria-label="Basket"
-                  >
-                    <ShoppingBasket className="w-4 h-4" />
-                    <span className="tabular-nums text-[11px]">{basketLabel}</span>
-                  </Link>
-                </div>
-              )}
               {donateButton}
               <button
                 onClick={() => setOpen((v) => !v)}
@@ -327,6 +320,9 @@ export default function SiteHeader() {
           }`}
         >
           <div className="container-wide py-3 flex flex-col gap-0.5">
+            <div className="px-1 pb-3 lg:hidden">
+              <GlobalSearch variant="mobile" />
+            </div>
             {nav.map((n, idx) => (
               <Link
                 key={n.href}
@@ -362,18 +358,14 @@ export default function SiteHeader() {
                 </Link>
               ))}
             </div>
-            <div className="mt-3 pt-3 border-t border-border/40 flex items-center justify-between gap-2 px-1">
-              <GlobalSearch variant="icon" />
-              <LanguageSwitcher />
-              <CurrencySwitcher />
-              <Link
-                href="/donate"
-                className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full bg-secondary text-primary text-xs font-semibold hover:bg-secondary/70"
-                aria-label="Basket"
-              >
-                <ShoppingBasket className="w-4 h-4" />
-                <span className="tabular-nums">{basketLabel}</span>
-              </Link>
+            <div className="mt-3 pt-3 border-t border-border/40 px-1 lg:hidden">
+              <p className="px-3 pb-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-semibold">
+                Preferences
+              </p>
+              <div className="flex flex-wrap items-center gap-2 px-2">
+                <LanguageSwitcher />
+                <CurrencySwitcher />
+              </div>
             </div>
           </div>
         </div>

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Search, X } from "lucide-react";
 import { Command } from "cmdk";
+import { cn } from "@/lib/utils";
 
 const items = [
   { group: "Pages", label: "Home", to: "/" },
@@ -22,10 +23,11 @@ const items = [
 ];
 
 interface Props {
-  variant?: "icon" | "pill";
+  variant?: "icon" | "pill" | "mobile";
+  className?: string;
 }
 
-export default function GlobalSearch({ variant = "pill" }: Props) {
+export default function GlobalSearch({ variant = "pill", className }: Props) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
 
@@ -40,6 +42,17 @@ export default function GlobalSearch({ variant = "pill" }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.setAttribute("data-search-open", "true");
+    return () => {
+      document.body.style.overflow = prev;
+      document.documentElement.removeAttribute("data-search-open");
+    };
+  }, [open]);
+
   const go = useCallback(
     (to: string) => {
       setOpen(false);
@@ -50,52 +63,85 @@ export default function GlobalSearch({ variant = "pill" }: Props) {
 
   const groups = Array.from(new Set(items.map((i) => i.group)));
 
+  const trigger =
+    variant === "pill" ? (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={cn(
+          "hidden md:inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-border bg-background/60 hover:bg-secondary/60 text-xs text-muted-foreground transition-colors",
+          className
+        )}
+        aria-label="Search the site"
+      >
+        <Search className="w-3.5 h-3.5" />
+        <span>Search…</span>
+        <kbd className="ml-2 hidden lg:inline-flex items-center px-1.5 py-0.5 rounded border border-border bg-muted text-[10px] font-mono text-muted-foreground">
+          ⌘K
+        </kbd>
+      </button>
+    ) : variant === "mobile" ? (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={cn(
+          "flex w-full items-center gap-3 rounded-xl border border-border bg-secondary/40 px-4 py-3 text-left text-sm text-muted-foreground transition-colors hover:bg-secondary/60",
+          className
+        )}
+        aria-label="Search the site"
+      >
+        <Search className="w-4 h-4 shrink-0 text-primary/70" />
+        <span className="truncate">Search appeals, pages, actions…</span>
+      </button>
+    ) : (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={cn(
+          "p-2 rounded-full hover:bg-secondary text-foreground/80 hover:text-primary transition",
+          className
+        )}
+        aria-label="Search the site"
+      >
+        <Search className="w-4 h-4" />
+      </button>
+    );
+
   return (
     <>
-      {variant === "pill" ? (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="hidden md:inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-border bg-background/60 hover:bg-secondary/60 text-xs text-muted-foreground transition-colors"
-          aria-label="Search the site"
-        >
-          <Search className="w-3.5 h-3.5" />
-          <span>Search…</span>
-          <kbd className="ml-2 hidden lg:inline-flex items-center px-1.5 py-0.5 rounded border border-border bg-muted text-[10px] font-mono text-muted-foreground">
-            ⌘K
-          </kbd>
-        </button>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="p-2 rounded-full hover:bg-secondary text-foreground/80 hover:text-primary transition"
-          aria-label="Search the site"
-        >
-          <Search className="w-4 h-4" />
-        </button>
-      )}
+      {trigger}
 
       {open && (
-        <div className="fixed inset-0 z-[100]">
+        <div className="fixed inset-0 z-[200] flex items-start justify-center p-3 sm:p-4 pt-[max(0.75rem,env(safe-area-inset-top))] sm:pt-[12vh]">
           <div
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             onClick={() => setOpen(false)}
+            aria-hidden
           />
-          <div className="relative mx-auto mt-[15vh] max-w-lg w-full px-4">
-            <Command className="bg-card border border-border rounded-2xl shadow-lift overflow-hidden">
-              <div className="flex items-center border-b border-border px-4">
-                <Search className="w-4 h-4 text-muted-foreground shrink-0" />
-                <Command.Input
-                  placeholder="Search appeals, pages, actions…"
-                  className="flex-1 h-12 px-3 text-sm bg-transparent focus:outline-none placeholder:text-muted-foreground"
-                  autoFocus
-                />
-                <button onClick={() => setOpen(false)} className="p-1 rounded hover:bg-secondary">
-                  <X className="w-4 h-4 text-muted-foreground" />
-                </button>
+          <div className="relative w-full max-w-lg min-w-0">
+            <Command
+              label="Site search"
+              className="bg-card border border-border rounded-2xl shadow-lift overflow-hidden"
+            >
+              <div className="px-3 py-3 border-b border-border">
+                <div className="flex items-center gap-2 rounded-xl bg-secondary/50 px-3 h-12">
+                  <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <Command.Input
+                    placeholder="Search appeals, pages, actions…"
+                    className="flex-1 min-w-0 h-full text-sm bg-transparent border-0 outline-none shadow-none placeholder:text-muted-foreground focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setOpen(false)}
+                    className="shrink-0 p-1.5 rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                    aria-label="Close search"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-              <Command.List className="max-h-[300px] overflow-y-auto p-2">
+              <Command.List className="max-h-[min(50vh,320px)] overflow-y-auto p-2">
                 <Command.Empty className="py-6 text-center text-sm text-muted-foreground">
                   No results found.
                 </Command.Empty>
