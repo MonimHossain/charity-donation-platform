@@ -7,6 +7,7 @@ import { DashboardStatCard } from "@/components/admin/dashboard/DashboardStatCar
 import { ExpiringCertificationsTable } from "@/components/admin/dashboard/ExpiringCertificationsTable";
 import { RecentSubmissionsTable } from "@/components/admin/dashboard/RecentSubmissionsTable";
 import { RamadanSplitDashboardSection } from "@/components/admin/dashboard/RamadanSplitDashboardSection";
+import RevenueBarChart from "@/components/admin/RevenueBarChart";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -179,7 +180,6 @@ function AdminDashboardPageApi() {
     { month: "May", amount: 5900 },
     { month: "Jun", amount: 7200 },
   ];
-  const maxRevenue = Math.max(...monthlyRevenue.map((m: { amount: number }) => m.amount), 1);
 
   const fundraisingCards = [
     {
@@ -340,20 +340,13 @@ function AdminDashboardPageApi() {
           {fundraisingLoading ? (
             <div className="mt-4 h-48 animate-pulse rounded-xl bg-muted" />
           ) : (
-            <div className="mt-4 flex items-end gap-2 h-48">
-              {monthlyRevenue.map((m: { month: string; amount: number }) => (
-                <div key={m.month} className="flex-1 flex flex-col items-center gap-1">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    £{(m.amount / 1000).toFixed(1)}k
-                  </span>
-                  <div
-                    className="w-full rounded-t-lg bg-primary/80 hover:bg-primary transition-colors min-h-[4px]"
-                    style={{ height: `${(m.amount / maxRevenue) * 100}%` }}
-                  />
-                  <span className="text-xs text-muted-foreground">{m.month}</span>
-                </div>
-              ))}
-            </div>
+            <RevenueBarChart
+              className="mt-4"
+              data={monthlyRevenue.map((m: { month: string; amount: number }) => ({
+                label: m.month,
+                amount: m.amount,
+              }))}
+            />
           )}
         </div>
         <DashboardQuickActions />

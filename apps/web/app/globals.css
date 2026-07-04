@@ -307,8 +307,15 @@
   border-radius: 9999px;
   font-size: 0.75rem;
   font-weight: 600;
+  background: var(--ngt-bg);
+  border: 1px solid var(--ngt-border);
+  color: var(--ngt-text);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+}
+
+.ngt-site-header .ngtButton:hover {
+  background: var(--ngt-bg-hover);
 }
 
 .ngt-site-header.ngt-compact .ngtButton {

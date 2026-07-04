@@ -17,9 +17,9 @@ export default function HomePage() {
     <>
       <Hero />
       <TrustBadges />
-      <ImpactStats />
       <FeaturedCampaigns />
       <Fundraisers />
+      <ImpactStats />
       <Testimonials />
       <StorySection />
       <Quote />

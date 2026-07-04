@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
+import type { DonorSegmentParams } from "@repo/shared-types";
 import {
   Clock,
   Search,
@@ -17,6 +18,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { fetchAdminAutomatedSchedules } from "@/lib/api";
+import DonorAudienceFilter, {
+  segmentParamsToQuery,
+} from "@/components/admin/DonorAudienceFilter";
 import {
   formatAutomationType,
   formatNextChargeDate,
@@ -44,31 +48,55 @@ export default function AutomatedDonationsPage() {
   const [schedules, setSchedules] = useState<AutomationListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [tab, setTab] = useState<Tab>("all");
+  const [segment, setSegment] = useState<DonorSegmentParams | null>(null);
 
   useEffect(() => {
-    async function load() {
-      setLoading(true);
-      try {
-        const params: Record<string, string> = { limit: "500" };
-        if (tab === "failed") params.failedOnly = "true";
-        const data = await fetchAdminAutomatedSchedules(params);
-        setSchedules(normalizeAutomationItems(data));
-      } catch {
-        toast.error("Failed to load automated donations");
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, [tab]);
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
 
-  const filtered = schedules.filter(
-    (s) =>
-      (s.donorName || "").toLowerCase().includes(search.toLowerCase()) ||
-      (s.donorEmail || "").toLowerCase().includes(search.toLowerCase()) ||
-      s.id.toLowerCase().includes(search.toLowerCase())
-  );
+  const loadSchedules = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params: Record<string, string> = { limit: "500" };
+
+      if (segment) {
+        if (segment.segment === "campaign" && !segment.campaignId) {
+          setSchedules([]);
+          return;
+        }
+        Object.assign(params, segmentParamsToQuery(segment));
+      } else if (tab === "failed") {
+        params.failedOnly = "true";
+      }
+
+      if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
+
+      const data = await fetchAdminAutomatedSchedules(params);
+      setSchedules(normalizeAutomationItems(data));
+    } catch {
+      toast.error("Failed to load automated donations");
+      setSchedules([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [tab, segment, debouncedSearch]);
+
+  useEffect(() => {
+    void loadSchedules();
+  }, [loadSchedules]);
+
+  function handleTabChange(next: Tab) {
+    setTab(next);
+    if (next === "failed") setSegment(null);
+  }
+
+  function handleSegmentChange(next: DonorSegmentParams | null) {
+    setSegment(next);
+    if (next) setTab("all");
+  }
 
   return (
     <div className="space-y-6">
@@ -76,9 +104,11 @@ export default function AutomatedDonationsPage() {
         <h1 className="text-3xl font-bold font-serif tracking-tight">Automated Donations</h1>
         <p className="text-muted-foreground mt-1">
           Recurring subscriptions and scheduled installment plans — {schedules.length}{" "}
-          {tab === "failed" ? "with issues" : "total"}
+          {tab === "failed" && !segment ? "with issues" : "total"}
         </p>
       </div>
+
+      <DonorAudienceFilter value={segment} onChange={handleSegmentChange} />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex gap-2">
@@ -86,12 +116,14 @@ export default function AutomatedDonationsPage() {
             <button
               key={t}
               type="button"
-              onClick={() => setTab(t)}
+              onClick={() => handleTabChange(t)}
+              disabled={Boolean(segment)}
               className={cn(
                 "px-4 py-2 rounded-full text-sm font-semibold transition-all",
-                tab === t
+                tab === t && !segment
                   ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:text-foreground"
+                  : "bg-muted text-muted-foreground hover:text-foreground",
+                segment && "opacity-50 cursor-not-allowed"
               )}
             >
               {t === "all" ? "All automations" : "Failed & incomplete"}
@@ -130,7 +162,7 @@ export default function AutomatedDonationsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((s) => {
+                {schedules.map((s) => {
                   const isRecurring = s.automationType === "recurring";
                   const pct =
                     !isRecurring && s.totalDays > 0
@@ -208,7 +240,7 @@ export default function AutomatedDonationsPage() {
                     </tr>
                   );
                 })}
-                {filtered.length === 0 && (
+                {schedules.length === 0 && (
                   <tr>
                     <td colSpan={8} className="px-5 py-10 text-center text-muted-foreground">
                       No automated donations found

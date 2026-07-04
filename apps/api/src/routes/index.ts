@@ -754,6 +754,10 @@ router.get("/admin/analytics/campaigns", requireAdmin, adminPermCheck, async (re
   const { getCampaignReport } = await import("../modules/analytics/analytics.controller.js");
   return getCampaignReport(req, res);
 });
+router.get("/admin/analytics/categories", requireAdmin, adminPermCheck, async (req, res) => {
+  const { getCategoryReport } = await import("../modules/analytics/analytics.controller.js");
+  return getCategoryReport(req, res);
+});
 router.get("/admin/analytics/recurring", requireAdmin, adminPermCheck, async (req, res) => {
   const { getRecurringReport } = await import("../modules/analytics/analytics.controller.js");
   return getRecurringReport(req, res);

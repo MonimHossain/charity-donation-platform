@@ -25,7 +25,6 @@ const mockNav = [
   { href: "/causes/water", label: "Water Projects" },
   { href: "/causes/livelihood", label: "Livelihood Projects" },
   { href: "/causes/orphans", label: "Orphan Sponsorship" },
-  { href: "/zakat", label: "Zakat", highlight: true },
 ];
 
 function isNavActive(pathname: string, href: string) {
@@ -60,18 +59,14 @@ export default function SiteHeader() {
 
   const nav = useMemo(() => {
     if (USE_MOCK_DATA) {
-      return mockNav.map((item) =>
-        item.href === "/zakat" ? { ...item, label: t("nav.zakat") } : item
-      );
+      return mockNav;
     }
 
-    const appealLinks = (headerCampaigns?.items ?? []).map((c: Record<string, unknown>) => ({
+    return (headerCampaigns?.items ?? []).map((c: Record<string, unknown>) => ({
       href: `/causes/${String(c.slug)}`,
       label: headerNavLabel(c),
     }));
-
-    return [...appealLinks, { href: "/zakat", label: t("nav.zakat"), highlight: true }];
-  }, [headerCampaigns?.items, t]);
+  }, [headerCampaigns?.items]);
 
   useEffect(() => {
     setOpen(false);
@@ -192,12 +187,14 @@ export default function SiteHeader() {
                 <UserNotificationBell />
               </span>
             )}
-            <Link
-              href={isSignedIn ? "/account" : "/auth/login"}
-              className="hidden md:inline-flex h-9 px-3 items-center rounded-full border border-border text-xs font-semibold text-primary hover:bg-secondary transition"
-            >
-              {isSignedIn ? t("nav.account") : t("nav.login")}
-            </Link>
+            {!isSignedIn && (
+              <Link
+                href="/auth/login"
+                className="hidden md:inline-flex h-9 px-3 items-center rounded-full border border-border text-xs font-semibold text-primary hover:bg-secondary transition"
+              >
+                {t("nav.login")}
+              </Link>
+            )}
             <Link
               href={isSignedIn ? "/account" : "/auth/login"}
               className="p-2 rounded-full hover:bg-secondary text-foreground/80 hover:text-primary transition"

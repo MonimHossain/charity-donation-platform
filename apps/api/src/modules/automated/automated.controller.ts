@@ -12,6 +12,10 @@ import {
   serializeAutomatedSchedule,
   serializeRecurringAsAutomation,
 } from "./automation.helpers.js";
+import {
+  getSegmentDonorEmails,
+  parseSegmentParams,
+} from "../donors/donorSegment.service.js";
 
 const repo = () => AppDataSource.getRepository(AutomatedDonationSchedule);
 const recurringRepo = () => AppDataSource.getRepository(RecurringDonation);
@@ -203,17 +207,38 @@ export async function cancelAutomatedSchedule(req: Request, res: Response) {
 
 export async function getAdminAutomatedSchedules(req: Request, res: Response) {
   try {
-    const { status, page = "1", limit = "20", failedOnly } = req.query;
-    const where: Record<string, string> = {};
-    if (status) where.status = String(status);
+    const { status, page = "1", limit = "500", failedOnly, search } = req.query;
+    const segmentParams = parseSegmentParams(req.query as Record<string, unknown>);
 
-    const [items, total] = await repo().findAndCount({
-      where,
-      order: { createdAt: "DESC" },
-      skip: (Number(page) - 1) * Number(limit),
-      take: Number(limit),
-      relations: ["campaign"],
-    });
+    if (segmentParams?.segment === "campaign" && !segmentParams.campaignId) {
+      return res.status(400).json({ message: "campaignId is required for campaign segment" });
+    }
+
+    let segmentEmails: string[] | null = null;
+    if (segmentParams) {
+      segmentEmails = await getSegmentDonorEmails(segmentParams);
+      if (segmentEmails.length === 0) {
+        return res.json({ items: [], total: 0, page: Number(page), limit: Number(limit) });
+      }
+    }
+
+    const scheduleQb = repo()
+      .createQueryBuilder("s")
+      .leftJoinAndSelect("s.campaign", "campaign")
+      .orderBy("s.createdAt", "DESC");
+
+    if (status) scheduleQb.andWhere("s.status = :status", { status: String(status) });
+    if (segmentEmails) {
+      scheduleQb.andWhere("LOWER(s.donorEmail) IN (:...segmentEmails)", { segmentEmails });
+    }
+    if (search) {
+      scheduleQb.andWhere("(s.donorName ILIKE :search OR s.donorEmail ILIKE :search OR s.id ILIKE :search)", {
+        search: `%${search}%`,
+      });
+    }
+
+    const items = await scheduleQb.getMany();
+    const total = items.length;
 
     let filtered = items;
     if (failedOnly === "true" || failedOnly === "1") {
@@ -239,14 +264,23 @@ export async function getAdminAutomatedSchedules(req: Request, res: Response) {
       }
     }
 
-    const recurringWhere: Record<string, string> = {};
-    if (status) recurringWhere.status = String(status);
-    const recurringItems = await recurringRepo().find({
-      where: recurringWhere,
-      order: { createdAt: "DESC" },
-      take: Number(limit),
-      relations: ["campaign"],
-    });
+    const recurringQb = recurringRepo()
+      .createQueryBuilder("r")
+      .leftJoinAndSelect("r.campaign", "campaign")
+      .orderBy("r.createdAt", "DESC")
+      .take(Number(limit));
+
+    if (status) recurringQb.andWhere("r.status = :status", { status: String(status) });
+    if (segmentEmails) {
+      recurringQb.andWhere("LOWER(r.donorEmail) IN (:...segmentEmails)", { segmentEmails });
+    }
+    if (search) {
+      recurringQb.andWhere("(r.donorName ILIKE :search OR r.donorEmail ILIKE :search OR r.id ILIKE :search)", {
+        search: `%${search}%`,
+      });
+    }
+
+    const recurringItems = await recurringQb.getMany();
 
     let recurringFiltered = recurringItems;
     if (failedOnly === "true" || failedOnly === "1") {

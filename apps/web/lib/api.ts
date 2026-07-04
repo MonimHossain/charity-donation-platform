@@ -990,6 +990,11 @@ export async function fetchAnalyticsGiftAid(params?: Record<string, string>) {
   return data;
 }
 
+export async function fetchAnalyticsCategories(params?: Record<string, string>) {
+  const { data } = await api.get("/admin/analytics/categories", { params });
+  return data;
+}
+
 export async function fetchCampaignReport() {
   const { data } = await api.get("/admin/analytics/campaigns");
   return data;

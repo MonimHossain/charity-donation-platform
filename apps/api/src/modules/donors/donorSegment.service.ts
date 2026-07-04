@@ -142,6 +142,10 @@ export function applySegmentToDonations(
   }
 }
 
+export async function getSegmentDonorEmails(params: DonorSegmentParams): Promise<string[]> {
+  return getSegmentDonorEmailsRaw(params);
+}
+
 async function getSegmentDonorEmailsRaw(params: DonorSegmentParams): Promise<string[]> {
   const donationRepo = AppDataSource.getRepository(Donation);
   const qb = donationRepo
