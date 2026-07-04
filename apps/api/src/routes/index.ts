@@ -483,6 +483,18 @@ router.delete("/admin/cms/hero-slides/:id", requireAdmin, adminPermCheck, delete
 router.put("/admin/cms/homepage-sections/:id", requireAdmin, adminPermCheck, updateHomepageSection);
 router.post("/admin/cms/homepage-sections/reorder", requireAdmin, adminPermCheck, reorderHomepageSections);
 router.put("/admin/cms/settings", requireAdmin, adminPermCheck, updateSiteSettings);
+router.get("/admin/backup/history", requireAdmin, adminPermCheck, async (req, res) => {
+  const { getBackupHistory } = await import("../modules/backup/backup.controller.js");
+  return getBackupHistory(req, res);
+});
+router.get("/admin/backup/database", requireAdmin, adminPermCheck, async (req, res) => {
+  const { downloadDatabaseBackup } = await import("../modules/backup/backup.controller.js");
+  return downloadDatabaseBackup(req, res);
+});
+router.get("/admin/backup/media", requireAdmin, adminPermCheck, async (req, res) => {
+  const { downloadMediaBackup } = await import("../modules/backup/backup.controller.js");
+  return downloadMediaBackup(req, res);
+});
 router.get("/admin/payments/status", requireAdmin, adminPermCheck, async (req, res) => {
   const { getAdminPaymentStatus } = await import("../modules/payments/payments.config.controller.js");
   return getAdminPaymentStatus(req, res);

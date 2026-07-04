@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
-import { ArrowUpRight, Heart, Users, TrendingUp, Shield, Loader2 } from "lucide-react";
+import { ArrowUpRight, Heart, Users, Shield, Loader2 } from "lucide-react";
 import { useHomepageAppeals } from "@/lib/data/campaigns";
 import { getCampaignCardImage } from "@/lib/campaign-media";
 import { isCampaignExpired } from "@/lib/campaign-expiration";
@@ -197,7 +197,7 @@ const AppealCard = ({
 
 const FeaturedCampaigns = () => {
   const { data, isLoading, refetch } = useHomepageAppeals();
-  const { formatFromSource, formatMoney } = useCurrency();
+  const { formatFromSource } = useCurrency();
   const [hiddenSlugs, setHiddenSlugs] = useState<Set<string>>(() => new Set());
 
   const handleExpired = useCallback(
@@ -245,10 +245,6 @@ const FeaturedCampaigns = () => {
       <div className="flex flex-wrap gap-3 lg:justify-end">
         <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-secondary text-secondary-foreground text-xs font-semibold">
           <Shield className="w-3.5 h-3.5 text-accent-deep" /> 100% Donation Policy
-        </div>
-        <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-secondary text-secondary-foreground text-xs font-semibold">
-          <TrendingUp className="w-3.5 h-3.5 text-accent-deep" />{" "}
-          {formatMoney(1_400_000, { from: "GBP", compact: true })}+ raised this year
         </div>
         <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-secondary text-secondary-foreground text-xs font-semibold">
           <Users className="w-3.5 h-3.5 text-accent-deep" /> 28k+ donors

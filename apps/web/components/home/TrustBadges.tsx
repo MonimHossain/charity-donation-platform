@@ -4,7 +4,7 @@ const items = [
   { icon: ShieldCheck, label: "UK Reg. Charity", value: "No. 1192710" },
   { icon: BadgeCheck, label: "100% Donation", value: "Zakat policy" },
   { icon: Lock, label: "Secure Checkout", value: "256-bit SSL" },
-  { icon: HeartHandshake, label: "12,000+ Donors", value: "Trust us monthly" },
+  { icon: HeartHandshake, label: "120,000+ Donors", value: "Trust us monthly" },
 ];
 
 const TrustBadges = () => (

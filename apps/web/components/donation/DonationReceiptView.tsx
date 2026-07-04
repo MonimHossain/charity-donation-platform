@@ -66,51 +66,90 @@ export default function DonationReceiptView({ receipt }: { receipt: ReceiptData 
       const filename = `donation-receipt-${transactionId}.pdf`;
       const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
 
+      let siteName = "Charity Donation Platform";
+      let charityReg = "1192710";
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1"}/cms/settings`);
+        if (res.ok) {
+          const data = await res.json();
+          siteName = data.siteName || siteName;
+          charityReg = data.charityRegNumber || charityReg;
+        }
+      } catch {
+        /* use defaults */
+      }
+
       const marginLeft = 20;
       const pageWidth = pdf.internal.pageSize.getWidth();
       const maxValueWidth = pageWidth - marginLeft - 20;
-      let y = 24;
 
+      pdf.setFillColor(91, 33, 182);
+      pdf.rect(0, 0, pageWidth, 32, "F");
+      pdf.setTextColor(255, 255, 255);
       pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(20);
-      pdf.setTextColor(30, 58, 47);
-      pdf.text("Donation receipt", marginLeft, y);
-      y += 14;
+      pdf.setFontSize(16);
+      pdf.text(siteName, marginLeft, 14);
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(10);
+      pdf.setTextColor(132, 204, 22);
+      pdf.text("Official Donation Receipt", marginLeft, 22);
 
-      const lines = buildReceiptPdf(receipt, currency, dateLabel, transactionId);
+      let y = 44;
+      pdf.setTextColor(31, 41, 55);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(14);
+      pdf.text(receipt.receiptNumber || "Receipt", marginLeft, y);
+      y += 7;
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(10);
+      pdf.setTextColor(107, 114, 128);
+      pdf.text(`Issued ${dateLabel}`, marginLeft, y);
+      y += 12;
+
+      const lines = buildReceiptPdf(receipt, currency, dateLabel, transactionId)
+        .filter((line) => line.label !== "Receipt number" && line.label !== "Date");
+
+      pdf.setDrawColor(229, 231, 235);
+      pdf.line(marginLeft, y, pageWidth - marginLeft, y);
+      y += 8;
 
       for (const line of lines) {
-        if (y > 270) {
+        if (y > 250) {
           pdf.addPage();
           y = 24;
         }
 
+        if (line.bold) {
+          pdf.setFillColor(243, 244, 246);
+          pdf.roundedRect(marginLeft, y - 5, pageWidth - marginLeft * 2, 14, 2, 2, "F");
+        }
+
         pdf.setFont("helvetica", line.bold ? "bold" : "normal");
         pdf.setFontSize(line.bold ? 12 : 10);
-        pdf.setTextColor(line.bold ? 30 : 80, line.bold ? 58 : 80, line.bold ? 47 : 80);
+        pdf.setTextColor(line.bold ? 91 : 107, line.bold ? 33 : 114, line.bold ? 182 : 128);
 
-        pdf.text(line.label, marginLeft, y);
+        pdf.text(line.label, marginLeft + 2, y);
 
-        pdf.setFont("helvetica", "normal");
-        pdf.setTextColor(40, 40, 40);
-        const valueLines = pdf.splitTextToSize(line.value, maxValueWidth - 55);
-        pdf.text(valueLines, marginLeft + 55, y);
-        y += Math.max(7, valueLines.length * 5 + 2);
+        pdf.setFont("helvetica", line.bold ? "bold" : "normal");
+        pdf.setTextColor(31, 41, 55);
+        const valueLines = pdf.splitTextToSize(line.value, maxValueWidth - 58);
+        pdf.text(valueLines, marginLeft + 58, y);
+        y += Math.max(8, valueLines.length * 5 + 4);
       }
 
       y += 6;
-      if (y > 270) {
+      if (y > 265) {
         pdf.addPage();
         y = 24;
       }
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(9);
-      pdf.setTextColor(100, 100, 100);
+      pdf.setTextColor(107, 114, 128);
       const footer =
-        "Thank you for your generous support. This receipt confirms your donation. Please retain it for your records." +
+        `Thank you for your generous support. UK Registered Charity No. ${charityReg}. Please retain this receipt for your records.` +
         (receipt.giftAid ? " Gift Aid has been claimed where applicable." : "");
       const footerLines = pdf.splitTextToSize(footer, pageWidth - marginLeft * 2);
-      pdf.text(footerLines, marginLeft, y);
+      pdf.text(footerLines, marginLeft, y, { align: "center" });
 
       pdf.save(filename);
     } catch (error) {

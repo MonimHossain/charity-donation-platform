@@ -103,9 +103,6 @@ const FundraiserCard = ({ f }: { f: Fundraiser }) => {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-primary/90 via-primary/20 to-transparent" />
         <div className="absolute top-4 left-4 flex gap-2">
-          <span className="px-3 py-1 rounded-full bg-background/95 text-primary text-xs font-semibold capitalize">
-            {f.tag}
-          </span>
           {f.urgent && (
             <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-destructive text-destructive-foreground text-xs font-semibold uppercase tracking-wider animate-pulse">
               <Flame className="w-3 h-3" /> Urgent

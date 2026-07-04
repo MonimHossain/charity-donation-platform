@@ -26,6 +26,7 @@ import {
 import { SCHEDULE_STATUS_STYLES } from "@/lib/payment-utils";
 import { formatMoney, normalizeCurrencyCode } from "@/lib/currency";
 import { resolveDonationCampaignName } from "@/lib/quick-donate";
+import { recurringIntervalLabel } from "@/lib/stripe-recurring";
 
 const statusIcons: Record<string, React.ElementType> = {
   scheduled: Clock,

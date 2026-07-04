@@ -668,7 +668,7 @@ function DonationCheckoutContent() {
   }
 
   return (
-    <>
+    <div className="overflow-x-hidden">
       <section className="bg-secondary/40 border-b border-border">
         <div className="container-wide py-4 flex flex-wrap items-center justify-between gap-3">
           <Link
@@ -688,8 +688,8 @@ function DonationCheckoutContent() {
         </div>
       </section>
 
-      <section className="container-wide py-8 lg:py-12 grid lg:grid-cols-12 gap-8">
-        <div className="lg:col-span-7 space-y-6">
+      <section className="container-wide py-8 lg:py-12 grid lg:grid-cols-12 gap-8 min-w-0 max-w-full">
+        <div className="lg:col-span-7 space-y-6 min-w-0">
           {flowStep === "gift-aid" && showGiftAidStep && (
             <CheckoutGiftAidStep
               currencySymbol={currencyInfo.symbol}
@@ -709,7 +709,7 @@ function DonationCheckoutContent() {
           )}
 
           {flowStep === "details" && (
-            <div className="rounded-3xl bg-card border border-border p-6 lg:p-8 shadow-soft space-y-6 max-w-xl mx-auto lg:mx-0">
+            <div className="rounded-3xl bg-card border border-border p-6 lg:p-8 shadow-soft space-y-6 w-full max-w-xl min-w-0 mx-auto lg:mx-0">
               <div className="space-y-1">
                 <h1 className="font-serif text-2xl md:text-3xl text-primary">Your details</h1>
                 <p className="text-sm text-muted-foreground">
@@ -937,7 +937,7 @@ function DonationCheckoutContent() {
                     type="button"
                     variant="outline"
                     onClick={goBackFromDetails}
-                    className="rounded-full min-w-[120px] border-accent text-accent hover:bg-primary hover:text-primary-foreground"
+                    className="rounded-full min-w-0 sm:min-w-[100px] border-accent text-accent hover:bg-primary hover:text-primary-foreground"
                   >
                     Previous
                   </Button>
@@ -946,7 +946,7 @@ function DonationCheckoutContent() {
                   type="button"
                   onClick={goToPayment}
                   disabled={!donorName.trim() || !donorEmail.trim()}
-                  className="rounded-full min-w-[120px] bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground"
+                  className="rounded-full min-w-0 sm:min-w-[100px] bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground"
                 >
                   Next
                 </Button>
@@ -957,7 +957,7 @@ function DonationCheckoutContent() {
           )}
 
           {flowStep === "payment" && (
-            <div className="max-w-xl mx-auto lg:mx-0 space-y-6">
+            <div className="w-full max-w-xl min-w-0 mx-auto lg:mx-0 space-y-6">
               {!stripeReady && (
                 <div className="rounded-3xl bg-card border border-border p-6 lg:p-8 shadow-soft space-y-4">
                   <p className="text-sm text-destructive">
@@ -969,7 +969,7 @@ function DonationCheckoutContent() {
                       type="button"
                       variant="outline"
                       onClick={goBackFromPayment}
-                      className="rounded-full min-w-[120px] border-accent text-accent hover:bg-primary hover:text-primary-foreground"
+                      className="rounded-full min-w-0 sm:min-w-[100px] border-accent text-accent hover:bg-primary hover:text-primary-foreground"
                     >
                       Previous
                     </Button>
@@ -988,7 +988,7 @@ function DonationCheckoutContent() {
                           type="button"
                           variant="outline"
                           onClick={goBackFromPayment}
-                          className="rounded-full min-w-[120px] border-accent text-accent hover:bg-primary hover:text-primary-foreground"
+                          className="rounded-full min-w-0 sm:min-w-[100px] border-accent text-accent hover:bg-primary hover:text-primary-foreground"
                         >
                           Previous
                         </Button>
@@ -999,7 +999,7 @@ function DonationCheckoutContent() {
                             void preparePayment();
                           }}
                           disabled={submitting}
-                          className="rounded-full min-w-[120px] bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground"
+                          className="rounded-full min-w-0 sm:min-w-[100px] bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground"
                         >
                           {submitting ? (
                             <>
@@ -1071,7 +1071,7 @@ function DonationCheckoutContent() {
                       variant="outline"
                       onClick={goBackFromPayment}
                       disabled={submitting}
-                      className="rounded-full min-w-[120px] border-accent text-accent hover:bg-primary hover:text-primary-foreground"
+                      className="rounded-full min-w-0 sm:min-w-[100px] border-accent text-accent hover:bg-primary hover:text-primary-foreground"
                     >
                       Previous
                     </Button>
@@ -1083,7 +1083,7 @@ function DonationCheckoutContent() {
           )}
         </div>
 
-        <aside className="lg:col-span-5 lg:sticky lg:top-28 self-start space-y-4">
+        <aside className="lg:col-span-5 lg:sticky lg:top-28 self-start space-y-4 min-w-0">
           <div className="rounded-3xl bg-card border border-border p-6 shadow-soft space-y-4">
             <p className="text-xs uppercase tracking-widest text-accent-deep font-bold">Your cart</p>
             <ul className="space-y-3">
@@ -1241,7 +1241,7 @@ function DonationCheckoutContent() {
           </div>
         </aside>
       </section>
-    </>
+    </div>
   );
 }
 

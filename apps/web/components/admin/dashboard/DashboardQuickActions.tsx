@@ -7,7 +7,7 @@ import { isSuperAdminSession, useAdminSession, hasAdminPermission } from "@/comp
 const actions = [
   { label: "Create Campaign", href: "/admin/campaigns", icon: Megaphone, permission: "campaigns.view" },
   { label: "View Analytics", href: "/admin/analytics", icon: TrendingUp, permission: "analytics.view" },
-  { label: "Manage Content", href: "/admin/cms/hero", icon: Layers, permission: "cms.view" },
+  { label: "Manage Content", href: "/admin/cms", icon: Layers, permission: "cms.view" },
   {
     label: "Add Admin User",
     href: "/admin/admin-users",

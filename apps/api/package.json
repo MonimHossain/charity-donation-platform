@@ -14,7 +14,7 @@
   "dependencies": {
     "@repo/shared-types": "workspace:*",
     "@types/multer": "^2.1.0",
-    "bcryptjs": "^2.4.3",
+    "archiver": "^7.0.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^17.3.1",
@@ -36,6 +36,7 @@
     "typeorm": "^0.3.28"
   },
   "devDependencies": {
+    "@types/archiver": "^6.0.3",
     "@types/bcryptjs": "^2.4.6",
     "@types/cookie-parser": "^1.4.9",
     "@types/cors": "^2.8.18",

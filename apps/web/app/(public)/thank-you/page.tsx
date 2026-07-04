@@ -39,9 +39,14 @@ export default function ThankYouPage() {
   const [shareUrl, setShareUrl] = useState("");
 
   useEffect(() => {
-    setShareUrl(`${window.location.origin}/donate`);
+    const origin = window.location.origin;
+    if (analytics.campaignSlug) {
+      setShareUrl(`${origin}/campaigns/${analytics.campaignSlug}`);
+    } else {
+      setShareUrl(`${origin}/donate`);
+    }
     setHasSession(!!localStorage.getItem("user_token"));
-  }, []);
+  }, [analytics.campaignSlug]);
 
   useEffect(() => {
     const transactionId = donationId || receiptNumber;
@@ -90,11 +95,10 @@ export default function ThankYouPage() {
     ? (Number(amount) + Number(amount) * 0.25).toFixed(2)
     : Number(amount).toFixed(2);
 
-  const shareText = useMemo(
-    () =>
-      `I just donated ${currencyInfo.symbol}${total} to make a difference! Join me and support this amazing cause.`,
-    [currencyInfo.symbol, total]
-  );
+  const shareText = useMemo(() => {
+    const campaignPart = analytics.campaignName ? ` to ${analytics.campaignName}` : "";
+    return `I just donated ${currencyInfo.symbol}${total}${campaignPart}! Join me and support this amazing cause.`;
+  }, [currencyInfo.symbol, total, analytics.campaignName]);
 
   return (
     <section className="min-h-[80vh] flex items-center justify-center py-12 px-6">

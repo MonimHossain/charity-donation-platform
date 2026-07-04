@@ -14,6 +14,10 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { resolveDonationCampaignName } from "@/lib/quick-donate";
+import {
+  recurringAmountToMonthlyEquivalent,
+  recurringIntervalLabel,
+} from "@/lib/stripe-recurring";
 
 interface RecurringDonation {
   id: string;

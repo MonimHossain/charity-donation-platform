@@ -34,6 +34,9 @@ interface SettingsData {
     siteDescription: string;
     logoUrl: string;
     faviconUrl: string;
+    charityRegNumber: string;
+    donationPolicy: string;
+    gtmId: string;
   };
   contact: {
     email: string;
@@ -84,7 +87,7 @@ interface Backup {
 }
 
 const defaultSettings: SettingsData = {
-  general: { siteName: "", siteDescription: "", logoUrl: "", faviconUrl: "" },
+  general: { siteName: "", siteDescription: "", logoUrl: "", faviconUrl: "", charityRegNumber: "", donationPolicy: "", gtmId: "" },
   contact: { email: "", phone: "", address: "" },
   social: { facebook: "", twitter: "", instagram: "", youtube: "", linkedin: "" },
   email: {
@@ -124,29 +127,73 @@ export default function AdminSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState<Tab>("general");
   const [backups, setBackups] = useState<Backup[]>([]);
-  const [backingUp, setBackingUp] = useState(false);
+  const [backingUpDb, setBackingUpDb] = useState(false);
+  const [backingUpMedia, setBackingUpMedia] = useState(false);
+
+  async function loadBackupHistory() {
+    try {
+      const res = await api.get("/admin/backup/history");
+      setBackups(res.data?.items || []);
+    } catch {
+      setBackups([]);
+    }
+  }
+
+  async function downloadBackup(endpoint: string, fallbackName: string) {
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
+    const token = typeof window !== "undefined" ? localStorage.getItem("admin_token") : null;
+    const res = await fetch(`${apiBase.replace(/\/$/, "")}${endpoint}`, {
+      credentials: "include",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) throw new Error("Download failed");
+    const blob = await res.blob();
+    const disposition = res.headers.get("Content-Disposition") || "";
+    const match = disposition.match(/filename="([^"]+)"/);
+    const filename = match?.[1] || fallbackName;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   useEffect(() => {
     async function load() {
       try {
-        const [settingsRes, backupsRes] = await Promise.all([
+        const [settingsRes] = await Promise.all([
           api.get("/cms/settings").catch(() => ({ data: {} })),
-          Promise.resolve({ data: [] }),
         ]);
         if (settingsRes.data && Object.keys(settingsRes.data).length > 0) {
+          const d = settingsRes.data;
           setSettings((prev) => ({
-            general: { ...prev.general, ...settingsRes.data.general },
-            contact: { ...prev.contact, ...settingsRes.data.contact },
-            social: { ...prev.social, ...settingsRes.data.social },
-            email: { ...prev.email, ...settingsRes.data.email },
-            payment: { ...prev.payment, ...settingsRes.data.payment },
-            security: { ...prev.security, ...settingsRes.data.security },
+            general: {
+              ...prev.general,
+              siteName: d.siteName ?? d.general?.siteName ?? prev.general.siteName,
+              siteDescription: d.siteDescription ?? d.general?.siteDescription ?? prev.general.siteDescription,
+              logoUrl: d.logoUrl ?? d.general?.logoUrl ?? prev.general.logoUrl,
+              faviconUrl: d.faviconUrl ?? d.general?.faviconUrl ?? prev.general.faviconUrl,
+              charityRegNumber: d.charityRegNumber ?? prev.general.charityRegNumber,
+              donationPolicy: d.donationPolicy ?? prev.general.donationPolicy,
+              gtmId: d.gtmId ?? prev.general.gtmId,
+            },
+            contact: {
+              ...prev.contact,
+              email: d.contactEmail ?? d.contact?.email ?? prev.contact.email,
+              phone: d.contactPhone ?? d.contact?.phone ?? prev.contact.phone,
+              address: d.address ?? d.contact?.address ?? prev.contact.address,
+            },
+            social: { ...prev.social, ...(d.socialLinks ?? d.social ?? {}) },
+            email: { ...prev.email, ...d.email },
+            payment: { ...prev.payment, ...d.payment },
+            security: { ...prev.security, ...d.security },
             currency: {
-              rates: normalizeCurrencyRates(settingsRes.data.currencyRates),
+              rates: normalizeCurrencyRates(d.currencyRates),
             },
           }));
         }
-        setBackups(backupsRes.data?.items || backupsRes.data || []);
+        await loadBackupHistory();
       } catch {
         toast.error("Failed to load settings");
       } finally {
@@ -164,6 +211,9 @@ export default function AdminSettingsPage() {
         siteDescription: settings.general.siteDescription,
         logoUrl: settings.general.logoUrl,
         faviconUrl: settings.general.faviconUrl,
+        charityRegNumber: settings.general.charityRegNumber,
+        donationPolicy: settings.general.donationPolicy,
+        gtmId: settings.general.gtmId,
         contactEmail: settings.contact.email,
         contactPhone: settings.contact.phone,
         address: settings.contact.address,
@@ -181,15 +231,29 @@ export default function AdminSettingsPage() {
     }
   }
 
-  async function handleBackup() {
-    setBackingUp(true);
+  async function handleDatabaseBackup() {
+    setBackingUpDb(true);
     try {
-      toast.error("Backup functionality is not available");
-      return;
+      await downloadBackup("/admin/backup/database", "db-backup.sql");
+      await loadBackupHistory();
+      toast.success("Database backup downloaded");
     } catch {
-      toast.error("Failed to create backup");
+      toast.error("Failed to create database backup");
     } finally {
-      setBackingUp(false);
+      setBackingUpDb(false);
+    }
+  }
+
+  async function handleMediaBackup() {
+    setBackingUpMedia(true);
+    try {
+      await downloadBackup("/admin/backup/media", "media-backup.zip");
+      await loadBackupHistory();
+      toast.success("Media backup downloaded");
+    } catch {
+      toast.error("Failed to create media backup");
+    } finally {
+      setBackingUpMedia(false);
     }
   }
 
@@ -313,6 +377,20 @@ export default function AdminSettingsPage() {
             <div className="space-y-2">
               <Label>Favicon URL</Label>
               <Input value={settings.general.faviconUrl} onChange={(e) => updateGeneral("faviconUrl", e.target.value)} />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Charity registration number</Label>
+                <Input value={settings.general.charityRegNumber} onChange={(e) => updateGeneral("charityRegNumber", e.target.value)} placeholder="1192710" />
+              </div>
+              <div className="space-y-2">
+                <Label>Donation policy</Label>
+                <Input value={settings.general.donationPolicy} onChange={(e) => updateGeneral("donationPolicy", e.target.value)} placeholder="100% Donation Policy on Zakat" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Google Tag Manager ID</Label>
+              <Input value={settings.general.gtmId} onChange={(e) => updateGeneral("gtmId", e.target.value)} placeholder="GTM-XXXXXXX" />
             </div>
           </div>
 
@@ -551,13 +629,26 @@ export default function AdminSettingsPage() {
       {tab === "backup" && (
         <div className="space-y-6">
           <div className="rounded-2xl border bg-card shadow-soft p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-serif font-bold">Backup &amp; Recovery</h2>
-              <Button onClick={handleBackup} disabled={backingUp}>
-                {backingUp ? <><Loader2 className="h-4 w-4 animate-spin" /> Creating...</> : <><Database className="h-4 w-4" /> Create Backup</>}
+            <h2 className="text-lg font-serif font-bold">Backup &amp; Recovery</h2>
+            <p className="text-sm text-muted-foreground">
+              Download a backup straight to your browser. Nothing is stored on the server.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Button onClick={handleDatabaseBackup} disabled={backingUpDb || backingUpMedia}>
+                {backingUpDb ? (
+                  <><Loader2 className="h-4 w-4 animate-spin" /> Downloading database...</>
+                ) : (
+                  <><Database className="h-4 w-4" /> Download database backup</>
+                )}
+              </Button>
+              <Button variant="outline" onClick={handleMediaBackup} disabled={backingUpDb || backingUpMedia}>
+                {backingUpMedia ? (
+                  <><Loader2 className="h-4 w-4 animate-spin" /> Downloading media...</>
+                ) : (
+                  <><Download className="h-4 w-4" /> Download media backup</>
+                )}
               </Button>
             </div>
-            <p className="text-sm text-muted-foreground">Create a manual backup of your database and media files.</p>
           </div>
 
           <div className="rounded-2xl border bg-card shadow-soft overflow-hidden">
@@ -572,7 +663,6 @@ export default function AdminSettingsPage() {
                     <th className="px-5 py-3 text-left font-medium text-muted-foreground">Filename</th>
                     <th className="px-5 py-3 text-left font-medium text-muted-foreground">Size</th>
                     <th className="px-5 py-3 text-left font-medium text-muted-foreground">Created</th>
-                    <th className="px-5 py-3 text-right font-medium text-muted-foreground">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -585,14 +675,9 @@ export default function AdminSettingsPage() {
                       <td className="px-5 py-3 text-muted-foreground">
                         {b.createdAt ? new Date(b.createdAt).toLocaleString() : "—"}
                       </td>
-                      <td className="px-5 py-3 text-right">
-                        <Button variant="ghost" size="sm">
-                          <Download className="h-3.5 w-3.5" /> Download
-                        </Button>
-                      </td>
                     </tr>
                   )) : (
-                    <tr><td colSpan={4} className="px-5 py-10 text-center text-muted-foreground">No backups yet</td></tr>
+                    <tr><td colSpan={3} className="px-5 py-10 text-center text-muted-foreground">No backups yet</td></tr>
                   )}
                 </tbody>
               </table>
