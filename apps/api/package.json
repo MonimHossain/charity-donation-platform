@@ -15,6 +15,7 @@
     "@repo/shared-types": "workspace:*",
     "@types/multer": "^2.1.0",
     "archiver": "^7.0.1",
+    "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^17.3.1",
