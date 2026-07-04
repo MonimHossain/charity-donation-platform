@@ -13,7 +13,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SGTM_DIR="/opt/sgtm-server"
 NGINX_SITE="assets.yourimpactdev.com"
-WEB_GTM_ID="${WEB_GTM_ID:-GTM-TGJBL7R7}"
+WEB_GTM_ID="${WEB_GTM_ID:-GTM-WJWFZW62}"
 
 echo "==> Creating ${SGTM_DIR}"
 mkdir -p "${SGTM_DIR}"
@@ -26,7 +26,7 @@ docker compose up -d
 
 echo "==> Installing Nginx site config"
 cp "${REPO_ROOT}/infra/nginx/sgtm-assets.conf" "/etc/nginx/sites-available/${NGINX_SITE}"
-sed -i "s/GTM-TGJBL7R7/${WEB_GTM_ID}/g" "/etc/nginx/sites-available/${NGINX_SITE}"
+sed -i "s/GTM-WJWFZW62/${WEB_GTM_ID}/g" "/etc/nginx/sites-available/${NGINX_SITE}"
 ln -sf "/etc/nginx/sites-available/${NGINX_SITE}" "/etc/nginx/sites-enabled/${NGINX_SITE}"
 
 echo "==> Testing Nginx config"

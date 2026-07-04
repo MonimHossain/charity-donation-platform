@@ -6,7 +6,7 @@ Stealth GTM loader on `assets.yourimpactdev.com` so adblockers don't block `gtm.
 
 1. **DNS** — Add an `A` record: `assets.yourimpactdev.com` → VPS IP (`72.62.6.143`)
 2. **GTM IDs** (from deployment guide):
-   - Web container (snippet / nginx `/moondance`): `GTM-TGJBL7R7`
+   - Web container (snippet / nginx `/moondance`): `GTM-WJWFZW62`
    - Server container (Docker `CONTAINER_CONFIG`): `GTM-5TFSRWNR`
 
 ## Server setup (VPS)
@@ -37,11 +37,11 @@ sudo certbot --nginx -d assets.yourimpactdev.com
 Add to the server `.env` and rebuild/restart:
 
 ```bash
-NEXT_PUBLIC_GTM_ID=GTM-TGJBL7R7
+NEXT_PUBLIC_GTM_ID=GTM-WJWFZW62
 NEXT_PUBLIC_SGTM_HOST=assets.yourimpactdev.com
 ```
 
-Also set `GTM-TGJBL7R7` in **Admin → CMS → Settings → GTM Container ID** (takes precedence over env).
+Also set `GTM-WJWFZW62` in **Admin → CMS → Settings → GTM Container ID** (takes precedence over env).
 
 Then:
 

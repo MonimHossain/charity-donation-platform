@@ -6,18 +6,19 @@ interface GTMScriptProps {
   gtmId?: string;
 }
 
-const SGTM_HOST = process.env.NEXT_PUBLIC_SGTM_HOST?.trim().replace(/\/+$/, "");
+const SGTM_HOST = (
+  process.env.NEXT_PUBLIC_SGTM_HOST?.trim() ||
+  (process.env.NODE_ENV === "production" ? "assets.yourimpactdev.com" : "")
+).replace(/\/+$/, "");
 
 function buildGtmLoader(gtmId: string): string {
   if (SGTM_HOST) {
-    return `
-      (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-      new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-      j=d.createElement(s);j.async=true;
-      j.src='https://${SGTM_HOST}/moondance';
-      f.parentNode.insertBefore(j,f);
-      })(window,document,'script','dataLayer','${gtmId}');
-    `;
+    return `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s);j.async=true;
+j.src='https://${SGTM_HOST}/moondance';
+f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','${gtmId}');`;
   }
 
   return `
