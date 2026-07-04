@@ -169,11 +169,15 @@ export default function SiteHeader() {
             )}
           </div>
 
-          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+          <div className="flex items-center gap-0.5 sm:gap-2 shrink-0">
             <div className="hidden md:flex items-center gap-2">
               <GlobalSearch variant="icon" />
               <LanguageSwitcher />
               <CurrencySwitcher />
+            </div>
+            <div className="flex md:hidden items-center gap-0.5 shrink-0">
+              <LanguageSwitcher compact />
+              <CurrencySwitcher compact />
             </div>
             <Link
               href="/donate"
@@ -357,15 +361,6 @@ export default function SiteHeader() {
                   {i.label}
                 </Link>
               ))}
-            </div>
-            <div className="mt-3 pt-3 border-t border-border/40 px-1 lg:hidden">
-              <p className="px-3 pb-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-semibold">
-                Preferences
-              </p>
-              <div className="flex flex-wrap items-center gap-2 px-2">
-                <LanguageSwitcher />
-                <CurrencySwitcher />
-              </div>
             </div>
           </div>
         </div>

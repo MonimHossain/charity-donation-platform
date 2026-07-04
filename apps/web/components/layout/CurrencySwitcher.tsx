@@ -4,13 +4,15 @@ import { useState, useRef, useEffect } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import { CURRENCY_LIST, useCurrency } from "@/lib/currency";
 import { DropdownPortal } from "./DropdownPortal";
+import { cn } from "@/lib/utils";
 
 interface Props {
   variant?: "header" | "inline" | "dark";
+  compact?: boolean;
   className?: string;
 }
 
-export default function CurrencySwitcher({ variant = "header", className = "" }: Props) {
+export default function CurrencySwitcher({ variant = "header", compact = false, className = "" }: Props) {
   const [open, setOpen] = useState(false);
   const { code, currency, setCurrency } = useCurrency();
   const ref = useRef<HTMLDivElement>(null);
@@ -40,11 +42,18 @@ export default function CurrencySwitcher({ variant = "header", className = "" }:
         ref={buttonRef}
         onClick={() => setOpen(!open)}
         aria-label="Change currency"
-        className={`inline-flex items-center gap-1 px-2.5 h-9 rounded-full text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-accent ${styles} ${className}`}
+        className={cn(
+          "inline-flex items-center rounded-full font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-accent",
+          compact
+            ? "gap-0.5 h-8 px-2 text-[10px] focus:ring-1"
+            : "gap-1 px-2.5 h-9 text-xs",
+          styles,
+          className
+        )}
       >
         <span className="tabular-nums">{currency.symbol}</span>
         <span>{code}</span>
-        <ChevronDown className={`w-3 h-3 transition-transform ${open ? "rotate-180" : ""}`} />
+        <ChevronDown className={cn("transition-transform", compact ? "w-2.5 h-2.5" : "w-3 h-3", open && "rotate-180")} />
       </button>
       <DropdownPortal
         open={open}

@@ -311,6 +311,13 @@
   -webkit-backdrop-filter: none;
 }
 
+.ngt-site-header.ngt-compact .ngtButton {
+  height: 2rem;
+  padding: 0 0.5rem;
+  font-size: 0.625rem;
+  min-width: 0;
+}
+
 .ngt-site-header .ngtMenu {
   min-width: 11rem;
   border-radius: 1rem;

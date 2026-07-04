@@ -12,13 +12,13 @@ const SITE_LANGUAGES = [
   { label: "Nederlands", value: "nl", flag: "nl" },
 ];
 
-export default function LanguageSwitcher() {
+export default function LanguageSwitcher({ compact = false }: { compact?: boolean }) {
   return (
     <GoogleTranslate
       pageLanguage="en"
       languages={SITE_LANGUAGES}
       menuAlign="right"
-      className="ngt-site-header"
+      className={compact ? "ngt-site-header ngt-compact" : "ngt-site-header"}
     />
   );
 }
