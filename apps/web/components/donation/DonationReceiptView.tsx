@@ -72,10 +72,10 @@ export default function DonationReceiptView({ receipt }: { receipt: ReceiptData 
       pdf.roundedRect(margin, 30, cardW, 200, 3, 3, "S");
 
       const logoData = await loadImageDataUrl(logoUrl);
-      let headerY = 38;
+      const headerY = 38;
       if (logoData) {
         try {
-          pdf.addImage(logoData, "PNG", innerX, headerY - 2, 28, 11);
+          pdf.addImage(logoData, "PNG", innerX, headerY, 28, 11);
         } catch {
           /* skip */
         }
@@ -84,10 +84,11 @@ export default function DonationReceiptView({ receipt }: { receipt: ReceiptData 
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(7);
       pdf.setTextColor(91, 33, 182);
-      pdf.text("DONATION RECEIPT", innerX + innerW, headerY, { align: "right" });
+      pdf.text("DONATION RECEIPT", innerX + innerW, headerY + 4, { align: "right" });
 
-      let y = headerY + 10;
+      let y = headerY + 18;
       pdf.setFontSize(16);
+      pdf.setTextColor(91, 33, 182);
       pdf.text(receipt.receiptNumber || "Receipt", innerX, y);
       y += 8;
       pdf.setFont("helvetica", "normal");
@@ -203,27 +204,27 @@ export default function DonationReceiptView({ receipt }: { receipt: ReceiptData 
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-6 shadow-soft space-y-5">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0 flex-1">
-            <p className="text-xs uppercase tracking-widest text-accent-deep font-bold">
+        <div>
+          <div className="flex items-start justify-between gap-4">
+            <img
+              src={logoUrl.startsWith("http") ? logoUrl : logoUrl}
+              alt=""
+              className="h-9 w-auto max-w-[6.5rem] object-contain shrink-0"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = "/images/logo-transparent.png";
+              }}
+            />
+            <p className="text-xs uppercase tracking-widest text-accent-deep font-bold shrink-0">
               Donation receipt
             </p>
-            <h2 className="font-serif text-2xl text-primary mt-1">
-              {receipt.receiptNumber || "Receipt"}
-            </h2>
-            <p className="text-sm text-muted-foreground mt-1">{dateLabel}</p>
-            <p className="text-xs text-muted-foreground mt-2 font-mono">
-              Transaction ID: {transactionId}
-            </p>
           </div>
-          <img
-            src={logoUrl.startsWith("http") ? logoUrl : logoUrl}
-            alt=""
-            className="h-10 w-auto max-w-[7rem] object-contain shrink-0"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = "/images/logo-transparent.png";
-            }}
-          />
+          <h2 className="font-serif text-2xl text-primary mt-4">
+            {receipt.receiptNumber || "Receipt"}
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1">{dateLabel}</p>
+          <p className="text-xs text-muted-foreground mt-2 font-mono">
+            Transaction ID: {transactionId}
+          </p>
         </div>
 
         <div className="border-t border-border pt-5 grid gap-4 sm:grid-cols-2">

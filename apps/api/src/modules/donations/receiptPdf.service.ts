@@ -98,16 +98,16 @@ export async function generateDonationReceiptPdf(
 
     if (logoBuffer) {
       try {
-        doc.image(logoBuffer, innerX, y - 4, { fit: [80, 32] });
+        doc.image(logoBuffer, innerX, y, { fit: [72, 28] });
       } catch {
         /* skip logo if invalid */
       }
     }
 
     doc.font("Helvetica-Bold").fontSize(8).fillColor(BRAND_PURPLE)
-      .text("DONATION RECEIPT", innerX, y, { width: innerW, align: logoBuffer ? "right" : "left" });
+      .text("DONATION RECEIPT", innerX, y + 4, { width: innerW, align: "right" });
 
-    y += 18;
+    y += 28;
     doc.font("Helvetica-Bold").fontSize(18).fillColor(BRAND_PURPLE)
       .text(receiptNumber, innerX, y, { width: innerW });
     y += 22;

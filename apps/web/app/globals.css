@@ -290,32 +290,51 @@
   display: none;
 }
 
-/* Google Translate language switcher — match site header controls */
-.ngt-site-header {
+/* Google Translate language switcher — match currency dropdown */
+.ngt-site-header.ngtContainer {
   --ngt-bg: hsl(var(--secondary) / 0.7);
   --ngt-bg-hover: hsl(var(--secondary));
   --ngt-border: hsl(var(--border));
-  --ngt-text: hsl(var(--foreground));
+  --ngt-text: hsl(var(--primary));
   --ngt-menu-bg: hsl(var(--card));
   --ngt-menu-border: hsl(var(--border));
   --ngt-active-bg: hsl(var(--accent) / 0.15);
 }
 
+@media (prefers-color-scheme: dark) {
+  .ngt-site-header.ngtContainer {
+    --ngt-bg: hsl(var(--secondary) / 0.7);
+    --ngt-bg-hover: hsl(var(--secondary));
+    --ngt-border: hsl(var(--border));
+    --ngt-text: hsl(var(--primary));
+    --ngt-menu-bg: hsl(var(--card));
+    --ngt-menu-border: hsl(var(--border));
+    --ngt-active-bg: hsl(var(--accent) / 0.15);
+  }
+
+  .ngt-site-header .ngtOption:hover {
+    background: hsl(var(--secondary)) !important;
+  }
+}
+
 .ngt-site-header .ngtButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
   height: 2.25rem;
   padding: 0 0.625rem;
   border-radius: 9999px;
   font-size: 0.75rem;
   font-weight: 600;
-  background: var(--ngt-bg);
-  border: 1px solid var(--ngt-border);
-  color: var(--ngt-text);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+  background: hsl(var(--secondary) / 0.7) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  color: hsl(var(--primary)) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 .ngt-site-header .ngtButton:hover {
-  background: var(--ngt-bg-hover);
+  background: hsl(var(--secondary)) !important;
 }
 
 .ngt-site-header.ngt-compact .ngtButton {
@@ -323,16 +342,38 @@
   padding: 0 0.5rem;
   font-size: 0.625rem;
   min-width: 0;
+  gap: 0.125rem;
+}
+
+.ngt-site-header .ngtArrow {
+  color: hsl(var(--primary));
+  opacity: 1;
+  font-size: 0.625rem;
 }
 
 .ngt-site-header .ngtMenu {
   min-width: 11rem;
   border-radius: 1rem;
+  background: hsl(var(--card)) !important;
+  border: 1px solid hsl(var(--border)) !important;
   box-shadow: 0 10px 30px hsl(var(--foreground) / 0.08);
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 .ngt-site-header .ngtOption {
   font-size: 0.875rem;
+  color: hsl(var(--foreground));
+}
+
+.ngt-site-header .ngtOption:hover {
+  background: hsl(var(--secondary)) !important;
+}
+
+.ngt-site-header .ngtOptionActive {
+  background: hsl(var(--accent) / 0.15) !important;
+  color: hsl(var(--primary));
+  font-weight: 600;
 }
 
 /* Hide language switcher while site search modal is open */
