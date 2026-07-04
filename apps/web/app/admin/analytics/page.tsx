@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import {
-  Calendar,
   Download,
   TrendingUp,
   Users,
@@ -24,7 +23,6 @@ import {
 } from "@/lib/api";
 
 type DateRange = "week" | "month" | "year" | "custom";
-type Granularity = "daily" | "weekly" | "monthly";
 
 interface CampaignPerf {
   id: string;
@@ -52,7 +50,6 @@ interface CategoryBreakdown {
 export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState<DateRange>("month");
-  const [granularity, setGranularity] = useState<Granularity>("daily");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
 
@@ -64,12 +61,12 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     loadAnalytics();
-  }, [dateRange, granularity]);
+  }, [dateRange]);
 
   async function loadAnalytics() {
     setLoading(true);
     try {
-      const params: Record<string, string> = { range: dateRange, granularity };
+      const params: Record<string, string> = { range: dateRange };
       if (dateRange === "custom" && customFrom && customTo) {
         params.from = customFrom;
         params.to = customTo;
@@ -189,20 +186,6 @@ export default function AnalyticsPage() {
             <Button size="sm" onClick={loadAnalytics}>Apply</Button>
           </div>
         )}
-        <div className="flex items-center gap-1 rounded-lg border bg-card p-1">
-          {(["daily", "weekly", "monthly"] as Granularity[]).map((g) => (
-            <button
-              key={g}
-              onClick={() => setGranularity(g)}
-              className={cn(
-                "rounded-md px-3 py-1.5 text-sm font-medium transition-colors capitalize",
-                granularity === g ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
-              )}
-            >
-              {g}
-            </button>
-          ))}
-        </div>
       </div>
 
       {loading ? (
