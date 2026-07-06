@@ -30,6 +30,11 @@ export const metadata: Metadata = {
   },
   description:
     "A trusted charity platform delivering food, water, education and emergency aid to communities worldwide. 100% donation policy on Zakat.",
+  icons: {
+    icon: "/images/favicon.png",
+    shortcut: "/images/favicon.png",
+    apple: "/images/favicon.png",
+  },
   openGraph: {
     type: "website",
     siteName: "Charity Donation Platform",

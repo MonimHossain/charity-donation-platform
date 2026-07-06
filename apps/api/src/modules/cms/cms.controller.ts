@@ -139,6 +139,7 @@ export async function getSiteSettings(_req: Request, res: Response) {
     const response = {
       ...settings,
       currencyRates: normalizeCurrencyRates(settings.currencyRates),
+      currencyRatesUpdatedAt: settings.currencyRatesUpdatedAt ?? null,
       email: {
         donationConfirmation: settings.emailSettings?.donationConfirmation ?? true,
         recurringReminders: settings.emailSettings?.recurringReminders ?? true,
@@ -254,8 +255,8 @@ export async function updateDonationPreset(req: Request, res: Response) {
 export async function getTestimonials(_req: Request, res: Response) {
   try {
     const testimonials = await AppDataSource.getRepository(Testimonial).find({
-      where: { isVisible: true },
-      order: { sortOrder: "ASC" },
+      where: { status: "approved" },
+      order: { sortOrder: "ASC", createdAt: "DESC" },
     });
     return res.json(testimonials);
   } catch (error) {

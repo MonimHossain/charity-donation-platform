@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import {
   Save,
@@ -12,6 +13,10 @@ import {
   Database,
   Download,
   Coins,
+  Layers,
+  HelpCircle,
+  Search,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +32,8 @@ import {
   type CurrencyCode,
 } from "@/lib/currency";
 import { AdminChangePasswordForm } from "@/components/admin/AdminChangePasswordForm";
+import { SettingsContentPanel, SettingsSeoPanel } from "@/components/admin/settings/SettingsContentPanel";
+import { SettingsFaqPanel } from "@/components/admin/settings/SettingsFaqPanel";
 
 interface SettingsData {
   general: {
@@ -87,7 +94,7 @@ interface Backup {
 }
 
 const defaultSettings: SettingsData = {
-  general: { siteName: "", siteDescription: "", logoUrl: "", faviconUrl: "", charityRegNumber: "", donationPolicy: "", gtmId: "" },
+  general: { siteName: "", siteDescription: "", logoUrl: "", faviconUrl: "/images/favicon.png", charityRegNumber: "", donationPolicy: "", gtmId: "" },
   contact: { email: "", phone: "", address: "" },
   social: { facebook: "", twitter: "", instagram: "", youtube: "", linkedin: "" },
   email: {
@@ -119,16 +126,41 @@ const defaultSettings: SettingsData = {
   },
 };
 
-type Tab = "general" | "email" | "payment" | "currency" | "security" | "backup";
+type Tab = "general" | "content" | "faq" | "seo" | "email" | "payment" | "currency" | "security" | "backup";
 
-export default function AdminSettingsPage() {
+const TAB_FROM_SECTION: Record<string, Tab> = {
+  content: "content",
+  faq: "faq",
+  seo: "seo",
+  general: "general",
+  email: "email",
+  payment: "payment",
+  currency: "currency",
+  security: "security",
+  backup: "backup",
+};
+
+function AdminSettingsPageInner() {
+  const searchParams = useSearchParams();
+  const sectionParam = searchParams.get("section");
+  const contentParam = searchParams.get("content") ?? undefined;
+  const initialTab = (sectionParam && TAB_FROM_SECTION[sectionParam]) || "general";
+
   const [settings, setSettings] = useState<SettingsData>(defaultSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<Tab>("general");
+  const [tab, setTab] = useState<Tab>(initialTab);
+  const [currencyRatesUpdatedAt, setCurrencyRatesUpdatedAt] = useState<string | null>(null);
+  const [syncingRates, setSyncingRates] = useState(false);
   const [backups, setBackups] = useState<Backup[]>([]);
   const [backingUpDb, setBackingUpDb] = useState(false);
   const [backingUpMedia, setBackingUpMedia] = useState(false);
+
+  useEffect(() => {
+    if (sectionParam && TAB_FROM_SECTION[sectionParam]) {
+      setTab(TAB_FROM_SECTION[sectionParam]);
+    }
+  }, [sectionParam]);
 
   async function loadBackupHistory() {
     try {
@@ -192,6 +224,9 @@ export default function AdminSettingsPage() {
               rates: normalizeCurrencyRates(d.currencyRates),
             },
           }));
+          if (d.currencyRatesUpdatedAt) {
+            setCurrencyRatesUpdatedAt(d.currencyRatesUpdatedAt);
+          }
         }
         await loadBackupHistory();
       } catch {
@@ -202,6 +237,32 @@ export default function AdminSettingsPage() {
     }
     load();
   }, []);
+
+  async function handleSyncCurrencyRates() {
+    setSyncingRates(true);
+    try {
+      const { data } = await api.post("/admin/settings/sync-currency-rates");
+      if (data?.currencyRates) {
+        setSettings((s) => ({
+          ...s,
+          currency: { rates: normalizeCurrencyRates(data.currencyRates) },
+        }));
+        applyCurrencyRates(normalizeCurrencyRates(data.currencyRates));
+      }
+      if (data?.currencyRatesUpdatedAt) {
+        setCurrencyRatesUpdatedAt(data.currencyRatesUpdatedAt);
+      }
+      toast.success(
+        data?.fetched?.length
+          ? `Rates updated for ${data.fetched.join(", ")}`
+          : "Currency rates refreshed"
+      );
+    } catch {
+      toast.error("Failed to sync currency rates");
+    } finally {
+      setSyncingRates(false);
+    }
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -306,12 +367,17 @@ export default function AdminSettingsPage() {
 
   const tabs: { key: Tab; label: string; icon: React.ElementType }[] = [
     { key: "general", label: "General", icon: Globe },
+    { key: "content", label: "Content", icon: Layers },
+    { key: "faq", label: "FAQ", icon: HelpCircle },
+    { key: "seo", label: "SEO", icon: Search },
     { key: "email", label: "Email", icon: Mail },
     { key: "payment", label: "Payment", icon: CreditCard },
     { key: "currency", label: "Currency", icon: Coins },
     { key: "security", label: "Security", icon: Shield },
     { key: "backup", label: "Backup", icon: Database },
   ];
+
+  const showSaveButton = !["backup", "content", "faq", "seo"].includes(tab);
 
   if (loading) {
     return (
@@ -333,7 +399,7 @@ export default function AdminSettingsPage() {
           <h1 className="text-3xl font-bold font-serif tracking-tight">Settings</h1>
           <p className="text-muted-foreground mt-1">Configure your platform settings</p>
         </div>
-        {tab !== "backup" && (
+        {showSaveButton && (
           <Button onClick={handleSave} disabled={saving}>
             {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</> : <><Save className="h-4 w-4" /> Save Changes</>}
           </Button>
@@ -355,6 +421,16 @@ export default function AdminSettingsPage() {
           </button>
         ))}
       </div>
+
+      {tab === "content" && <SettingsContentPanel initialSubTab={contentParam} />}
+
+      {tab === "faq" && (
+        <div className="rounded-2xl border bg-card shadow-soft p-4 sm:p-6">
+          <SettingsFaqPanel />
+        </div>
+      )}
+
+      {tab === "seo" && <SettingsSeoPanel />}
 
       {tab === "general" && (
         <div className="space-y-6">
@@ -523,12 +599,27 @@ export default function AdminSettingsPage() {
 
       {tab === "currency" && (
         <div className="rounded-2xl border bg-card shadow-soft p-6 space-y-6">
-          <div>
-            <h2 className="text-lg font-serif font-bold">Currency Conversion</h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              Set exchange rates relative to GBP (1 GBP = rate in target currency). Amounts shown across
-              the site are converted using these rates and always rounded up to whole numbers.
-            </p>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 className="text-lg font-serif font-bold">Currency Conversion</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Set exchange rates relative to GBP (1 GBP = rate in target currency). Rates can be
+                refreshed weekly from the ECB via Frankfurter, or edited manually below.
+              </p>
+              {currencyRatesUpdatedAt && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Last updated: {new Date(currencyRatesUpdatedAt).toLocaleString()}
+                </p>
+              )}
+            </div>
+            <Button variant="outline" onClick={handleSyncCurrencyRates} disabled={syncingRates}>
+              {syncingRates ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              Refresh rates now
+            </Button>
           </div>
           <div className="overflow-x-auto rounded-xl border">
             <table className="w-full text-sm">
@@ -686,5 +777,19 @@ export default function AdminSettingsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function AdminSettingsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-20 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading settings...
+        </div>
+      }
+    >
+      <AdminSettingsPageInner />
+    </Suspense>
   );
 }

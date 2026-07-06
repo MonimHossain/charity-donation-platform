@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { statValueSmClass } from "@/lib/home-buttons";
 import { fetchUserProfile, fetchUserDonations, fetchUserRecurringDonations } from "@/lib/api";
 import { useCurrency } from "@/lib/currency";
+import { AccountReviewCard } from "@/components/account/AccountReviewCard";
 
 interface DashboardData {
   totalDonated: number;
@@ -166,6 +167,8 @@ function AccountDashboardApi() {
           </div>
         ))}
       </div>
+
+      <AccountReviewCard />
 
       {/* Recent donations */}
       <div className="rounded-3xl bg-card border border-border p-6 shadow-soft">

@@ -126,8 +126,8 @@ export default function SiteHeader() {
   return (
     <>
       <div className="bg-background border-b border-border/40">
-        <div className="container-wide flex items-center justify-between gap-2 sm:gap-4 h-14 md:h-16">
-          <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+        <div className="container-wide relative grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-4 h-14 md:h-16">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0 justify-self-start">
             <Link href="/" aria-label="Home" className="flex items-center shrink-0">
               <SiteLogo heightClass="h-8 sm:h-9 md:h-10" />
             </Link>
@@ -139,24 +139,24 @@ export default function SiteHeader() {
             />
           </div>
 
-          <div className="hidden md:flex items-center gap-6 text-sm">
+          <div className="hidden md:flex items-center justify-center gap-6 text-sm justify-self-center">
             {islamicDate && (
               <div className="flex items-center gap-2">
-                <CalendarDays className="w-5 h-5 text-accent-deep" />
+                <CalendarDays className="w-5 h-5 text-accent-deep shrink-0" />
                 <div className="leading-tight">
                   <div className="text-[11px] text-muted-foreground">Today · Islamic Date</div>
-                  <div className="font-semibold text-primary">{islamicDate}</div>
+                  <div className="font-semibold text-primary whitespace-nowrap">{islamicDate}</div>
                 </div>
               </div>
             )}
             {nextPrayer && (
               <div className="flex items-center gap-2">
-                <Timer className="w-5 h-5 text-accent-deep" />
+                <Timer className="w-5 h-5 text-accent-deep shrink-0" />
                 <div className="leading-tight">
-                  <div className="text-[11px] text-muted-foreground">
+                  <div className="text-[11px] text-muted-foreground whitespace-nowrap">
                     Next Prayer{prayerLocation.label ? `: ${prayerLocation.label.split(",")[0]}` : ""}
                   </div>
-                  <div className="font-semibold text-primary">
+                  <div className="font-semibold text-primary whitespace-nowrap">
                     {nextPrayer.name} at {nextPrayer.time}
                   </div>
                 </div>
@@ -164,7 +164,7 @@ export default function SiteHeader() {
             )}
           </div>
 
-          <div className="flex items-center gap-0.5 sm:gap-2 shrink-0">
+          <div className="flex items-center gap-0.5 sm:gap-2 shrink-0 justify-self-end col-start-3">
             <div className="hidden md:flex items-center gap-2">
               <GlobalSearch variant="icon" />
               <LanguageSwitcher />
@@ -186,14 +186,6 @@ export default function SiteHeader() {
               <span className="hidden sm:inline-flex">
                 <UserNotificationBell />
               </span>
-            )}
-            {!isSignedIn && (
-              <Link
-                href="/auth/login"
-                className="hidden md:inline-flex h-9 px-3 items-center rounded-full border border-border text-xs font-semibold text-primary hover:bg-secondary transition"
-              >
-                {t("nav.login")}
-              </Link>
             )}
             <Link
               href={isSignedIn ? "/account" : "/auth/login"}

@@ -151,6 +151,16 @@ const startServer = async () => {
     console.warn("Notification worker not started:", (error as Error).message);
   }
 
+  try {
+    const { maybeSyncCurrencyRatesOnBoot, startCurrencyRateSyncWorker } = await import(
+      "./modules/cms/currencyRateSync.service.js"
+    );
+    await maybeSyncCurrencyRatesOnBoot();
+    startCurrencyRateSyncWorker();
+  } catch (error) {
+    console.warn("Currency rate sync not started:", (error as Error).message);
+  }
+
   process.on("SIGTERM", () => {
     httpServer.close(() => process.exit(0));
   });

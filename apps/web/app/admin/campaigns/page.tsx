@@ -1309,9 +1309,10 @@ export default function CampaignsPage() {
 
             <div className="space-y-4">
               {sortCampaignAttributes(form.attributes).map((attr, ai) => {
-                const duplicateSortOrder = form.attributes.some(
+                const conflicting = form.attributes.find(
                   (other) => other.id !== attr.id && other.sortOrder === attr.sortOrder
                 );
+                const duplicateSortOrder = Boolean(conflicting);
                 return (
                 <AttributeEditor
                   key={attr.id}
@@ -1319,6 +1320,7 @@ export default function CampaignsPage() {
                   index={ai}
                   total={form.attributes.length}
                   duplicateSortOrder={duplicateSortOrder}
+                  conflictingAttributeName={conflicting?.name}
                   onChange={(updated) =>
                     setForm((p) => ({
                       ...p,
@@ -1855,6 +1857,7 @@ function AttributeEditor({
   index,
   total,
   duplicateSortOrder = false,
+  conflictingAttributeName,
   onChange,
   onRemove,
   onMoveUp,
@@ -1865,6 +1868,7 @@ function AttributeEditor({
   index: number;
   total: number;
   duplicateSortOrder?: boolean;
+  conflictingAttributeName?: string;
   onChange: (attr: CampaignAttribute) => void;
   onRemove: () => void;
   onMoveUp: () => void;
@@ -2096,7 +2100,9 @@ function AttributeEditor({
                 1 = leftmost tab on the donation page. Use the arrows above or change this number.
               </p>
               {duplicateSortOrder && (
-                <p className="text-xs text-destructive">This position is already used by another attribute.</p>
+                <p className="text-xs text-destructive">
+                  Position {attribute.sortOrder + 1} is already used by &ldquo;{conflictingAttributeName || "another attribute"}&rdquo;. Choose a different number or use the arrows.
+                </p>
               )}
             </div>
           </div>

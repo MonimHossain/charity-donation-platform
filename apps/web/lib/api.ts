@@ -858,6 +858,43 @@ export async function adminDeleteFaq(id: string) {
   return data;
 }
 
+export async function submitDonorReview(payload: {
+  quote: string;
+  rating: number;
+  name?: string;
+  location?: string;
+}) {
+  const { data } = await api.post("/reviews", payload);
+  return data;
+}
+
+export async function fetchMyReviews() {
+  const { data } = await api.get("/reviews/my");
+  return data;
+}
+
+export async function fetchAdminReviews(status?: string) {
+  const { data } = await api.get("/admin/reviews", {
+    params: status ? { status } : {},
+  });
+  return data;
+}
+
+export async function createAdminReview(payload: Record<string, unknown>) {
+  const { data } = await api.post("/admin/reviews", payload);
+  return data;
+}
+
+export async function updateAdminReview(id: string, payload: Record<string, unknown>) {
+  const { data } = await api.patch(`/admin/reviews/${id}`, payload);
+  return data;
+}
+
+export async function deleteAdminReview(id: string) {
+  const { data } = await api.delete(`/admin/reviews/${id}`);
+  return data;
+}
+
 export async function adminUpsertSeoSettings(payload: Record<string, unknown>) {
   const { data } = await api.put("/admin/cms/seo", payload);
   return data;

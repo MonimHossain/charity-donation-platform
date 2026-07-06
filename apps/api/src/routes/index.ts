@@ -203,6 +203,21 @@ router.put("/auth/change-password", async (req, res) => {
   });
 });
 
+router.post("/reviews", async (req, res) => {
+  const { requireUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  requireUser(req, res, async () => {
+    const { submitReview } = await import("../modules/reviews/reviews.controller.js");
+    return submitReview(req, res);
+  });
+});
+router.get("/reviews/my", async (req, res) => {
+  const { requireUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  requireUser(req, res, async () => {
+    const { getMyReviews } = await import("../modules/reviews/reviews.controller.js");
+    return getMyReviews(req, res);
+  });
+});
+
 router.post("/auth/donor/check-email", authRateLimit, async (req, res) => {
   const { checkDonorEmailHandler } = await import("../modules/user-auth/donorAccess.controller.js");
   return checkDonorEmailHandler(req, res);
@@ -483,6 +498,35 @@ router.delete("/admin/cms/hero-slides/:id", requireAdmin, adminPermCheck, delete
 router.put("/admin/cms/homepage-sections/:id", requireAdmin, adminPermCheck, updateHomepageSection);
 router.post("/admin/cms/homepage-sections/reorder", requireAdmin, adminPermCheck, reorderHomepageSections);
 router.put("/admin/cms/settings", requireAdmin, adminPermCheck, updateSiteSettings);
+router.post("/admin/settings/sync-currency-rates", requireAdmin, adminPermCheck, async (req, res) => {
+  const { syncCurrencyRatesFromApi } = await import("../modules/cms/currencyRateSync.service.js");
+  try {
+    const result = await syncCurrencyRatesFromApi();
+    return res.json({
+      currencyRates: result.rates,
+      currencyRatesUpdatedAt: result.updatedAt,
+      fetched: result.fetched,
+    });
+  } catch {
+    return res.status(500).json({ message: "Failed to sync currency rates" });
+  }
+});
+router.get("/admin/reviews", requireAdmin, adminPermCheck, async (req, res) => {
+  const { getAdminReviews } = await import("../modules/reviews/reviews.controller.js");
+  return getAdminReviews(req, res);
+});
+router.post("/admin/reviews", requireAdmin, adminPermCheck, async (req, res) => {
+  const { createAdminReview } = await import("../modules/reviews/reviews.controller.js");
+  return createAdminReview(req, res);
+});
+router.patch("/admin/reviews/:id", requireAdmin, adminPermCheck, async (req, res) => {
+  const { updateAdminReview } = await import("../modules/reviews/reviews.controller.js");
+  return updateAdminReview(req, res);
+});
+router.delete("/admin/reviews/:id", requireAdmin, adminPermCheck, async (req, res) => {
+  const { deleteAdminReview } = await import("../modules/reviews/reviews.controller.js");
+  return deleteAdminReview(req, res);
+});
 router.get("/admin/backup/history", requireAdmin, adminPermCheck, async (req, res) => {
   const { getBackupHistory } = await import("../modules/backup/backup.controller.js");
   return getBackupHistory(req, res);
@@ -561,6 +605,10 @@ router.delete("/admin/cms/banners/:id", requireAdmin, adminPermCheck, async (req
 router.post("/admin/cms/faqs", requireAdmin, adminPermCheck, async (req, res) => {
   const { createFaq } = await import("../modules/cms/cmsExtended.controller.js");
   return createFaq(req, res);
+});
+router.get("/admin/cms/faqs", requireAdmin, adminPermCheck, async (req, res) => {
+  const { getAdminFaqs } = await import("../modules/cms/cmsExtended.controller.js");
+  return getAdminFaqs(req, res);
 });
 router.put("/admin/cms/faqs/:id", requireAdmin, adminPermCheck, async (req, res) => {
   const { updateFaq } = await import("../modules/cms/cmsExtended.controller.js");

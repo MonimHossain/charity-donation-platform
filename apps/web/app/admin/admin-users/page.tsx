@@ -56,6 +56,14 @@ const initialForm: FormState = {
 
 const SUPER_ADMIN_ROLE_CODE = "SUPER_ADMIN";
 
+const ORPHANED_PERMISSION_PREFIXES = ["charities.", "certifications."];
+
+function filterOrphanedPermissions(codes: string[]): string[] {
+  return codes.filter(
+    (code) => !ORPHANED_PERMISSION_PREFIXES.some((prefix) => code.startsWith(prefix))
+  );
+}
+
 function togglePermissionCode(
   current: string[],
   code: string,
@@ -153,7 +161,7 @@ export default function AdminUsersPage() {
       password: "",
       confirmPassword: "",
       isActive: u.isActive,
-      permissions: u.permissions ?? [],
+      permissions: filterOrphanedPermissions(u.permissions ?? []),
     });
     setShowPassword(false);
     setModalOpen(true);
@@ -195,7 +203,7 @@ export default function AdminUsersPage() {
         };
         if (!isSuperAdminUser(editingUser)) {
           payload.isActive = form.isActive;
-          payload.permissions = form.permissions;
+          payload.permissions = filterOrphanedPermissions(form.permissions);
         }
         await updateAdminUser(editingUser.id, payload);
       } else {
@@ -204,7 +212,7 @@ export default function AdminUsersPage() {
           email: form.email,
           password: form.password,
           isActive: form.isActive,
-          permissions: form.permissions,
+          permissions: filterOrphanedPermissions(form.permissions),
         });
       }
       toast.success(editingUser ? "User updated." : "User created.");

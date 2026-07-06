@@ -83,6 +83,9 @@ export class SiteSettings {
   @Column({ type: "json", default: {} })
   currencyRates!: Record<string, number>;
 
+  @Column({ type: "timestamptz", nullable: true })
+  currencyRatesUpdatedAt?: Date;
+
   @Column({ type: "json", default: {} })
   emailSettings!: {
     donationConfirmation?: boolean;

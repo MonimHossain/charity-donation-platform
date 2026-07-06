@@ -53,6 +53,8 @@ const nextConfig: NextConfig = {
       { source: "/campaigns/gaza", destination: "/campaigns/gaza-emergency-relief", permanent: true },
       { source: "/campaigns/water", destination: "/campaigns/clean-water-wells", permanent: true },
       { source: "/campaigns/orphans", destination: "/campaigns/orphan-sponsorship", permanent: true },
+      { source: "/admin/cms", destination: "/admin/settings?section=content", permanent: false },
+      { source: "/admin/cms/:path*", destination: "/admin/settings?section=content", permanent: false },
     ];
   },
   async rewrites() {

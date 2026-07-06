@@ -5,7 +5,6 @@ import {
   HandCoins,
   CreditCard,
   FileText,
-  Layers,
   Sparkles,
   Settings,
   Coins,
@@ -18,6 +17,7 @@ import {
   Clock,
   Send,
   ShieldCheck,
+  Star,
 } from "lucide-react";
 
 export interface AdminNavItem {
@@ -50,7 +50,7 @@ export const adminNavItems: AdminNavItem[] = [
       { label: "Categories", href: "/admin/blog/categories", icon: Tag },
     ],
   },
-  { label: "CMS", href: "/admin/cms", icon: Layers, permission: "cms.view" },
+  { label: "Reviews", href: "/admin/reviews", icon: Star, permission: "reviews.view" },
   {
     label: "Email",
     href: "/admin/email/templates",

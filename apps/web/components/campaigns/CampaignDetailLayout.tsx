@@ -98,11 +98,11 @@ export function CampaignDetailLayout({
               )}
             >
               {/* 1. Banner image */}
-              <div className="mb-6 rounded-3xl overflow-hidden border border-border shadow-lift aspect-[16/9] bg-muted">
+              <div className="mb-6 rounded-3xl overflow-hidden border border-border shadow-lift bg-muted max-h-[min(70vh,520px)] flex items-center justify-center">
                 <img
                   src={heroImage}
                   alt={campaign.title}
-                  className="w-full h-full object-cover"
+                  className="w-full h-auto max-h-[min(70vh,520px)] object-contain"
                   onError={(e) => {
                     const img = e.currentTarget;
                     if (img.src.includes("hero-1.webp")) return;

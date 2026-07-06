@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 
-import { faqItems as fallbackFaqs } from "@/lib/mock/home";
 import { useFaqs } from "@/lib/data/cms";
 
 const AccordionItem = ({ q, a }: { q: string; a: string }) => {
@@ -27,8 +26,15 @@ const AccordionItem = ({ q, a }: { q: string; a: string }) => {
 };
 
 const FAQ = () => {
-  const { data: apiFaqs } = useFaqs();
-  const faqs = (apiFaqs?.length ? apiFaqs : fallbackFaqs).map((f: { question?: string; q?: string; answer?: string; a?: string }) => ({
+  const { data: apiFaqs, isLoading } = useFaqs();
+  const published = (apiFaqs ?? []).filter(
+    (f: { isPublished?: boolean }) => f.isPublished !== false
+  );
+
+  if (isLoading) return null;
+  if (!published.length) return null;
+
+  const faqs = published.map((f: { question?: string; q?: string; answer?: string; a?: string }) => ({
     q: f.question ?? f.q ?? "",
     a: f.answer ?? f.a ?? "",
   }));

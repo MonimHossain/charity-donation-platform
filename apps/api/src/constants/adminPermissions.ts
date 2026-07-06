@@ -61,7 +61,8 @@ export const ADMIN_PERMISSION_MODULES: AdminPermissionModule[] = [
     actions: ["update"],
   }),
   mod("blog", "Blog", { navHref: "/admin/blog" }),
-  mod("cms", "CMS", { navHref: "/admin/cms" }),
+  mod("reviews", "Reviews", { navHref: "/admin/reviews" }),
+  mod("cms", "CMS", { navHref: "/admin/settings" }),
   mod("email", "Email", {
     navHref: "/admin/email/templates",
     extra: [{ code: "email.send", label: "Send", type: "action" }],
@@ -71,17 +72,7 @@ export const ADMIN_PERMISSION_MODULES: AdminPermissionModule[] = [
     navHref: "/admin/settings",
     actions: ["update"],
   }),
-  mod("charities", "Charities", { navHref: "/admin/charities" }),
   mod("donation_pages", "Donation Pages", { navHref: "/admin/donation-pages" }),
-  mod("certifications", "Certifications", {
-    navHref: "/admin/certifications",
-    actions: ["create", "update", "delete"],
-    extra: [
-      { code: "certifications.renew", label: "Renew", type: "action" },
-      { code: "certifications.expire", label: "Expire", type: "action" },
-      { code: "certifications.toggle_badge", label: "Toggle Badge", type: "action" },
-    ],
-  }),
   mod("experts", "Experts", { navHref: "/admin/experts" }),
   mod("applications", "Applications", {
     navHref: "/admin/applications",
