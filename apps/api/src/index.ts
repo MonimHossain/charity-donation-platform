@@ -111,7 +111,19 @@ app.use((_req, res) => {
 });
 
 const startServer = async () => {
-  await connectDB();
+  try {
+    await connectDB();
+  } catch (error: unknown) {
+    const err = error as { code?: string; message?: string };
+    console.error("Error during Data Source initialization:", err);
+    if (err.code === "ECONNREFUSED") {
+      console.error(
+        "Connection refused. Is PostgreSQL running? (e.g. docker compose -f infra/docker-compose.yaml up -d charity-db)"
+      );
+    }
+    console.error("Fatal: database unavailable. API not started.");
+    process.exit(1);
+  }
   try {
     await seedAdminUser();
     await seedCampaigns(AppDataSource);

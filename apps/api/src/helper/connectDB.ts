@@ -1,4 +1,6 @@
 import "reflect-metadata";
+import { fileURLToPath } from "url";
+import path from "path";
 import { DataSource } from "typeorm";
 import { ActivityLog } from "../components/activityLog/activityLog.entity.js";
 import { Admin } from "../components/admin/admin.entity.js";
@@ -50,6 +52,11 @@ const dbPassword = process.env.DB_PASSWORD ?? "admin123";
 const dbName = process.env.DB_DATABASE ?? "charity_platform";
 const dbSynchronize = (process.env.DB_SYNCHRONIZE ?? "true").toLowerCase() === "true";
 const dbLogging = (process.env.DB_LOGGING ?? "false").toLowerCase() === "true";
+
+const dbRunMigrations = (process.env.DB_RUN_MIGRATIONS ?? "true").toLowerCase() === "true";
+
+const runningFromDist = fileURLToPath(import.meta.url).includes(`${path.sep}dist${path.sep}`);
+const migrationsGlob = runningFromDist ? "dist/migration/**/*.js" : "src/migration/**/*.ts";
 
 const entities = [
   ActivityLog,
@@ -106,20 +113,20 @@ export const AppDataSource = new DataSource({
   synchronize: dbSynchronize,
   logging: dbLogging,
   entities,
-  migrations: ["src/migration/**/*.ts"],
+  migrations: [migrationsGlob],
   subscribers: [],
 });
 
 export const connectDB = async () => {
-  try {
-    if (!AppDataSource.isInitialized) {
-      await AppDataSource.initialize();
-      console.log("Database connection established.");
-    }
-  } catch (error: any) {
-    console.error("Error during Data Source initialization:", error);
-    if (error.code === "ECONNREFUSED") {
-      console.error("Connection refused. Is PostgreSQL running?");
+  if (!AppDataSource.isInitialized) {
+    await AppDataSource.initialize();
+    console.log("Database connection established.");
+
+    if (dbRunMigrations) {
+      const executed = await AppDataSource.runMigrations();
+      if (executed.length > 0) {
+        console.log(`Applied ${executed.length} database migration(s).`);
+      }
     }
   }
 };

@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "nodemon",
     "build": "shx rm -rf dist && pnpm exec tsc -p tsconfig.build.json && pnpm exec cpy \"src/**\" \"!src/**/*.ts\" \"!src/**/*.tsx\" dist --parents",
+    "migration:run": "bun --env-file=../../.env src/runMigrations.ts",
     "start": "bun --env-file=../../.env dist/index.js",
     "check-types": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
