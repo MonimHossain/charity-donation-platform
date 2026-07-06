@@ -36,7 +36,7 @@ function normalizeCurrencyRates(
 async function fetchFrankfurterRates(): Promise<Record<string, number>> {
   const symbols = SYNC_CURRENCY_CODES.join(",");
   const url = `https://api.frankfurter.app/latest?from=GBP&to=${symbols}`;
-  const res = await fetch(url);
+  const res = await fetch(url, { signal: AbortSignal.timeout(12_000) });
   if (!res.ok) {
     throw new Error(`Frankfurter API error: ${res.status}`);
   }

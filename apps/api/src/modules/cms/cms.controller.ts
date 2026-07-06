@@ -254,12 +254,25 @@ export async function updateDonationPreset(req: Request, res: Response) {
 
 export async function getTestimonials(_req: Request, res: Response) {
   try {
-    const testimonials = await AppDataSource.getRepository(Testimonial).find({
+    const repo = AppDataSource.getRepository(Testimonial);
+    const testimonials = await repo.find({
       where: { status: "approved" },
       order: { sortOrder: "ASC", createdAt: "DESC" },
     });
     return res.json(testimonials);
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (/column.*status|status.*does not exist/i.test(message)) {
+      try {
+        const testimonials = await AppDataSource.getRepository(Testimonial).find({
+          where: { isVisible: true },
+          order: { sortOrder: "ASC" },
+        });
+        return res.json(testimonials);
+      } catch {
+        /* fall through */
+      }
+    }
     return res.status(500).json({ message: "Internal server error" });
   }
 }

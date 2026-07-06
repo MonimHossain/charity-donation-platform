@@ -111,19 +111,32 @@ app.use((_req, res) => {
 });
 
 const startServer = async () => {
+  const httpServer = http.createServer(app);
+
+  process.on("SIGTERM", () => {
+    httpServer.close(() => process.exit(0));
+  });
+  process.on("SIGINT", () => {
+    httpServer.close(() => process.exit(0));
+  });
+
+  httpServer.listen(port, () => {
+    console.log(`Server running on http://localhost:${port}`);
+  });
+
   try {
     await connectDB();
   } catch (error: unknown) {
     const err = error as { code?: string; message?: string };
-    console.error("Error during Data Source initialization:", err);
+    console.error("Database startup failed:", err?.message ?? err);
     if (err.code === "ECONNREFUSED") {
-      console.error(
-        "Connection refused. Is PostgreSQL running? (e.g. docker compose -f infra/docker-compose.yaml up -d charity-db)"
-      );
+      console.error("Connection refused. Check DB_HOST / DB_PORT and that PostgreSQL is running.");
     }
-    console.error("Fatal: database unavailable. API not started.");
-    process.exit(1);
+    console.error(
+      "HTTP server is up (health OK) but API data routes will fail until the database connects."
+    );
   }
+
   try {
     await seedAdminUser();
     await seedCampaigns(AppDataSource);
@@ -143,11 +156,6 @@ const startServer = async () => {
   } catch (error) {
     console.warn("MinIO bucket init skipped (MinIO may not be running):", (error as Error).message);
   }
-
-  const httpServer = http.createServer(app);
-  httpServer.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}`);
-  });
 
   try {
     const { startAutomatedPaymentWorker } = await import("./modules/automated/automatedPayment.service.js");
@@ -172,13 +180,8 @@ const startServer = async () => {
   } catch (error) {
     console.warn("Currency rate sync not started:", (error as Error).message);
   }
-
-  process.on("SIGTERM", () => {
-    httpServer.close(() => process.exit(0));
-  });
-  process.on("SIGINT", () => {
-    httpServer.close(() => process.exit(0));
-  });
 };
 
-startServer();
+startServer().catch((error) => {
+  console.error("Unhandled startServer error:", error);
+});

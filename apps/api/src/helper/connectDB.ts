@@ -44,6 +44,7 @@ import { User } from "../components/user/user.entity.js";
 import { ZakatCalculation } from "../components/zakat/zakatCalculation.entity.js";
 import { ZakatPage } from "../components/cms/zakatPage.entity.js";
 import { BackupHistory } from "../components/backup/backupHistory.entity.js";
+import { applyPlatformEnhancementSchemaPatches } from "./schemaPatches.js";
 
 const dbHost = process.env.DB_HOST ?? "localhost";
 const dbPort = Number(process.env.DB_PORT ?? 54322);
@@ -55,8 +56,15 @@ const dbLogging = (process.env.DB_LOGGING ?? "false").toLowerCase() === "true";
 
 const dbRunMigrations = (process.env.DB_RUN_MIGRATIONS ?? "true").toLowerCase() === "true";
 
-const runningFromDist = fileURLToPath(import.meta.url).includes(`${path.sep}dist${path.sep}`);
-const migrationsGlob = runningFromDist ? "dist/migration/**/*.js" : "src/migration/**/*.ts";
+const helperDir = path.dirname(fileURLToPath(import.meta.url));
+const apiRoot = path.resolve(helperDir, "..");
+const runningFromDist = apiRoot.endsWith(`${path.sep}dist`);
+const migrationsGlob = path.join(
+  apiRoot,
+  "migration",
+  "**",
+  runningFromDist ? "*.js" : "*.ts"
+);
 
 const entities = [
   ActivityLog,
@@ -120,12 +128,25 @@ export const AppDataSource = new DataSource({
 export const connectDB = async () => {
   if (!AppDataSource.isInitialized) {
     await AppDataSource.initialize();
-    console.log("Database connection established.");
+    console.log(
+      `Database connection established (synchronize=${dbSynchronize}).`
+    );
 
-    if (dbRunMigrations) {
-      const executed = await AppDataSource.runMigrations();
-      if (executed.length > 0) {
-        console.log(`Applied ${executed.length} database migration(s).`);
+    if (!dbSynchronize) {
+      await applyPlatformEnhancementSchemaPatches(AppDataSource);
+
+      if (dbRunMigrations) {
+        try {
+          const executed = await AppDataSource.runMigrations();
+          if (executed.length > 0) {
+            console.log(`Applied ${executed.length} database migration(s).`);
+          }
+        } catch (error) {
+          console.warn(
+            "TypeORM runMigrations failed (schema patches were applied):",
+            (error as Error).message
+          );
+        }
       }
     }
   }
