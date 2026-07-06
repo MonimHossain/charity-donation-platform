@@ -6,6 +6,7 @@ import { Clock, Users, Target, ArrowRight, Flame } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useHomepageFundraisers } from "@/lib/data/campaigns";
 import { getCampaignCardImage } from "@/lib/campaign-media";
+import { getDisplayDonorCount } from "@/lib/campaign-fundraising";
 import { useCurrency } from "@/lib/currency";
 
 type Fundraiser = {
@@ -53,7 +54,10 @@ function mapFundraiser(c: Record<string, unknown>): Fundraiser | null {
     }),
     raised,
     goal: goal > 0 ? goal : 1,
-    donors: Number(c.donorCount ?? 0),
+    donors: getDisplayDonorCount({
+      donorCount: Number(c.donorCount ?? 0),
+      displayDonorOffset: Number(c.displayDonorOffset ?? 0),
+    }),
     currency: String(c.currency ?? "GBP"),
     endsAt,
     urgent: Boolean(c.isUrgent),

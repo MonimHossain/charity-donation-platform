@@ -151,6 +151,7 @@ const ADMIN_PAGE_PERMISSION_OVERRIDES: { prefix: string; permission: string }[] 
   { prefix: "/admin/notifications", permission: "dashboard.view" },
   { prefix: "/admin/logs", permission: "activity.view" },
   { prefix: "/admin/dashboard-overview", permission: "dashboard.view" },
+  { prefix: "/admin/file-manager", permission: "cms.view" },
 ];
 
 export function validatePermissionCodes(

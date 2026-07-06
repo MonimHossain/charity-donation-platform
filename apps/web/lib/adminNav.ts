@@ -18,6 +18,7 @@ import {
   Send,
   ShieldCheck,
   Star,
+  FolderOpen,
 } from "lucide-react";
 
 export interface AdminNavItem {
@@ -51,6 +52,7 @@ export const adminNavItems: AdminNavItem[] = [
     ],
   },
   { label: "Reviews", href: "/admin/reviews", icon: Star, permission: "reviews.view" },
+  { label: "File Manager", href: "/admin/file-manager", icon: FolderOpen, permission: "cms.view" },
   {
     label: "Email",
     href: "/admin/email/templates",

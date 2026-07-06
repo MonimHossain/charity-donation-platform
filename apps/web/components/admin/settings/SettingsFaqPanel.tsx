@@ -25,6 +25,11 @@ import {
 } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
 import { adminCreateFaq, adminDeleteFaq, adminUpdateFaq } from "@/lib/api";
+import RichTextEditor from "@/components/admin/RichTextEditor";
+
+function stripHtmlPreview(html: string): string {
+  return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
 
 interface FaqItem {
   id: string;
@@ -202,7 +207,9 @@ export function SettingsFaqPanel() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-sm">{item.question}</p>
-                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.answer}</p>
+                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                  {stripHtmlPreview(item.answer) || "—"}
+                </p>
                 {item.category && item.category !== "general" && (
                   <span className="inline-block mt-2 text-[10px] uppercase tracking-wide text-muted-foreground">
                     {item.category}
@@ -235,7 +242,7 @@ export function SettingsFaqPanel() {
       )}
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingId ? "Edit FAQ" : "Add FAQ"}</DialogTitle>
           </DialogHeader>
@@ -249,11 +256,10 @@ export function SettingsFaqPanel() {
             </div>
             <div className="space-y-2">
               <Label>Answer</Label>
-              <textarea
-                rows={4}
+              <RichTextEditor
                 value={form.answer}
-                onChange={(e) => setForm((p) => ({ ...p, answer: e.target.value }))}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                onChange={(html) => setForm((p) => ({ ...p, answer: html }))}
+                placeholder="Write the answer…"
               />
             </div>
             <div className="space-y-2">

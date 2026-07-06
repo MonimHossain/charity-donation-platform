@@ -51,7 +51,9 @@ import {
 } from "@/lib/campaign-experience";
 import {
   hasDuplicateAttributeSortOrders,
+  nextAttributeSortOrder,
   sortCampaignAttributes,
+  swapAttributeSortOrders,
   syncAttributeSortOrders,
 } from "@/lib/campaign-attributes";
 import {
@@ -1260,7 +1262,7 @@ export default function CampaignsPage() {
                 onClick={() =>
                   setForm((p) => ({
                     ...p,
-                    attributes: syncAttributeSortOrders([newAttribute(p.attributes.length), ...p.attributes]),
+                    attributes: [newAttribute(nextAttributeSortOrder(p.attributes)), ...p.attributes],
                   }))
                 }
               >
@@ -1324,52 +1326,51 @@ export default function CampaignsPage() {
                   onChange={(updated) =>
                     setForm((p) => ({
                       ...p,
-                      attributes: syncAttributeSortOrders(
-                        p.attributes.map((a) => (a.id === updated.id ? updated : a))
-                      ),
+                      attributes: p.attributes.map((a) => (a.id === updated.id ? updated : a)),
                     }))
                   }
                   onRemove={() =>
                     setForm((p) => ({
                       ...p,
-                      attributes: syncAttributeSortOrders(p.attributes.filter((a) => a.id !== attr.id)),
+                      attributes: p.attributes.filter((a) => a.id !== attr.id),
                     }))
                   }
                   onMoveUp={() =>
                     setForm((p) => {
-                      if (ai === 0) return p;
                       const sorted = sortCampaignAttributes(p.attributes);
-                      const arr = [...sorted];
-                      const prev = arr[ai - 1];
-                      const curr = arr[ai];
-                      if (prev && curr) {
-                        arr[ai - 1] = curr;
-                        arr[ai] = prev;
-                      }
-                      return { ...p, attributes: syncAttributeSortOrders(arr) };
+                      const curr = sorted[ai];
+                      const prev = sorted[ai - 1];
+                      if (!curr || !prev || ai === 0) return p;
+                      return {
+                        ...p,
+                        attributes: swapAttributeSortOrders(p.attributes, curr.id, prev.id),
+                      };
                     })
                   }
                   onMoveDown={() =>
                     setForm((p) => {
-                      if (ai >= p.attributes.length - 1) return p;
                       const sorted = sortCampaignAttributes(p.attributes);
-                      const arr = [...sorted];
-                      const curr = arr[ai];
-                      const next = arr[ai + 1];
-                      if (curr && next) {
-                        arr[ai] = next;
-                        arr[ai + 1] = curr;
-                      }
-                      return { ...p, attributes: syncAttributeSortOrders(arr) };
+                      const curr = sorted[ai];
+                      const next = sorted[ai + 1];
+                      if (!curr || !next || ai >= sorted.length - 1) return p;
+                      return {
+                        ...p,
+                        attributes: swapAttributeSortOrders(p.attributes, curr.id, next.id),
+                      };
                     })
                   }
                   onDuplicate={() =>
                     setForm((p) => ({
                       ...p,
-                      attributes: syncAttributeSortOrders([
-                        { ...attr, id: uid(), name: `${attr.name} (copy)` },
+                      attributes: [
+                        {
+                          ...attr,
+                          id: uid(),
+                          name: `${attr.name} (copy)`,
+                          sortOrder: nextAttributeSortOrder(p.attributes),
+                        },
                         ...p.attributes,
-                      ]),
+                      ],
                     }))
                   }
                 />

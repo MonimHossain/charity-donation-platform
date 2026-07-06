@@ -13,10 +13,11 @@ import {
   Database,
   Download,
   Coins,
-  Layers,
   HelpCircle,
   Search,
   RefreshCw,
+  ImageIcon,
+  Calculator,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +33,7 @@ import {
   type CurrencyCode,
 } from "@/lib/currency";
 import { AdminChangePasswordForm } from "@/components/admin/AdminChangePasswordForm";
-import { SettingsContentPanel, SettingsSeoPanel } from "@/components/admin/settings/SettingsContentPanel";
+import { SettingsHeroPanel, SettingsSeoPanel, SettingsZakatPanel } from "@/components/admin/settings/SettingsContentPanel";
 import { SettingsFaqPanel } from "@/components/admin/settings/SettingsFaqPanel";
 
 interface SettingsData {
@@ -126,13 +127,15 @@ const defaultSettings: SettingsData = {
   },
 };
 
-type Tab = "general" | "content" | "faq" | "seo" | "email" | "payment" | "currency" | "security" | "backup";
+type Tab = "general" | "hero" | "zakat" | "faq" | "seo" | "email" | "payment" | "currency" | "security" | "backup";
 
 const TAB_FROM_SECTION: Record<string, Tab> = {
-  content: "content",
+  general: "general",
+  hero: "hero",
+  zakat: "zakat",
+  content: "hero",
   faq: "faq",
   seo: "seo",
-  general: "general",
   email: "email",
   payment: "payment",
   currency: "currency",
@@ -143,7 +146,6 @@ const TAB_FROM_SECTION: Record<string, Tab> = {
 function AdminSettingsPageInner() {
   const searchParams = useSearchParams();
   const sectionParam = searchParams.get("section");
-  const contentParam = searchParams.get("content") ?? undefined;
   const initialTab = (sectionParam && TAB_FROM_SECTION[sectionParam]) || "general";
 
   const [settings, setSettings] = useState<SettingsData>(defaultSettings);
@@ -367,7 +369,8 @@ function AdminSettingsPageInner() {
 
   const tabs: { key: Tab; label: string; icon: React.ElementType }[] = [
     { key: "general", label: "General", icon: Globe },
-    { key: "content", label: "Content", icon: Layers },
+    { key: "hero", label: "Hero", icon: ImageIcon },
+    { key: "zakat", label: "Zakat", icon: Calculator },
     { key: "faq", label: "FAQ", icon: HelpCircle },
     { key: "seo", label: "SEO", icon: Search },
     { key: "email", label: "Email", icon: Mail },
@@ -377,7 +380,7 @@ function AdminSettingsPageInner() {
     { key: "backup", label: "Backup", icon: Database },
   ];
 
-  const showSaveButton = !["backup", "content", "faq", "seo"].includes(tab);
+  const showSaveButton = !["backup", "hero", "zakat", "faq", "seo"].includes(tab);
 
   if (loading) {
     return (
@@ -422,7 +425,9 @@ function AdminSettingsPageInner() {
         ))}
       </div>
 
-      {tab === "content" && <SettingsContentPanel initialSubTab={contentParam} />}
+      {tab === "hero" && <SettingsHeroPanel />}
+
+      {tab === "zakat" && <SettingsZakatPanel />}
 
       {tab === "faq" && (
         <div className="rounded-2xl border bg-card shadow-soft p-4 sm:p-6">
