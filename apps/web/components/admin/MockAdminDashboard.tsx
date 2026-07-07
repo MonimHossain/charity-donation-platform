@@ -7,9 +7,6 @@ import {
   Users,
   Newspaper,
   TrendingUp,
-  ClipboardList,
-  ShieldCheck,
-  BadgeCheck,
 } from "lucide-react";
 import {
   demoCampaigns,
@@ -32,12 +29,6 @@ export default function MockAdminDashboard() {
     { label: "Donors", value: String(totalDonors), href: "/admin/users", icon: Users },
     { label: "Blog posts", value: String(demoBlogPosts.filter((b) => b.status === "published").length), href: "/admin/blog", icon: Newspaper },
     { label: "Recurring", value: String(recurringCount), href: "/admin/recurring", icon: TrendingUp },
-  ];
-
-  const operationsCards = [
-    { label: "Passed Audits", value: "—", icon: ShieldCheck },
-    { label: "Under Review", value: "—", icon: ClipboardList },
-    { label: "Valid Certificates", value: "—", icon: BadgeCheck },
   ];
 
   return (
@@ -70,27 +61,6 @@ export default function MockAdminDashboard() {
             </Link>
           ))}
         </div>
-      </section>
-
-      <section className="space-y-4">
-        <div>
-          <h2 className="text-lg font-serif font-bold">Operations</h2>
-          <p className="text-sm text-muted-foreground">Audits, certifications, and platform health</p>
-        </div>
-        <div className="grid sm:grid-cols-3 gap-4">
-          {operationsCards.map((c) => (
-            <div key={c.label} className="rounded-2xl bg-card border border-border p-5 shadow-soft">
-              <c.icon className="w-5 h-5 text-muted-foreground" />
-              <p className="mt-4 text-xs uppercase tracking-widest text-muted-foreground font-semibold">
-                {c.label}
-              </p>
-              <p className="font-serif text-2xl font-bold text-muted-foreground mt-1">{c.value}</p>
-            </div>
-          ))}
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Operations data requires API — connect backend for full dashboard.
-        </p>
       </section>
 
       <p className="text-xs text-muted-foreground">

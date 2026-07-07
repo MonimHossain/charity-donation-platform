@@ -3,9 +3,6 @@
 import { USE_MOCK_DATA } from "@/lib/config";
 import MockAdminDashboard from "@/components/admin/MockAdminDashboard";
 import { DashboardQuickActions } from "@/components/admin/dashboard/DashboardQuickActions";
-import { DashboardStatCard } from "@/components/admin/dashboard/DashboardStatCard";
-import { ExpiringCertificationsTable } from "@/components/admin/dashboard/ExpiringCertificationsTable";
-import { RecentSubmissionsTable } from "@/components/admin/dashboard/RecentSubmissionsTable";
 import { RamadanSplitDashboardSection } from "@/components/admin/dashboard/RamadanSplitDashboardSection";
 import RevenueBarChart from "@/components/admin/RevenueBarChart";
 import { useState, useEffect } from "react";
@@ -20,11 +17,6 @@ import {
   ArrowUpRight,
   AlertTriangle,
   Repeat,
-  BadgeCheck,
-  ClipboardList,
-  FileText,
-  Landmark,
-  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -33,7 +25,6 @@ import {
   fetchDonationStats,
   fetchAdminDonations,
   fetchCampaigns,
-  fetchAdminDashboardOverview,
 } from "@/lib/api";
 import {
   formatDonationTypeLabel,
@@ -53,24 +44,6 @@ function donationTypeBadgeClass(donationType?: string): string {
   if (donationType === "ramadan") return "bg-amber-100 text-amber-800";
   return "bg-slate-100 text-slate-600";
 }
-
-interface OverviewStats {
-  totalCharities: number;
-  passedAudits: number;
-  underReview: number;
-  validCertificates: number;
-  expiredCertificates: number;
-  newSubmissions: number;
-}
-
-const EMPTY_OVERVIEW_STATS: OverviewStats = {
-  totalCharities: 0,
-  passedAudits: 0,
-  underReview: 0,
-  validCertificates: 0,
-  expiredCertificates: 0,
-  newSubmissions: 0,
-};
 
 function DashboardSection({
   title,
@@ -99,10 +72,7 @@ export default function AdminDashboardPage() {
 
 function AdminDashboardPageApi() {
   const [fundraisingLoading, setFundraisingLoading] = useState(true);
-  const [overviewLoading, setOverviewLoading] = useState(true);
-  const [overviewError, setOverviewError] = useState<string | null>(null);
   const [stats, setStats] = useState<any>(null);
-  const [overview, setOverview] = useState<any>(null);
   const [recentDonations, setRecentDonations] = useState<any[]>([]);
   const [campaigns, setCampaigns] = useState<any[]>([]);
 
@@ -143,22 +113,7 @@ function AdminDashboardPageApi() {
       }
     }
 
-    async function loadOverview() {
-      setOverviewError(null);
-      try {
-        const data = await fetchAdminDashboardOverview();
-        if (!active) return;
-        setOverview(data);
-      } catch {
-        if (!active) return;
-        setOverviewError("Operations data failed to load. Please refresh and try again.");
-      } finally {
-        if (active) setOverviewLoading(false);
-      }
-    }
-
     loadFundraising();
-    loadOverview();
     return () => {
       active = false;
     };
@@ -219,24 +174,7 @@ function AdminDashboardPageApi() {
     },
   ];
 
-  const overviewStats: OverviewStats = overview?.stats ?? EMPTY_OVERVIEW_STATS;
-
-  const operationsCards = [
-    { title: "Total Charities", value: overviewStats.totalCharities, icon: Landmark, accent: "text-primary bg-primary/10" },
-    { title: "Passed Audits", value: overviewStats.passedAudits, icon: ShieldCheck, accent: "text-emerald-600 bg-emerald-100" },
-    { title: "Under Review", value: overviewStats.underReview, icon: ClipboardList, accent: "text-blue-600 bg-blue-100" },
-    { title: "Valid Certificates", value: overviewStats.validCertificates, icon: BadgeCheck, accent: "text-violet-600 bg-violet-100" },
-    {
-      title: "Expired Certificates",
-      value: overviewStats.expiredCertificates,
-      icon: AlertTriangle,
-      accent: "text-amber-600 bg-amber-100",
-      highlight: overviewStats.expiredCertificates > 0,
-    },
-    { title: "New Submissions", value: overviewStats.newSubmissions, icon: FileText, accent: "text-orange-600 bg-orange-100" },
-  ];
-
-  const initialLoad = fundraisingLoading && overviewLoading;
+  const initialLoad = fundraisingLoading;
 
   if (initialLoad) {
     return (
@@ -267,7 +205,7 @@ function AdminDashboardPageApi() {
       <header>
         <h1 className="text-3xl font-bold font-serif tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground mt-1 max-w-2xl">
-          Your complete command centre — fundraising performance, campaign progress, audits, and submissions in one place.
+          Your command centre for fundraising performance and campaign progress.
         </p>
       </header>
 
@@ -352,28 +290,7 @@ function AdminDashboardPageApi() {
         <DashboardQuickActions />
       </div>
 
-      <DashboardSection title="Operations" description="Audits, certifications, and platform health">
-        {overviewError && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {overviewError}
-          </div>
-        )}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-          {operationsCards.map((item) => (
-            <DashboardStatCard
-              key={item.title}
-              title={item.title}
-              value={item.value}
-              icon={item.icon}
-              accent={item.accent}
-              highlight={item.highlight}
-              loading={overviewLoading}
-            />
-          ))}
-        </div>
-      </DashboardSection>
-
-      <DashboardSection title="Activity" description="Latest donations, campaigns, and submissions">
+      <DashboardSection title="Activity" description="Latest donations and campaigns">
         <div className="grid gap-6 lg:grid-cols-2">
           <div className="rounded-2xl border bg-card shadow-soft">
             <div className="flex items-center justify-between p-5">
@@ -503,11 +420,7 @@ function AdminDashboardPageApi() {
             </div>
           </div>
         </div>
-
-        <RecentSubmissionsTable items={overview?.recentSubmissions ?? []} loading={overviewLoading} />
       </DashboardSection>
-
-      <ExpiringCertificationsTable items={overview?.expiringCertifications ?? []} loading={overviewLoading} />
     </div>
   );
 }
