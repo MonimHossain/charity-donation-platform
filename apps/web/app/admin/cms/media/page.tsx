@@ -524,7 +524,7 @@ export default function MediaPage() {
                 {selectedFile.type.startsWith("image/") ? (
                   <img src={resolveMediaUrl(selectedFile.url) ?? selectedFile.url} alt={selectedFile.alt || selectedFile.name} className="w-full h-full object-contain" />
                 ) : selectedFile.type.startsWith("video/") ? (
-                  <video src={selectedFile.url} controls className="w-full h-full object-contain" />
+                  <video src={resolveMediaUrl(selectedFile.url) ?? selectedFile.url} controls playsInline className="w-full h-full object-contain" />
                 ) : (
                   <div className="flex flex-col items-center gap-2">
                     <FileText className="h-12 w-12 text-muted-foreground" />

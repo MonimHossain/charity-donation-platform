@@ -231,7 +231,7 @@ export function MediaPickerDialog({
                     key={file.id}
                     type="button"
                     onClick={() => {
-                      onSelect(file.url, file);
+                      onSelect(resolveMediaUrl(file.url) ?? file.url, file);
                       onOpenChange(false);
                     }}
                     className={cn(

@@ -171,7 +171,8 @@ export const ResizableVideo = Node.create({
       mergeAttributes(rest, {
         class: "my-3 rounded-lg max-w-full",
         style: styleParts.join(";"),
-        controls: HTMLAttributes.controls === false ? undefined : "true",
+        controls: HTMLAttributes.controls === false ? undefined : "",
+        playsinline: "",
         preload: HTMLAttributes.preload || "metadata",
         width: width ?? undefined,
         height: height ?? undefined,
@@ -194,6 +195,7 @@ export const ResizableVideo = Node.create({
       el.src = HTMLAttributes.src;
       el.className = "my-3 rounded-lg max-w-full block";
       el.controls = true;
+      el.playsInline = true;
       if (HTMLAttributes.width) el.style.width = `${HTMLAttributes.width}px`;
       if (HTMLAttributes.height) el.style.height = `${HTMLAttributes.height}px`;
 

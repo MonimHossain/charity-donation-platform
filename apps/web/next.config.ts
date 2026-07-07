@@ -62,15 +62,8 @@ const nextConfig: NextConfig = {
     ];
   },
   async rewrites() {
-    const minioHost = process.env.MINIO_ENDPOINT || "localhost";
-    const minioPort = process.env.MINIO_PORT || "9002";
-    const bucket = process.env.MINIO_BUCKET_MEDIA || process.env.MINIO_BUCKET_NAME || "charity-media";
-    return [
-      {
-        source: "/charity-media/:path*",
-        destination: `http://${minioHost}:${minioPort}/${bucket}/:path*`,
-      },
-    ];
+    // Media is served by app/charity-media/[[...path]]/route.ts (Range-aware for HTML5 video).
+    return [];
   },
   images: {
     remotePatterns: buildImageRemotePatterns(),
