@@ -181,12 +181,12 @@ function BlogDetailPageApi({ slug }: { slug: string }) {
       <section className="container mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 overflow-visible">
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px] xl:grid-cols-[minmax(0,1fr)_300px] lg:items-stretch overflow-visible">
           {/* Main Content */}
-          <article className="min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-white p-6 shadow-sm md:p-8">
+          <article className="min-w-0 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm md:p-8">
             {post.featuredImage && (
               <img
                 src={resolveMediaUrl(post.featuredImage) ?? post.featuredImage}
                 alt={post.title}
-                className="h-80 w-full rounded-xl object-cover mb-8"
+                className="mb-8 w-full h-auto max-w-full rounded-xl border border-gray-100 object-contain"
               />
             )}
             <BlogContentRenderer content={post.content} />
