@@ -187,8 +187,9 @@ function BlogDetailPageApi({ slug }: { slug: string }) {
             <BlogContentRenderer content={post.content} />
           </article>
 
-          {/* Sidebar */}
-          <aside className="space-y-6 lg:sticky lg:top-24">
+          {/* Sidebar — sticks below site nav while reading the article */}
+          <aside className="w-full lg:self-start">
+            <div className="space-y-6 lg:sticky lg:top-20 lg:z-10 lg:max-h-[calc(100dvh-5.5rem)] lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
             {/* Share Card */}
             <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
               <p className="text-xs font-medium uppercase tracking-wider text-purple-600">Share</p>
@@ -280,6 +281,7 @@ function BlogDetailPageApi({ slug }: { slug: string }) {
               </svg>
               Back to all articles
             </Link>
+            </div>
           </aside>
         </div>
       </section>
