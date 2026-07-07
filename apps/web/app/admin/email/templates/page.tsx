@@ -29,6 +29,7 @@ interface EmailTemplateRow {
 
 const MERGE_TAG_HINTS = [
   "{{donorName}}",
+  "{{userName}}",
   "{{donorEmail}}",
   "{{amount}}",
   "{{totalAmount}}",

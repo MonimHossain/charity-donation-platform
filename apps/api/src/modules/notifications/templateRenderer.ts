@@ -5,9 +5,38 @@ function formatValue(value: unknown): string {
   return String(value);
 }
 
+/** Unwrap common HTML entity encodings so `&#123;&#123;donorName&#125;&#125;` still merges. */
+function decodeMergeBraceEntities(text: string): string {
+  return text
+    .replace(/&#123;/g, "{")
+    .replace(/&#125;/g, "}")
+    .replace(/&lcub;/gi, "{")
+    .replace(/&rcub;/gi, "}");
+}
+
+/** Normalize name fields and common aliases used in templates. */
+export function enrichMergeData(data: MergeData): MergeData {
+  const email = formatValue(data.donorEmail);
+  const fromFields = formatValue(
+    data.donorName ?? data.userName ?? data.username ?? data.name
+  );
+  const donorName =
+    fromFields || (email.includes("@") ? email.split("@")[0] || "Friend" : "Friend");
+
+  return {
+    ...data,
+    donorName,
+    userName: donorName,
+    username: donorName,
+    name: donorName,
+  };
+}
+
 export function renderTemplateString(template: string, data: MergeData): string {
-  return template.replace(/\{\{(\w+)\}\}/g, (_match, key: string) => {
-    return formatValue(data[key]);
+  const merged = enrichMergeData(data);
+  const source = decodeMergeBraceEntities(template);
+  return source.replace(/\{\{\s*(\w+)\s*\}\}/g, (_match, key: string) => {
+    return formatValue(merged[key]);
   });
 }
 

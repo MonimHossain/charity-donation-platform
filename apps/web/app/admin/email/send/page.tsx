@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Loader2, Send } from "lucide-react";
 import type { DonorSegmentParams } from "@repo/shared-types";
@@ -15,8 +15,8 @@ import {
   fetchAdminUsers,
   fetchDonorSegmentAllIds,
   fetchDonorSegmentUsers,
+  fetchEmailTemplate,
   fetchEmailTemplates,
-  previewEmailTemplate,
   sendBulkEmail,
 } from "@/lib/api";
 
@@ -50,6 +50,7 @@ export default function EmailSendPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
+  const templateBaselineRef = useRef({ subject: "", htmlBody: "" });
 
   useEffect(() => {
     void fetchEmailTemplates()
@@ -103,11 +104,21 @@ export default function EmailSendPage() {
   }, [segment, search]);
 
   useEffect(() => {
-    if (!templateId) return;
-    void previewEmailTemplate({ templateId }).then((res) => {
-      setSubjectOverride(res.subject || "");
-      setHtmlOverride(res.html || "");
-    });
+    if (!templateId) {
+      setSubjectOverride("");
+      setHtmlOverride("");
+      templateBaselineRef.current = { subject: "", htmlBody: "" };
+      return;
+    }
+    void fetchEmailTemplate(templateId)
+      .then((tpl) => {
+        const subject = tpl.subject || "";
+        const htmlBody = tpl.htmlBody || "";
+        templateBaselineRef.current = { subject, htmlBody };
+        setSubjectOverride(subject);
+        setHtmlOverride(htmlBody);
+      })
+      .catch(() => toast.error("Failed to load template"));
   }, [templateId]);
 
   function toggleUser(id: string) {
@@ -155,8 +166,12 @@ export default function EmailSendPage() {
       const res = await sendBulkEmail({
         userIds: Array.from(selectedUsers),
         templateId,
-        subjectOverride: subjectOverride || undefined,
-        htmlOverride: htmlOverride || undefined,
+        subjectOverride:
+          subjectOverride !== templateBaselineRef.current.subject
+            ? subjectOverride
+            : undefined,
+        htmlOverride:
+          htmlOverride !== templateBaselineRef.current.htmlBody ? htmlOverride : undefined,
         sendNow: true,
       });
       toast.success(`Sent: ${res.stats?.sent ?? 0}, failed: ${res.stats?.failed ?? 0}`);
@@ -212,6 +227,9 @@ export default function EmailSendPage() {
           </div>
           <div className="grid gap-2">
             <Label>Body (editable)</Label>
+            <p className="text-xs text-muted-foreground">
+              Use merge tags like {"{{donorName}}"} — each recipient gets their own name when you send.
+            </p>
             <RichTextEditor value={htmlOverride} onChange={setHtmlOverride} />
           </div>
           <Button onClick={() => void handleSend()} disabled={sending}>
