@@ -8,10 +8,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { FilePicker } from "@/components/ui/file-picker";
 import { cn } from "@/lib/utils";
 import RichTextEditor from "@/components/admin/RichTextEditor";
+import { EntitySeoSettingsForm } from "@/components/admin/EntitySeoSettingsForm";
+import { EntityFaqEditor } from "@/components/admin/EntityFaqEditor";
+import {
+  emptyEntitySeoSettings,
+  normalizeEntitySeoSettings,
+  type EntityFaqItem,
+  type EntitySeoSettings,
+} from "@repo/shared-types";
 import {
   fetchAdminBlogPosts,
   fetchAdminBlogPost,
@@ -42,6 +49,8 @@ interface BlogPost {
   isFeatured?: boolean;
   metaTitle?: string;
   metaDescription?: string;
+  seoSettings?: EntitySeoSettings;
+  faqs?: EntityFaqItem[];
   publishedAt?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -79,13 +88,14 @@ export default function AdminBlogPage() {
   const [featuredImage, setFeaturedImage] = useState("");
   const [status, setStatus] = useState("draft");
   const [isFeatured, setIsFeatured] = useState(false);
-  const [metaTitle, setMetaTitle] = useState("");
-  const [metaDescription, setMetaDescription] = useState("");
   const [publishedAt, setPublishedAt] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [tagDraft, setTagDraft] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [categories, setCategories] = useState<BlogCategory[]>([]);
+  const [editorTab, setEditorTab] = useState<"publish" | "seo" | "faq" | "content">("publish");
+  const [seoSettings, setSeoSettings] = useState<EntitySeoSettings>(emptyEntitySeoSettings());
+  const [faqs, setFaqs] = useState<EntityFaqItem[]>([]);
 
   useEffect(() => {
     fetchAdminBlogCategories()
@@ -114,8 +124,11 @@ export default function AdminBlogPage() {
   function resetForm() {
     setTitle(""); setSlug(""); setSlugLocked(false); setExcerpt(""); setContent("");
     setAuthor("Editorial Team"); setFeaturedImage(""); setStatus("draft"); setIsFeatured(false);
-    setMetaTitle(""); setMetaDescription(""); setPublishedAt(""); setTags([]); setTagDraft("");
+    setPublishedAt(""); setTags([]); setTagDraft("");
     setCategoryId("");
+    setSeoSettings(emptyEntitySeoSettings());
+    setFaqs([]);
+    setEditorTab("publish");
   }
 
   function openCreate() {
@@ -139,8 +152,13 @@ export default function AdminBlogPage() {
       setFeaturedImage(p.featuredImage || "");
       setStatus(p.status || "draft");
       setIsFeatured(p.isFeatured || false);
-      setMetaTitle(p.metaTitle || "");
-      setMetaDescription(p.metaDescription || "");
+      setSeoSettings(
+        normalizeEntitySeoSettings(p.seoSettings, {
+          metaTitle: p.metaTitle,
+          metaDescription: p.metaDescription,
+        })
+      );
+      setFaqs(Array.isArray(p.faqs) ? p.faqs : []);
       setPublishedAt(p.publishedAt ? new Date(p.publishedAt).toISOString().slice(0, 16) : "");
       setTags(p.tags || []);
       setCategoryId(p.categoryId || "");
@@ -186,8 +204,10 @@ export default function AdminBlogPage() {
       categoryId: categoryId || null,
       status,
       isFeatured,
-      metaTitle: metaTitle.trim() || undefined,
-      metaDescription: metaDescription.trim() || undefined,
+      metaTitle: seoSettings.metaTitle?.trim() || undefined,
+      metaDescription: seoSettings.metaDescription?.trim() || undefined,
+      seoSettings,
+      faqs,
       publishedAt: resolvedPublishedAt,
     };
 
@@ -369,9 +389,34 @@ export default function AdminBlogPage() {
         </div>
       ) : (
         <>
-          {/* Post Details Card */}
+          <div className="flex flex-wrap gap-2 border-b pb-2">
+            {(
+              [
+                ["publish", "Publish"],
+                ["seo", "SEO & Publish"],
+                ["faq", "FAQ"],
+                ["content", "Article Content"],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setEditorTab(id)}
+                className={cn(
+                  "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
+                  editorTab === id
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {editorTab === "publish" && (
           <div className="rounded-2xl border bg-card shadow-soft p-6 space-y-5">
-            <h2 className="text-sm font-semibold">Post Details</h2>
+            <h2 className="text-sm font-semibold">Publish</h2>
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-1">
@@ -499,22 +544,32 @@ export default function AdminBlogPage() {
                 </label>
               </div>
             </div>
-
-            <Separator />
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-1">
-                <Label className="text-xs">Meta Title (SEO)</Label>
-                <Input value={metaTitle} onChange={(e) => setMetaTitle(e.target.value)} placeholder="SEO title" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Meta Description (SEO)</Label>
-                <Input value={metaDescription} onChange={(e) => setMetaDescription(e.target.value)} placeholder="SEO description" />
-              </div>
-            </div>
           </div>
+          )}
 
-          {/* Content Editor Card */}
+          {editorTab === "seo" && (
+            <div className="rounded-2xl border bg-card shadow-soft p-6">
+              <EntitySeoSettingsForm
+                value={seoSettings}
+                onChange={setSeoSettings}
+                fallbacks={{
+                  title,
+                  description: excerpt,
+                  excerpt,
+                  image: featuredImage,
+                }}
+                description="Custom metadata for this article. Empty fields fall back to title, excerpt, and featured image."
+              />
+            </div>
+          )}
+
+          {editorTab === "faq" && (
+            <div className="rounded-2xl border bg-card shadow-soft p-6">
+              <EntityFaqEditor items={faqs} onChange={setFaqs} />
+            </div>
+          )}
+
+          {editorTab === "content" && (
           <div className="rounded-2xl border bg-card shadow-soft p-6 space-y-4">
             <div>
               <h2 className="text-sm font-semibold">Article Content *</h2>
@@ -530,6 +585,7 @@ export default function AdminBlogPage() {
               enableCampaignEmbeds
             />
           </div>
+          )}
 
           {/* Actions */}
           <div className="flex flex-wrap items-center justify-between gap-3">

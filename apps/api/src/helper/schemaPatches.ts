@@ -14,6 +14,9 @@ export async function applyPlatformEnhancementSchemaPatches(
     `ALTER TABLE testimonials ADD COLUMN IF NOT EXISTS "userId" uuid`,
     `ALTER TABLE testimonials ADD COLUMN IF NOT EXISTS source varchar(20) NOT NULL DEFAULT 'admin'`,
     `ALTER TABLE testimonials ADD COLUMN IF NOT EXISTS location varchar(255)`,
+    `ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS "seoSettings" jsonb NOT NULL DEFAULT '{}'`,
+    `ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS faqs jsonb NOT NULL DEFAULT '[]'`,
+    `ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS faqs jsonb NOT NULL DEFAULT '[]'`,
   ];
 
   for (const sql of ddl) {

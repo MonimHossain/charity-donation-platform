@@ -83,9 +83,12 @@ export interface CheckoutSettings {
   enablePushRecurringDonation: boolean;
 }
 
+import type { EntityFaqItem } from "@repo/shared-types";
+
 export interface SeoSettings {
-  metaTitle: string;
-  metaDescription: string;
+  metaTitle?: string;
+  metaDescription?: string;
+  [key: string]: unknown;
 }
 
 export interface CampaignData {
@@ -113,6 +116,7 @@ export interface CampaignData {
   fundraiserSettings: FundraiserSettings;
   checkoutSettings: CheckoutSettings;
   seoSettings: SeoSettings;
+  faqs?: EntityFaqItem[];
 }
 
 export interface RecentDonation {

@@ -45,6 +45,19 @@ export class BlogPost {
   @Column({ type: "varchar", length: 320, nullable: true })
   metaDescription?: string;
 
+  @Column({ type: "json", default: {} })
+  seoSettings!: Record<string, unknown>;
+
+  @Column({ type: "json", default: [] })
+  faqs!: Array<{
+    id: string;
+    question: string;
+    answer: string;
+    sortOrder: number;
+    isActive: boolean;
+    libraryFaqId?: string | null;
+  }>;
+
   @Column({ type: "varchar", length: 20, default: "draft" })
   status!: string;
 

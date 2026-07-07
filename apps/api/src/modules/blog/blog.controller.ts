@@ -6,6 +6,7 @@ import { BlogCategory } from "../../components/blog/blogCategory.entity.js";
 import { In } from "typeorm";
 import { logAudit } from "../../helper/auditLog.js";
 import { normalizeOptionalMediaUrl, normalizeStoredMediaUrl } from "../../helper/storage.js";
+import { mapBlogPostForClient, normalizeEntityFaqs, normalizeSeoSettingsPayload } from "./blogSeo.js";
 
 const repo = () => AppDataSource.getRepository(BlogPost);
 const categoryRepo = () => AppDataSource.getRepository(BlogCategory);
@@ -129,7 +130,7 @@ export async function getPublicBlogPost(req: Request, res: Response) {
 
     return res.json({
       ...post,
-      featuredImage: normalizeOptionalMediaUrl(post.featuredImage),
+      ...mapBlogPostForClient(post),
       categoryName: category?.name ?? null,
       categorySlug: category?.slug ?? null,
     });
@@ -188,7 +189,7 @@ export async function getAdminBlogPost(req: Request, res: Response) {
     if (!post) return res.status(404).json({ message: "Post not found" });
     return res.json({
       ...post,
-      featuredImage: normalizeOptionalMediaUrl(post.featuredImage),
+      ...mapBlogPostForClient(post),
     });
   } catch (error) {
     console.error("getAdminBlogPost error:", error);
@@ -211,6 +212,8 @@ export async function createBlogPost(req: Request, res: Response) {
       isFeatured,
       categoryId,
       publishedAt,
+      seoSettings,
+      faqs,
     } = req.body;
 
     if (!title || !content) {
@@ -222,6 +225,10 @@ export async function createBlogPost(req: Request, res: Response) {
       typeof slugInput === "string" && slugInput.trim() ? slugInput.trim() : title
     );
     const resolvedStatus = status || "draft";
+    const resolvedSeo = normalizeSeoSettingsPayload(seoSettings);
+    if (metaTitle) resolvedSeo.metaTitle = metaTitle;
+    if (metaDescription) resolvedSeo.metaDescription = metaDescription;
+
     const post = repo().create({
       title,
       slug,
@@ -232,8 +239,10 @@ export async function createBlogPost(req: Request, res: Response) {
       tags: tags || [],
       categoryId: categoryId || null,
       status: resolvedStatus,
-      metaTitle: metaTitle || null,
-      metaDescription: metaDescription || null,
+      metaTitle: resolvedSeo.metaTitle || null,
+      metaDescription: resolvedSeo.metaDescription || null,
+      seoSettings: resolvedSeo,
+      faqs: normalizeEntityFaqs(faqs),
       isFeatured: isFeatured || false,
       publishedAt: publishedAt
         ? new Date(publishedAt)
@@ -275,6 +284,8 @@ export async function updateBlogPost(req: Request, res: Response) {
       isFeatured,
       categoryId,
       publishedAt,
+      seoSettings,
+      faqs,
     } = req.body;
 
     if (title !== undefined) post.title = title;
@@ -296,6 +307,21 @@ export async function updateBlogPost(req: Request, res: Response) {
     if (tags !== undefined) post.tags = tags;
     if (metaTitle !== undefined) post.metaTitle = metaTitle;
     if (metaDescription !== undefined) post.metaDescription = metaDescription;
+    if (seoSettings !== undefined) {
+      const resolvedSeo = normalizeSeoSettingsPayload(seoSettings);
+      if (metaTitle !== undefined) resolvedSeo.metaTitle = metaTitle;
+      if (metaDescription !== undefined) resolvedSeo.metaDescription = metaDescription;
+      post.seoSettings = resolvedSeo;
+      post.metaTitle = resolvedSeo.metaTitle || null;
+      post.metaDescription = resolvedSeo.metaDescription || null;
+    } else if (metaTitle !== undefined || metaDescription !== undefined) {
+      post.seoSettings = normalizeSeoSettingsPayload({
+        ...(post.seoSettings || {}),
+        metaTitle: post.metaTitle,
+        metaDescription: post.metaDescription,
+      });
+    }
+    if (faqs !== undefined) post.faqs = normalizeEntityFaqs(faqs);
     if (isFeatured !== undefined) post.isFeatured = isFeatured;
     if (categoryId !== undefined) post.categoryId = categoryId || null;
 

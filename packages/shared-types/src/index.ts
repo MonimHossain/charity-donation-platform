@@ -7,3 +7,4 @@ export * from "./cms";
 export * from "./enums";
 export * from "./adminPermissions";
 export * from "./donorSegments";
+export * from "./entitySeo";

@@ -130,9 +130,29 @@ export interface VisibilitySettings {
 export interface SeoSettings {
   metaTitle: string;
   metaDescription: string;
+  seoExcerpt?: string;
+  seoFeaturedImage?: string;
+  seoTags?: string[];
+  canonicalUrl?: string;
   ogTitle: string;
   ogDescription: string;
   ogImage: string;
+  twitterTitle?: string;
+  twitterDescription?: string;
+  twitterImage?: string;
+  robotsIndex?: "index" | "noindex";
+  robotsFollow?: "follow" | "nofollow";
+  schemaType?: string;
+  customSchemaJson?: string;
+}
+
+export interface EntityFaqItem {
+  id: string;
+  question: string;
+  answer: string;
+  sortOrder: number;
+  isActive: boolean;
+  libraryFaqId?: string | null;
 }
 
 export type CampaignMode =
@@ -289,6 +309,9 @@ export class Campaign {
     },
   })
   seoSettings!: SeoSettings;
+
+  @Column({ type: "json", default: [] })
+  faqs!: EntityFaqItem[];
 
   @Column({ type: "varchar", length: 3, default: "GBP" })
   currency!: string;

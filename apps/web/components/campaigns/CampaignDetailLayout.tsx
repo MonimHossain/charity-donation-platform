@@ -18,6 +18,7 @@ import {
 import PageShell from "@/components/site/PageShell";
 import TrustBadges from "@/components/home/TrustBadges";
 import MarkdownRenderer from "@/components/blog/MarkdownRenderer";
+import { BlogPostFaqs } from "@/components/blog/BlogPostFaqs";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { statValueSmClass } from "@/lib/home-buttons";
@@ -216,6 +217,10 @@ export function CampaignDetailLayout({
                   )}
                 </div>
               </div>
+
+              {campaign.faqs && campaign.faqs.length > 0 && (
+                <BlogPostFaqs faqs={campaign.faqs} className="mt-8 rounded-3xl border border-border bg-card px-6 lg:px-8" />
+              )}
 
               <div className="mt-8 flex flex-wrap gap-3">
                 <Button

@@ -7,6 +7,8 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Loader2, Calendar, Clock, User, ChevronRight, Share2, Copy, Check } from "lucide-react";
 import BlogContentRenderer from "@/components/blog/BlogContentRenderer";
+import { BlogPostFaqs } from "@/components/blog/BlogPostFaqs";
+import type { EntityFaqItem } from "@repo/shared-types";
 import { fetchBlogPostBySlug, subscribeNewsletter } from "@/lib/api";
 import { resolveMediaUrl } from "@/lib/campaign-media";
 import { toast } from "sonner";
@@ -23,6 +25,8 @@ interface BlogPost {
   status?: string;
   metaTitle?: string;
   metaDescription?: string;
+  seoSettings?: Record<string, unknown>;
+  faqs?: EntityFaqItem[];
   publishedAt?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -185,6 +189,7 @@ function BlogDetailPageApi({ slug }: { slug: string }) {
               />
             )}
             <BlogContentRenderer content={post.content} />
+            <BlogPostFaqs faqs={post.faqs || []} />
           </article>
 
           {/* Sidebar — sticks below site nav while reading the article */}

@@ -32,6 +32,14 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { FilePicker } from "@/components/ui/file-picker";
+import { EntitySeoSettingsForm } from "@/components/admin/EntitySeoSettingsForm";
+import { EntityFaqEditor } from "@/components/admin/EntityFaqEditor";
+import {
+  emptyEntitySeoSettings,
+  normalizeEntitySeoSettings,
+  type EntityFaqItem,
+  type EntitySeoSettings,
+} from "@repo/shared-types";
 import RichTextEditor from "@/components/admin/RichTextEditor";
 import RamadanStartDatesEditor from "@/components/admin/RamadanStartDatesEditor";
 import { cn } from "@/lib/utils";
@@ -140,14 +148,6 @@ interface VisibilitySettings {
   headerDisplayName?: string;
 }
 
-interface SeoSettings {
-  metaTitle: string;
-  metaDescription: string;
-  ogTitle: string;
-  ogDescription: string;
-  ogImage: string;
-}
-
 type CampaignMode =
   | "standard"
   | "fundraiser"
@@ -181,7 +181,8 @@ interface CampaignForm {
   visibilitySettings: VisibilitySettings;
   displayDonorOffset: number;
   paymentGateways: string[];
-  seoSettings: SeoSettings;
+  seoSettings: EntitySeoSettings;
+  faqs: EntityFaqItem[];
 }
 
 interface Campaign extends CampaignForm {
@@ -307,7 +308,8 @@ const defaultForm: CampaignForm = {
   visibilitySettings: { showInHeader: false, showOnHomepage: false, pinToTop: false, headerDisplayName: "" },
   displayDonorOffset: 0,
   paymentGateways: ["stripe"],
-  seoSettings: { metaTitle: "", metaDescription: "", ogTitle: "", ogDescription: "", ogImage: "" },
+  seoSettings: { ...emptyEntitySeoSettings(), schemaType: "WebPage" },
+  faqs: [],
 };
 
 const CAMPAIGN_MODES: { value: CampaignMode; label: string; desc: string }[] = [
@@ -575,7 +577,10 @@ export default function CampaignsPage() {
       visibilitySettings: { ...defaultForm.visibilitySettings, ...(c.visibilitySettings || {}) },
       displayDonorOffset: Math.max(0, Number((c as Campaign & { displayDonorOffset?: number }).displayDonorOffset ?? 0) || 0),
       paymentGateways: [...(c.paymentGateways || ["stripe"])],
-      seoSettings: { ...defaultForm.seoSettings, ...(c.seoSettings || {}) },
+      seoSettings: normalizeEntitySeoSettings(c.seoSettings),
+      faqs: Array.isArray((c as Campaign & { faqs?: EntityFaqItem[] }).faqs)
+        ? [...((c as Campaign & { faqs?: EntityFaqItem[] }).faqs || [])]
+        : [],
     };
   }
 
@@ -1765,57 +1770,28 @@ export default function CampaignsPage() {
         )}
 
         {currentStepId === "seo" && (
-          <div className="space-y-4">
-            <h3 className="font-serif font-semibold text-lg">SEO Settings</h3>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Meta Title</Label>
-                <Input
-                  value={form.seoSettings.metaTitle}
-                  onChange={(e) => setForm((p) => ({ ...p, seoSettings: { ...p.seoSettings, metaTitle: e.target.value } }))}
-                  placeholder={form.title || "Page title"}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>OG Title</Label>
-                <Input
-                  value={form.seoSettings.ogTitle}
-                  onChange={(e) => setForm((p) => ({ ...p, seoSettings: { ...p.seoSettings, ogTitle: e.target.value } }))}
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Meta Description</Label>
-              <textarea
-                rows={3}
-                value={form.seoSettings.metaDescription}
-                onChange={(e) => setForm((p) => ({ ...p, seoSettings: { ...p.seoSettings, metaDescription: e.target.value } }))}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                placeholder={form.shortDescription || "Campaign description for search engines"}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>OG Description</Label>
-              <textarea
-                rows={2}
-                value={form.seoSettings.ogDescription}
-                onChange={(e) => setForm((p) => ({ ...p, seoSettings: { ...p.seoSettings, ogDescription: e.target.value } }))}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>OG Image</Label>
-              <FilePicker
-                value={form.seoSettings.ogImage}
-                onChange={(url) => setForm((p) => ({ ...p, seoSettings: { ...p.seoSettings, ogImage: url } }))}
-                accept="image"
-              />
-            </div>
+          <div className="space-y-8">
+            <EntitySeoSettingsForm
+              value={form.seoSettings}
+              onChange={(seoSettings) => setForm((p) => ({ ...p, seoSettings }))}
+              fallbacks={{
+                title: form.title,
+                description: form.shortDescription,
+                excerpt: form.shortDescription,
+                image: form.banner || form.thumbnail,
+              }}
+              description="Custom metadata for this campaign's public page. Empty fields fall back to campaign name, description, and banner."
+            />
+            <Separator />
+            <EntityFaqEditor
+              items={form.faqs}
+              onChange={(faqs) => setForm((p) => ({ ...p, faqs }))}
+            />
             {isLastStep && (
-              <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 mt-2">
+              <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
                 <p className="text-sm font-medium text-foreground">Ready to publish?</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Review your settings above, then click {editingId ? "Update Campaign" : "Create Campaign"} below to save.
+                  Set status on Campaign basics, then click {editingId ? "Update Campaign" : "Create Campaign"} below to save.
                 </p>
               </div>
             )}
