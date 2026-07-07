@@ -12,6 +12,7 @@ import {
   Menu,
   X,
   Loader2,
+  Bell,
   Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -25,6 +26,7 @@ interface UserProfile {
 
 const NAV_ITEMS = [
   { href: "/account", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/account/notifications", label: "Notifications", icon: Bell },
   { href: "/account/history", label: "Donation History", icon: History },
   { href: "/account/automated", label: "Automated Donations", icon: Sparkles },
   { href: "/account/recurring", label: "Recurring Donations", icon: Repeat },

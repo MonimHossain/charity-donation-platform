@@ -4,6 +4,7 @@ import { signJwt } from "../../helper/jwt.js";
 import { AppDataSource } from "../../helper/connectDB.js";
 import { Admin } from "../../components/admin/admin.entity.js";
 import { logAudit } from "../../helper/auditLog.js";
+import { buildAdminAuthPayload } from "./adminAuthPayload.js";
 
 function requireDatabase(res: Response): boolean {
   if (!AppDataSource.isInitialized) {
@@ -55,12 +56,7 @@ export async function loginAdmin(req: Request, res: Response) {
     await logAudit(req, { action: "login", entityType: "admin", entityId: admin.id, details: { email: admin.email } });
 
     return res.json({
-      user: {
-        id: admin.id,
-        email: admin.email,
-        fullName: admin.fullName,
-        role: admin.role,
-      },
+      user: buildAdminAuthPayload(admin),
       token,
     });
   } catch (error) {
@@ -79,12 +75,7 @@ export async function getAdminProfile(req: Request, res: Response) {
     const admin = await repo.findOne({ where: { id: adminId } });
     if (!admin) return res.status(404).json({ message: "Admin not found" });
 
-    return res.json({
-      id: admin.id,
-      email: admin.email,
-      fullName: admin.fullName,
-      role: admin.role,
-    });
+    return res.json(buildAdminAuthPayload(admin));
   } catch (error) {
     return res.status(500).json({ message: "Internal server error" });
   }
@@ -135,4 +126,47 @@ export async function logoutAdmin(req: Request, res: Response) {
   await logAudit(req, { action: "logout", entityType: "admin", entityId: (req as any).admin?.id });
   res.clearCookie("admin_token");
   return res.json({ message: "Logged out" });
+}
+
+export async function forgotAdminPassword(req: Request, res: Response) {
+  try {
+    if (!requireDatabase(res)) return;
+    const { email } = req.body;
+    if (!email || typeof email !== "string") {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    try {
+      const { sendAdminPasswordResetForEmail } = await import("./adminAccess.service.js");
+      await sendAdminPasswordResetForEmail(email);
+    } catch (err) {
+      console.error("forgotAdminPassword mail error:", err);
+    }
+
+    return res.json({
+      message: "If an account with that email exists, a reset link has been sent",
+    });
+  } catch (error) {
+    console.error("forgotAdminPassword error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+export async function resetAdminPasswordHandler(req: Request, res: Response) {
+  try {
+    if (!requireDatabase(res)) return;
+    const { token, password } = req.body;
+    if (!token || !password) {
+      return res.status(400).json({ message: "Token and password are required" });
+    }
+
+    const { resetAdminPassword } = await import("./adminAccess.service.js");
+    await resetAdminPassword(token, password);
+
+    return res.json({ message: "Password has been reset successfully" });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Reset failed";
+    const status = message.includes("expired") || message.includes("Invalid") ? 400 : 500;
+    return res.status(status).json({ message });
+  }
 }

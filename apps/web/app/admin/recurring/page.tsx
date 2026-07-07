@@ -1,18 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import {
-  Search,
-  Filter,
-  XCircle,
-  Loader2,
-} from "lucide-react";
+import type { DonorSegmentParams } from "@repo/shared-types";
+import { Search, XCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
+import DonorAudienceFilter, {
+  segmentParamsToQuery,
+} from "@/components/admin/DonorAudienceFilter";
+import { resolveDonationCampaignName } from "@/lib/quick-donate";
 import {
   recurringAmountToMonthlyEquivalent,
   recurringIntervalLabel,
@@ -25,14 +24,15 @@ interface RecurringDonation {
   amount: number;
   currency: string;
   frequency: string;
-  campaignTitle: string;
+  campaignTitle?: string;
+  campaign?: { title?: string };
   status: string;
   nextPaymentDate: string;
   totalPaid: number;
   createdAt: string;
 }
 
-type StatusFilter = "all" | "active" | "paused" | "cancelled" | "failed";
+type Tab = "all" | "failed";
 
 const statusStyles: Record<string, string> = {
   active: "bg-green-100 text-green-700",
@@ -45,26 +45,56 @@ export default function RecurringPage() {
   const [donations, setDonations] = useState<RecurringDonation[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [tab, setTab] = useState<Tab>("all");
+  const [segment, setSegment] = useState<DonorSegmentParams | null>(null);
   const [cancelling, setCancelling] = useState<string | null>(null);
 
-  async function loadRecurring() {
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const loadRecurring = useCallback(async () => {
     setLoading(true);
     try {
-      const params: Record<string, string> = {};
-      if (statusFilter !== "all") params.status = statusFilter;
+      const params: Record<string, string> = { limit: "500" };
+
+      if (segment) {
+        if (segment.segment === "campaign" && !segment.campaignId) {
+          setDonations([]);
+          return;
+        }
+        Object.assign(params, segmentParamsToQuery(segment));
+      } else if (tab === "failed") {
+        params.failedOnly = "true";
+      }
+
+      if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
+
       const { data } = await api.get("/admin/recurring", { params });
       setDonations(data.items || data || []);
     } catch {
       toast.error("Failed to load recurring donations");
+      setDonations([]);
     } finally {
       setLoading(false);
     }
-  }
+  }, [tab, segment, debouncedSearch]);
 
   useEffect(() => {
-    loadRecurring();
-  }, [statusFilter]);
+    void loadRecurring();
+  }, [loadRecurring]);
+
+  function handleTabChange(next: Tab) {
+    setTab(next);
+    if (next === "failed") setSegment(null);
+  }
+
+  function handleSegmentChange(next: DonorSegmentParams | null) {
+    setSegment(next);
+    if (next) setTab("all");
+  }
 
   async function handleCancel(id: string) {
     if (!confirm("Cancel this recurring donation?")) return;
@@ -72,19 +102,13 @@ export default function RecurringPage() {
     try {
       await api.put(`/recurring/${id}/cancel`);
       toast.success("Recurring donation cancelled");
-      loadRecurring();
+      void loadRecurring();
     } catch {
       toast.error("Failed to cancel donation");
     } finally {
       setCancelling(null);
     }
   }
-
-  const filtered = donations.filter((d) => {
-    const name = d.donorName || "";
-    const email = d.donorEmail || "";
-    return name.toLowerCase().includes(search.toLowerCase()) || email.toLowerCase().includes(search.toLowerCase());
-  });
 
   const totalActive = donations.filter((d) => d.status === "active").length;
   const estimatedMonthlyRecurring = donations
@@ -102,7 +126,7 @@ export default function RecurringPage() {
 
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border bg-card p-5 shadow-soft">
-          <p className="text-2xl font-bold">{filtered.length}</p>
+          <p className="text-2xl font-bold">{donations.length}</p>
           <p className="text-sm text-muted-foreground">Total Recurring</p>
         </div>
         <div className="rounded-2xl border bg-card p-5 shadow-soft">
@@ -124,29 +148,36 @@ export default function RecurringPage() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative max-w-sm flex-1">
+      <DonorAudienceFilter value={segment} onChange={handleSegmentChange} />
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex gap-2">
+          {(["all", "failed"] as Tab[]).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => handleTabChange(t)}
+              disabled={Boolean(segment)}
+              className={cn(
+                "px-4 py-2 rounded-full text-sm font-semibold transition-all",
+                tab === t && !segment
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:text-foreground",
+                segment && "opacity-50 cursor-not-allowed"
+              )}
+            >
+              {t === "all" ? "All subscriptions" : "Failed & incomplete"}
+            </button>
+          ))}
+        </div>
+        <div className="relative max-w-sm flex-1 sm:flex-none sm:w-72">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by donor..."
+            placeholder="Search by donor or email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10"
           />
-        </div>
-        <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-muted-foreground" />
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="paused">Paused</option>
-            <option value="cancelled">Cancelled</option>
-            <option value="failed">Failed</option>
-          </select>
         </div>
       </div>
 
@@ -173,7 +204,7 @@ export default function RecurringPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.length > 0 ? filtered.map((d) => (
+                {donations.length > 0 ? donations.map((d) => (
                   <tr key={d.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                     <td className="px-5 py-3">
                       <p className="font-medium">{d.donorName || "Anonymous"}</p>
@@ -185,7 +216,7 @@ export default function RecurringPage() {
                     <td className="px-5 py-3 text-muted-foreground capitalize">
                       {recurringIntervalLabel(d.frequency)}
                     </td>
-                    <td className="px-5 py-3 text-muted-foreground">{d.campaignTitle || "—"}</td>
+                    <td className="px-5 py-3 text-muted-foreground">{resolveDonationCampaignName(d) || "—"}</td>
                     <td className="px-5 py-3">
                       <span className={cn("inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize", statusStyles[d.status] || "bg-slate-100 text-slate-600")}>
                         {d.status}

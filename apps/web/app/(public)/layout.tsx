@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import SiteLayout from "@/components/layout/SiteLayout";
 import StickyDonationBar from "@/components/home/StickyDonationBar";
 import EmergencyBanner from "@/components/home/EmergencyBanner";
-import LiveDonationFeed from "@/components/home/LiveDonationFeed";
+// import LiveDonationFeed from "@/components/home/LiveDonationFeed";
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -12,7 +12,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       <SiteLayout>
         {children}
         <StickyDonationBar />
-        <LiveDonationFeed />
+        {/* <LiveDonationFeed /> — hidden for now; re-enable when social proof is ready */}
       </SiteLayout>
     </>
   );

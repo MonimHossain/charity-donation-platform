@@ -141,62 +141,64 @@ export default function ShareSheet({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md rounded-3xl gap-0 p-0 overflow-hidden">
-        <DialogHeader className="px-6 pt-6 pb-4 text-center sm:text-center">
+      <DialogContent className="w-[calc(100vw-1.5rem)] max-w-md rounded-3xl gap-0 p-0 max-h-[90dvh] overflow-y-auto overflow-x-hidden">
+        <DialogHeader className="px-5 pt-5 pb-3 text-center sm:text-center min-w-0">
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-accent/15">
             <Share2 className="h-6 w-6 text-accent-deep" />
           </div>
-          <DialogTitle className="font-serif text-xl text-primary">{title}</DialogTitle>
-          <DialogDescription className="text-sm">{description}</DialogDescription>
+          <DialogTitle className="font-serif text-xl text-primary text-balance">{title}</DialogTitle>
+          <DialogDescription className="text-sm text-balance leading-relaxed px-1">
+            {description}
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="px-6 pb-2">
-          <div className="rounded-2xl border border-border bg-secondary/40 p-4 text-left space-y-2">
-            <p className="text-sm text-foreground leading-relaxed">{shareText}</p>
-            <p className="flex items-center gap-2 text-xs text-muted-foreground truncate">
-              <Link2 className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">{shareUrl}</span>
+        <div className="px-5 pb-2 min-w-0">
+          <div className="rounded-2xl border border-border bg-secondary/40 p-4 text-left space-y-2 min-w-0 overflow-hidden">
+            <p className="text-sm text-foreground leading-relaxed break-words">{shareText}</p>
+            <p className="flex items-start gap-2 text-xs text-muted-foreground min-w-0">
+              <Link2 className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+              <span className="break-all leading-relaxed">{shareUrl}</span>
             </p>
           </div>
         </div>
 
         {canNativeShare && (
-          <div className="px-6 pt-4">
+          <div className="px-5 pt-3 min-w-0">
             <Button
               type="button"
               className="w-full rounded-full h-11 gap-2 font-semibold"
               onClick={handleNativeShare}
             >
-              <Share2 className="h-4 w-4" />
+              <Share2 className="h-4 w-4 shrink-0" />
               Share with apps
             </Button>
-            <p className="text-[11px] text-center text-muted-foreground mt-2">
+            <p className="text-[11px] text-center text-muted-foreground mt-2 leading-relaxed text-balance">
               Opens your phone&apos;s share menu — Messages, Instagram, and more
             </p>
           </div>
         )}
 
-        <div className="px-6 py-5">
+        <div className="px-5 py-4 min-w-0">
           <p className="text-xs uppercase tracking-widest text-muted-foreground font-semibold mb-3 text-center">
             Or share via
           </p>
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {shareOptions.map((opt) => (
               <button
                 key={opt.id}
                 type="button"
                 onClick={opt.onClick}
-                className="flex flex-col items-center gap-2 group"
+                className="flex min-w-0 flex-col items-center gap-2 group"
               >
                 <span
                   className={cn(
-                    "flex h-12 w-12 items-center justify-center rounded-2xl transition-colors",
+                    "flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-2xl transition-colors",
                     opt.className
                   )}
                 >
                   <opt.icon className="h-5 w-5" />
                 </span>
-                <span className="text-[11px] font-medium text-muted-foreground group-hover:text-foreground">
+                <span className="text-[11px] font-medium text-muted-foreground group-hover:text-foreground text-center">
                   {opt.label}
                 </span>
               </button>
@@ -204,23 +206,23 @@ export default function ShareSheet({
           </div>
         </div>
 
-        <div className="border-t border-border px-6 py-4 flex flex-col sm:flex-row gap-2">
+        <div className="border-t border-border px-5 py-4 grid grid-cols-1 gap-2 min-w-0">
           <Button
             type="button"
             variant="outline"
-            className="flex-1 rounded-full gap-2"
+            className="w-full rounded-full gap-2 h-11"
             onClick={handleCopyLink}
           >
-            {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+            {copied ? <Check className="h-4 w-4 text-green-600 shrink-0" /> : <Copy className="h-4 w-4 shrink-0" />}
             {copied ? "Copied!" : "Copy link"}
           </Button>
           <Button
             type="button"
             variant="secondary"
-            className="flex-1 rounded-full gap-2"
+            className="w-full rounded-full gap-2 h-11"
             onClick={handleCopyMessage}
           >
-            <Copy className="h-4 w-4" />
+            <Copy className="h-4 w-4 shrink-0" />
             Copy message
           </Button>
         </div>

@@ -148,9 +148,20 @@ export async function deleteBanner(req: Request, res: Response) {
 export async function getFaqs(req: Request, res: Response) {
   try {
     const repo = AppDataSource.getRepository(Faq);
-    const where: Record<string, any> = {};
+    const where: Record<string, unknown> = { isPublished: true };
     if (req.query.category) where.category = req.query.category;
     const faqs = await repo.find({ where, order: { sortOrder: "ASC" } });
+    return res.json(faqs);
+  } catch (error) {
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+export async function getAdminFaqs(_req: Request, res: Response) {
+  try {
+    const faqs = await AppDataSource.getRepository(Faq).find({
+      order: { sortOrder: "ASC" },
+    });
     return res.json(faqs);
   } catch (error) {
     return res.status(500).json({ message: "Internal server error" });

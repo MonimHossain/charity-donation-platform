@@ -10,7 +10,6 @@ import {
   X,
   Loader2,
   HandCoins,
-  GripVertical,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +26,8 @@ import {
   fetchCampaigns,
 } from "@/lib/api";
 import type { DonationCategoryOption } from "@/lib/quick-donate";
-import { slugifyLabel } from "@/lib/quick-donate";
+import { isQuickDonateCampaignMode, slugifyLabel } from "@/lib/quick-donate";
+import { CAMPAIGN_MODE_LABELS } from "@/lib/campaign-experience";
 
 type CategoryRow = DonationCategoryOption & { rowId: string };
 
@@ -48,7 +48,6 @@ interface QuickDonateOptionRow {
   campaignId?: string | null;
   campaignSlug?: string | null;
   campaignTitle?: string | null;
-  prices: { amount: number; sortOrder: number }[];
   sortOrder: number;
   isActive: boolean;
 }
@@ -57,12 +56,65 @@ interface CampaignOption {
   id: string;
   title: string;
   slug: string;
+  status?: string;
+  campaignMode?: string;
+  attributes?: Array<{
+    enableSinglePayment?: boolean;
+    enableRegularPayment?: boolean;
+    singlePaymentConfig?: { priceType?: string; presetAmounts?: unknown[] };
+    regularPaymentConfig?: { priceType?: string; presetAmounts?: unknown[] };
+  }>;
+  experienceConfig?: Record<string, unknown>;
+}
+
+function paymentConfigHasDonationOptions(
+  config?: { priceType?: string; presetAmounts?: unknown[] } | null
+): boolean {
+  if (!config) return false;
+  const hasPresets = (config.presetAmounts?.length ?? 0) > 0;
+  const allowsCustom = config.priceType === "custom" || config.priceType === "both";
+  return hasPresets || allowsCustom;
+}
+
+function attributeHasDonationOptions(attr: NonNullable<CampaignOption["attributes"]>[number]): boolean {
+  if (attr.enableSinglePayment && paymentConfigHasDonationOptions(attr.singlePaymentConfig)) {
+    return true;
+  }
+  if (attr.enableRegularPayment && paymentConfigHasDonationOptions(attr.regularPaymentConfig)) {
+    return true;
+  }
+  return false;
+}
+
+function campaignEligibleForQuickDonate(c: CampaignOption): boolean {
+  if (c.status && c.status !== "published") return false;
+  if (!isQuickDonateCampaignMode(c.campaignMode || "standard")) return false;
+  const attrs = c.attributes || [];
+  const mode = c.campaignMode || "standard";
+
+  if (mode === "ramadan_split") {
+    const hasRamadan = Boolean(
+      c.experienceConfig &&
+        typeof c.experienceConfig === "object" &&
+        (Array.isArray((c.experienceConfig as { startChoices?: unknown[] }).startChoices) ||
+          (c.experienceConfig as { ramadanStartDate?: string }).ramadanStartDate)
+    );
+    if (!attrs.length) return hasRamadan;
+    return hasRamadan || attrs.some(attributeHasDonationOptions);
+  }
+
+  if (!attrs.length) return false;
+  return attrs.some(attributeHasDonationOptions);
+}
+
+function campaignModeLabel(mode?: string): string {
+  const key = mode || "standard";
+  return CAMPAIGN_MODE_LABELS[key] || key.replace(/_/g, " ");
 }
 
 const emptyOptionForm = {
   label: "",
   campaignId: "",
-  prices: [{ amount: 20, sortOrder: 0 }, { amount: 40, sortOrder: 1 }, { amount: 50, sortOrder: 2 }],
   sortOrder: 0,
   isActive: true,
 };
@@ -85,17 +137,23 @@ export default function QuickDonateAdminPage() {
       const [optionsRes, settingsRes, campaignsRes] = await Promise.all([
         fetchAdminQuickDonateOptions(),
         fetchAdminQuickDonateSettings(),
-        fetchCampaigns({ limit: "200" }),
+        fetchCampaigns({ limit: "200", status: "published" }),
       ]);
       setOptions(optionsRes.items || optionsRes || []);
       setCategories(toCategoryRows(settingsRes.donationCategories || []));
       const campaignItems = campaignsRes.items || campaignsRes.data || campaignsRes || [];
       setCampaigns(
-        campaignItems.map((c: Record<string, string>) => ({
-          id: c.id,
-          title: c.title,
-          slug: c.slug,
-        }))
+        campaignItems
+          .map((c: CampaignOption) => ({
+            id: c.id,
+            title: c.title,
+            slug: c.slug,
+            status: c.status,
+            campaignMode: c.campaignMode,
+            attributes: c.attributes,
+            experienceConfig: c.experienceConfig,
+          }))
+          .filter(campaignEligibleForQuickDonate)
       );
     } catch {
       toast.error("Failed to load quick donate configuration");
@@ -108,22 +166,6 @@ export default function QuickDonateAdminPage() {
     loadAll();
   }, []);
 
-  async function loadPublishedCampaigns() {
-    try {
-      const campaignsRes = await fetchCampaigns({ limit: "200" });
-      const campaignItems = campaignsRes.items || campaignsRes.data || campaignsRes || [];
-      setCampaigns(
-        campaignItems.map((c: Record<string, string>) => ({
-          id: c.id,
-          title: c.title,
-          slug: c.slug,
-        }))
-      );
-    } catch {
-      /* keep existing list */
-    }
-  }
-
   function openCreate() {
     setForm({
       ...emptyOptionForm,
@@ -131,22 +173,17 @@ export default function QuickDonateAdminPage() {
     });
     setEditingId(null);
     setShowModal(true);
-    void loadPublishedCampaigns();
   }
 
   function openEdit(row: QuickDonateOptionRow) {
     setForm({
       label: row.label,
       campaignId: row.campaignId || "",
-      prices: row.prices.length
-        ? row.prices.map((p, i) => ({ amount: p.amount, sortOrder: p.sortOrder ?? i }))
-        : [{ amount: 20, sortOrder: 0 }],
       sortOrder: row.sortOrder,
       isActive: row.isActive,
     });
     setEditingId(row.id);
     setShowModal(true);
-    void loadPublishedCampaigns();
   }
 
   async function handleSaveOption() {
@@ -154,11 +191,8 @@ export default function QuickDonateAdminPage() {
       toast.error("Display label is required");
       return;
     }
-    const prices = form.prices
-      .map((p, i) => ({ amount: Number(p.amount), sortOrder: i }))
-      .filter((p) => Number.isFinite(p.amount) && p.amount > 0);
-    if (!prices.length) {
-      toast.error("Add at least one price");
+    if (!form.campaignId) {
+      toast.error("Linked campaign is required");
       return;
     }
 
@@ -166,8 +200,7 @@ export default function QuickDonateAdminPage() {
     try {
       const payload = {
         label: form.label.trim(),
-        campaignId: form.campaignId || null,
-        prices,
+        campaignId: form.campaignId,
         sortOrder: form.sortOrder,
         isActive: form.isActive,
       };
@@ -255,27 +288,6 @@ export default function QuickDonateAdminPage() {
     });
   }
 
-  function updatePrice(index: number, amount: number) {
-    setForm((prev) => ({
-      ...prev,
-      prices: prev.prices.map((p, i) => (i === index ? { ...p, amount } : p)),
-    }));
-  }
-
-  function addPrice() {
-    setForm((prev) => ({
-      ...prev,
-      prices: [...prev.prices, { amount: 0, sortOrder: prev.prices.length }],
-    }));
-  }
-
-  function removePrice(index: number) {
-    setForm((prev) => ({
-      ...prev,
-      prices: prev.prices.filter((_, i) => i !== index),
-    }));
-  }
-
   if (loading) {
     return (
       <div className="flex items-center justify-center gap-2 py-20 text-muted-foreground">
@@ -291,9 +303,9 @@ export default function QuickDonateAdminPage() {
           <HandCoins className="h-7 w-7 text-primary" /> Quick Donate Form
         </h1>
         <p className="text-muted-foreground mt-1 max-w-3xl">
-          Configure the homepage quick donate widget and sticky donate bar. Dropdown items control
-          the &ldquo;I&apos;d like to donate to&rdquo; list; each item has its own price presets.
-          Donation category and single/regular frequency are independent settings.
+          Each dropdown option links to a published Standard, Fundraiser, or Ramadan Split campaign.
+          Attribute tabs, prices, and descriptions on the homepage quick donate widget come from that
+          campaign&apos;s donation attributes — nothing is hardcoded on the frontend.
         </p>
       </div>
 
@@ -378,7 +390,7 @@ export default function QuickDonateAdminPage() {
           <div>
             <h2 className="text-lg font-semibold">Donate-to dropdown options</h2>
             <p className="text-sm text-muted-foreground">
-              Link each item to a campaign and set custom prices. The first price is selected by default when the item is chosen.
+              Label, linked campaign, and sort order only. Donation amounts and attribute tabs come from the campaign.
             </p>
           </div>
           <Button onClick={openCreate}>
@@ -390,10 +402,9 @@ export default function QuickDonateAdminPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/40">
-                <th className="px-5 py-3 text-left font-medium text-muted-foreground">Label</th>
-                <th className="px-5 py-3 text-left font-medium text-muted-foreground">Campaign</th>
-                <th className="px-5 py-3 text-left font-medium text-muted-foreground">Prices</th>
-                <th className="px-5 py-3 text-left font-medium text-muted-foreground">Order</th>
+                <th className="px-5 py-3 text-left font-medium text-muted-foreground">Will appear as</th>
+                <th className="px-5 py-3 text-left font-medium text-muted-foreground">Linked campaign</th>
+                <th className="px-5 py-3 text-left font-medium text-muted-foreground">Sort order</th>
                 <th className="px-5 py-3 text-left font-medium text-muted-foreground">Status</th>
                 <th className="px-5 py-3 text-right font-medium text-muted-foreground">Actions</th>
               </tr>
@@ -404,10 +415,9 @@ export default function QuickDonateAdminPage() {
                   <tr key={row.id} className="border-b last:border-0 hover:bg-muted/30">
                     <td className="px-5 py-3 font-medium">{row.label}</td>
                     <td className="px-5 py-3 text-muted-foreground">
-                      {row.campaignTitle || row.campaignSlug || "—"}
-                    </td>
-                    <td className="px-5 py-3">
-                      {row.prices?.map((p) => `£${p.amount}`).join(", ") || "—"}
+                      {row.campaignTitle || row.campaignSlug || (
+                        <span className="text-amber-700">Not linked — hidden on site</span>
+                      )}
                     </td>
                     <td className="px-5 py-3">{row.sortOrder}</td>
                     <td className="px-5 py-3">
@@ -444,7 +454,7 @@ export default function QuickDonateAdminPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-5 py-10 text-center text-muted-foreground">
+                  <td colSpan={5} className="px-5 py-10 text-center text-muted-foreground">
                     No options yet. Create one to populate the frontend dropdown.
                   </td>
                 </tr>
@@ -456,7 +466,7 @@ export default function QuickDonateAdminPage() {
 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border bg-card shadow-lg p-6">
+          <div className="w-full max-w-lg rounded-2xl border bg-card shadow-lg p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-serif font-bold">
                 {editingId ? "Edit dropdown option" : "Create dropdown option"}
@@ -477,60 +487,23 @@ export default function QuickDonateAdminPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Linked campaign</Label>
+                <Label>Linked campaign *</Label>
                 <select
                   value={form.campaignId}
                   onChange={(e) => setForm({ ...form, campaignId: e.target.value })}
                   className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  required
                 >
-                  <option value="">— No campaign link —</option>
+                  <option value="">Select a campaign…</option>
                   {campaigns.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.title} ({c.slug})
+                      {c.title} — {campaignModeLabel(c.campaignMode)}
                     </option>
                   ))}
                 </select>
                 <p className="text-xs text-muted-foreground">
-                  Donations through this option are credited to the linked campaign&apos;s raised total
-                  on the public campaigns list after payment succeeds.
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label>Price presets for this option</Label>
-                  <Button type="button" variant="outline" size="sm" onClick={addPrice}>
-                    <Plus className="h-3.5 w-3.5" /> Add price
-                  </Button>
-                </div>
-                <div className="space-y-2">
-                  {form.prices.map((price, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span className="text-sm font-medium w-6">£</span>
-                      <Input
-                        type="number"
-                        min={1}
-                        value={price.amount || ""}
-                        onChange={(e) => updatePrice(index, Number(e.target.value))}
-                        className="flex-1"
-                      />
-                      {form.prices.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive"
-                          onClick={() => removePrice(index)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  The 2nd-lowest price is auto-selected when this option is chosen on the frontend.
+                  Published Standard, Fundraiser, and Ramadan Split campaigns with donation attributes.
+                  Attribute names, prices, and descriptions are taken directly from the campaign.
                 </p>
               </div>
 

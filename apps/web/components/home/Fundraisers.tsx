@@ -6,6 +6,7 @@ import { Clock, Users, Target, ArrowRight, Flame } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useHomepageFundraisers } from "@/lib/data/campaigns";
 import { getCampaignCardImage } from "@/lib/campaign-media";
+import { getDisplayDonorCount } from "@/lib/campaign-fundraising";
 import { useCurrency } from "@/lib/currency";
 
 type Fundraiser = {
@@ -53,7 +54,10 @@ function mapFundraiser(c: Record<string, unknown>): Fundraiser | null {
     }),
     raised,
     goal: goal > 0 ? goal : 1,
-    donors: Number(c.donorCount ?? 0),
+    donors: getDisplayDonorCount({
+      donorCount: Number(c.donorCount ?? 0),
+      displayDonorOffset: Number(c.displayDonorOffset ?? 0),
+    }),
     currency: String(c.currency ?? "GBP"),
     endsAt,
     urgent: Boolean(c.isUrgent),
@@ -103,9 +107,6 @@ const FundraiserCard = ({ f }: { f: Fundraiser }) => {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-primary/90 via-primary/20 to-transparent" />
         <div className="absolute top-4 left-4 flex gap-2">
-          <span className="px-3 py-1 rounded-full bg-background/95 text-primary text-xs font-semibold capitalize">
-            {f.tag}
-          </span>
           {f.urgent && (
             <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-destructive text-destructive-foreground text-xs font-semibold uppercase tracking-wider animate-pulse">
               <Flame className="w-3 h-3" /> Urgent
@@ -191,7 +192,7 @@ const Fundraisers = () => {
   }
 
   return (
-    <section className="container-wide py-20">
+    <section className="container-wide pt-8 pb-16 sm:pt-10 sm:pb-20">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
         <div className="max-w-2xl">
           <p className="text-sm uppercase tracking-[0.25em] text-accent-deep font-semibold">Live Fundraisers</p>

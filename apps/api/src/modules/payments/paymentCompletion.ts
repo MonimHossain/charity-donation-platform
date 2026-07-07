@@ -2,7 +2,7 @@ import { AppDataSource } from "../../helper/connectDB.js";
 import { Donation } from "../../components/donation/donation.entity.js";
 import { Campaign } from "../../components/campaign/campaign.entity.js";
 import type { FundraiserSettings } from "../../components/campaign/campaign.entity.js";
-import { sendDonationReceiptEmail } from "../../helper/mailer.js";
+import { dispatchEvent } from "../notifications/notification.service.js";
 import { ensureDonorUserForDonation, refreshUserDonationStats } from "../user-auth/userAuth.service.js";
 
 const donationRepo = () => AppDataSource.getRepository(Donation);
@@ -18,8 +18,9 @@ const DEFAULT_FUNDRAISER_SETTINGS: FundraiserSettings = {
   allowOverfunding: true,
 };
 
-async function sendReceiptEmailIfNeeded(donation: Donation): Promise<void> {
+async function sendDonationNotificationsIfNeeded(donation: Donation): Promise<void> {
   if (donation.receiptEmailSent || !donation.donorEmail) return;
+
   let campaignTitle: string | undefined;
   if (donation.campaignId) {
     const campaign = await campaignRepo().findOne({
@@ -28,12 +29,15 @@ async function sendReceiptEmailIfNeeded(donation: Donation): Promise<void> {
     });
     campaignTitle = campaign?.title;
   }
+
   try {
-    await sendDonationReceiptEmail(donation, campaignTitle);
-    donation.receiptEmailSent = true;
-    await donationRepo().save(donation);
+    const result = await dispatchEvent("donation_success", { donation, campaignTitle });
+    if (result.donationEmailStatus === "sent") {
+      donation.receiptEmailSent = true;
+      await donationRepo().save(donation);
+    }
   } catch (err) {
-    console.error("[completeDonation] Receipt email failed:", err);
+    console.error("[completeDonation] Notification dispatch failed:", err);
   }
 }
 
@@ -45,7 +49,7 @@ export async function completeDonation(donationId: string): Promise<Donation | n
   });
   if (!donation) return null;
   if (donation.status === "completed") {
-    await sendReceiptEmailIfNeeded(donation);
+    await sendDonationNotificationsIfNeeded(donation);
     return donation;
   }
 
@@ -78,7 +82,7 @@ export async function completeDonation(donationId: string): Promise<Donation | n
     }
   }
 
-  await sendReceiptEmailIfNeeded(donation);
+  await sendDonationNotificationsIfNeeded(donation);
 
   if (donation.userId) {
     await refreshUserDonationStats(donation.userId);
@@ -92,4 +96,18 @@ export async function failDonation(donationId: string): Promise<void> {
   if (!donation || donation.status === "completed") return;
   donation.status = "failed";
   await donationRepo().save(donation);
+
+  try {
+    await dispatchEvent("payment_failed", {
+      donorEmail: donation.donorEmail,
+      donorName: donation.donorName,
+      amount: Number(donation.totalAmount),
+      currency: donation.currency,
+      userId: donation.userId,
+      isRecurring: false,
+      donationId: donation.id,
+    });
+  } catch (err) {
+    console.error("[failDonation] Notification dispatch failed:", err);
+  }
 }

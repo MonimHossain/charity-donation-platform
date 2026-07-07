@@ -48,6 +48,7 @@ export async function calculateZakat(req: Request, res: Response) {
       silverPricePerGram,
       goldGrams,
       silverGrams,
+      nisabBasis = "silver",
     } = req.body;
 
     let resolvedGoldPrice = Number(goldPricePerGram) || 0;
@@ -84,7 +85,8 @@ export async function calculateZakat(req: Request, res: Response) {
 
     const goldNisab = resolvedGoldPrice * NISAB_GOLD_GRAMS;
     const silverNisab = resolvedSilverPrice * NISAB_SILVER_GRAMS;
-    const nisabThreshold = Math.min(goldNisab, silverNisab);
+    const basis = nisabBasis === "gold" ? "gold" : "silver";
+    const nisabThreshold = basis === "gold" ? goldNisab : silverNisab;
 
     const isAboveNisab = netWealth >= nisabThreshold;
     const zakatPayable = isAboveNisab
@@ -96,6 +98,7 @@ export async function calculateZakat(req: Request, res: Response) {
       totalLiabilities: Math.round(totalLiabilities * 100) / 100,
       netWealth: Math.round(netWealth * 100) / 100,
       nisabThreshold: Math.round(nisabThreshold * 100) / 100,
+      nisabBasis: basis,
       isAboveNisab,
       zakatPayable,
       currency,

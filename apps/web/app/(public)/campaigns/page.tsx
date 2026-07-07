@@ -16,10 +16,10 @@ import {
   getCampaignFundraisingProgress,
   getCampaignGoalAmount,
   getCampaignRaisedAmount,
+  getDisplayDonorCount,
 } from "@/lib/campaign-fundraising";
 import { CampaignFeaturedBadge } from "@/components/campaigns/CampaignFeaturedBadge";
 import { useCurrency } from "@/lib/currency";
-
 const CATEGORIES = [
   "All",
   "Emergency",
@@ -41,6 +41,7 @@ interface Campaign {
   title: string;
   shortDescription: string;
   category: string;
+  campaignMode?: string;
   tags: string[];
   thumbnail?: string;
   banner?: string;
@@ -51,6 +52,7 @@ interface Campaign {
   goalAmount?: number;
   currency: string;
   donorCount: number;
+  displayDonorOffset?: number;
   isFeatured: boolean;
   isUrgent: boolean;
   isEmergency: boolean;
@@ -256,7 +258,7 @@ function CampaignsPageApi() {
                         </div>
                         <div className="mt-1.5 flex items-center justify-between text-xs text-muted-foreground">
                           <span className="flex items-center gap-1">
-                            <Users className="h-3 w-3" /> {campaign.donorCount} donors
+                            <Users className="h-3 w-3" /> {getDisplayDonorCount(campaign)} donors
                           </span>
                           {daysLeft !== null && <span>{daysLeft} days left</span>}
                         </div>

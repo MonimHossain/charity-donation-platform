@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ExternalLink, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { resolveDonationCampaignName } from "@/lib/quick-donate";
 import { cn } from "@/lib/utils";
 import { fetchAdminAutomatedScheduleById } from "@/lib/api";
 import PaymentLogsTable, { type PaymentLogRow } from "@/components/admin/PaymentLogsTable";
@@ -95,7 +96,12 @@ export default function AdminAutomatedDetailPage() {
           <h3 className="font-semibold text-primary">Schedule</h3>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Campaign</span>
-            <span className="font-medium">{(data.campaignTitle as string) || "General"}</span>
+            <span className="font-medium">
+              {resolveDonationCampaignName({
+                campaignTitle: data.campaignTitle as string | undefined,
+                campaign: data.campaign as { title?: string } | undefined,
+              }) || "—"}
+            </span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Daily amount</span>

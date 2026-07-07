@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import {
-  Calendar,
   Download,
   TrendingUp,
   Users,
@@ -21,10 +20,12 @@ import {
   fetchAnalyticsCampaigns,
   fetchAnalyticsDonors,
   fetchAnalyticsGiftAid,
+  fetchAnalyticsCategories,
+  fetchAdminCampaigns,
 } from "@/lib/api";
+import RevenueBarChart from "@/components/admin/RevenueBarChart";
 
 type DateRange = "week" | "month" | "year" | "custom";
-type Granularity = "daily" | "weekly" | "monthly";
 
 interface CampaignPerf {
   id: string;
@@ -52,69 +53,105 @@ interface CategoryBreakdown {
 export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState<DateRange>("month");
-  const [granularity, setGranularity] = useState<Granularity>("daily");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
+  const [campaignId, setCampaignId] = useState("");
+  const [campaigns, setCampaigns] = useState<Array<{ id: string; title: string }>>([]);
 
   const [revenueTrend, setRevenueTrend] = useState<{ label: string; amount: number }[]>([]);
   const [campaignPerf, setCampaignPerf] = useState<CampaignPerf[]>([]);
   const [topDonors, setTopDonors] = useState<TopDonor[]>([]);
   const [categoryBreakdown, setCategoryBreakdown] = useState<CategoryBreakdown[]>([]);
-  const [summaryStats, setSummaryStats] = useState<any>({});
+  const [summaryStats, setSummaryStats] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    loadAnalytics();
-  }, [dateRange, granularity]);
+    void fetchAdminCampaigns({ limit: "200" })
+      .then((res) => {
+        const items = res.items || res.data || [];
+        setCampaigns(
+          items.map((c: { id: string; title: string }) => ({ id: c.id, title: c.title }))
+        );
+      })
+      .catch(() => setCampaigns([]));
+  }, []);
 
-  async function loadAnalytics() {
+  const buildParams = useCallback((): Record<string, string> => {
+    const params: Record<string, string> = { range: dateRange };
+    if (dateRange === "custom" && customFrom && customTo) {
+      params.from = customFrom;
+      params.to = customTo;
+    }
+    if (campaignId) params.campaignId = campaignId;
+    return params;
+  }, [dateRange, customFrom, customTo, campaignId]);
+
+  const loadAnalytics = useCallback(async () => {
     setLoading(true);
     try {
-      const params: Record<string, string> = { range: dateRange, granularity };
-      if (dateRange === "custom" && customFrom && customTo) {
-        params.from = customFrom;
-        params.to = customTo;
-      }
+      const params = buildParams();
 
-      const [statsData, trendsData, campaignsData, donorsData, giftAidData] = await Promise.all([
-        fetchAnalyticsDashboard(params).catch(() => ({})),
-        fetchAnalyticsRevenue(params).catch(() => []),
-        fetchAnalyticsCampaigns(params).catch(() => []),
-        fetchAnalyticsDonors(params).catch(() => []),
-        fetchAnalyticsGiftAid(params).catch(() => ({})),
-      ]);
+      const [statsData, trendsData, campaignsData, donorsData, giftAidData, categoriesData] =
+        await Promise.all([
+          fetchAnalyticsDashboard(params).catch(() => ({})),
+          fetchAnalyticsRevenue(params).catch(() => []),
+          fetchAnalyticsCampaigns(params).catch(() => []),
+          fetchAnalyticsDonors(params).catch(() => []),
+          fetchAnalyticsGiftAid(params).catch(() => ({})),
+          fetchAnalyticsCategories(params).catch(() => []),
+        ]);
 
-      const stats = statsData || {};
+      const stats = (statsData || {}) as Record<string, number>;
       if (giftAidData?.summary) {
-        stats.giftAidTotal = giftAidData.summary.totalGiftAidClaimed || giftAidData.summary.giftAidRevenue || 0;
+        stats.giftAidTotal =
+          giftAidData.summary.totalGiftAidClaimed || giftAidData.summary.giftAidRevenue || 0;
       }
       setSummaryStats(stats);
 
       const trends = Array.isArray(trendsData) ? trendsData : [];
-      setRevenueTrend(trends.map((t: any) => ({ label: t.period, amount: Number(t.revenue || 0) })));
+      setRevenueTrend(
+        trends.map((t: { period: string; revenue: number }) => ({
+          label: t.period,
+          amount: Number(t.revenue || 0),
+        }))
+      );
 
-      const campaigns = Array.isArray(campaignsData) ? campaignsData : [];
-      setCampaignPerf(campaigns.map((c: any) => ({
-        ...c,
-        raised: Number(c.raisedAmount || c.calculatedRevenue || 0),
-      })));
+      const campaignRows = Array.isArray(campaignsData) ? campaignsData : [];
+      setCampaignPerf(
+        campaignRows.map((c: CampaignPerf & { calculatedRevenue?: number }) => ({
+          ...c,
+          raised: Number(c.raisedAmount || c.calculatedRevenue || 0),
+        }))
+      );
 
       const donors = Array.isArray(donorsData) ? donorsData : [];
-      setTopDonors(donors.map((d: any) => ({
-        name: d.donorName || "Anonymous",
-        email: d.donorEmail || "",
-        totalDonated: Number(d.lifetimeValue || 0),
-        donationCount: Number(d.totalDonations || 0),
-      })));
+      setTopDonors(
+        donors.map((d: { donorName?: string; donorEmail?: string; lifetimeValue?: number; totalDonations?: number }) => ({
+          name: d.donorName || "Anonymous",
+          email: d.donorEmail || "",
+          totalDonated: Number(d.lifetimeValue || 0),
+          donationCount: Number(d.totalDonations || 0),
+        }))
+      );
 
-      setCategoryBreakdown([]);
+      const categories = Array.isArray(categoriesData) ? categoriesData : [];
+      setCategoryBreakdown(
+        categories.map((c: CategoryBreakdown) => ({
+          category: c.category,
+          amount: Number(c.amount || 0),
+          count: Number(c.count || 0),
+        }))
+      );
     } catch {
       toast.error("Failed to load analytics");
     } finally {
       setLoading(false);
     }
-  }
+  }, [buildParams]);
 
-  const maxRevenue = Math.max(...revenueTrend.map((r) => r.amount), 1);
+  useEffect(() => {
+    if (dateRange === "custom" && (!customFrom || !customTo)) return;
+    void loadAnalytics();
+  }, [dateRange, campaignId, loadAnalytics]);
 
   function exportCSV(filename: string, headers: string[], rows: string[][]) {
     const csv = [headers, ...rows].map((r) => r.join(",")).join("\n");
@@ -167,10 +204,24 @@ export default function AnalyticsPage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
+        <select
+          value={campaignId}
+          onChange={(e) => setCampaignId(e.target.value)}
+          className="h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring min-w-[12rem]"
+        >
+          <option value="">All campaigns</option>
+          {campaigns.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.title}
+            </option>
+          ))}
+        </select>
+
         <div className="flex items-center gap-1 rounded-lg border bg-card p-1">
           {(["week", "month", "year", "custom"] as DateRange[]).map((r) => (
             <button
               key={r}
+              type="button"
               onClick={() => setDateRange(r)}
               className={cn(
                 "rounded-md px-3 py-1.5 text-sm font-medium transition-colors capitalize",
@@ -186,23 +237,9 @@ export default function AnalyticsPage() {
             <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="h-9 rounded-md border border-input bg-background px-3 text-sm" />
             <span className="text-muted-foreground">to</span>
             <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="h-9 rounded-md border border-input bg-background px-3 text-sm" />
-            <Button size="sm" onClick={loadAnalytics}>Apply</Button>
+            <Button size="sm" onClick={() => void loadAnalytics()}>Apply</Button>
           </div>
         )}
-        <div className="flex items-center gap-1 rounded-lg border bg-card p-1">
-          {(["daily", "weekly", "monthly"] as Granularity[]).map((g) => (
-            <button
-              key={g}
-              onClick={() => setGranularity(g)}
-              className={cn(
-                "rounded-md px-3 py-1.5 text-sm font-medium transition-colors capitalize",
-                granularity === g ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
-              )}
-            >
-              {g}
-            </button>
-          ))}
-        </div>
       </div>
 
       {loading ? (
@@ -229,20 +266,12 @@ export default function AnalyticsPage() {
           <div className="rounded-2xl border bg-card shadow-soft p-5">
             <h2 className="text-lg font-serif font-bold mb-4">Revenue Trends</h2>
             {revenueTrend.length > 0 ? (
-              <div className="flex items-end gap-1 h-56 overflow-x-auto pb-2">
-                {revenueTrend.map((r, i) => (
-                  <div key={i} className="flex-1 min-w-[28px] flex flex-col items-center gap-1">
-                    <span className="text-[10px] font-medium text-muted-foreground whitespace-nowrap">
-                      £{(r.amount / 1000).toFixed(1)}k
-                    </span>
-                    <div
-                      className="w-full rounded-t-lg bg-primary/80 hover:bg-primary transition-colors min-h-[4px]"
-                      style={{ height: `${(r.amount / maxRevenue) * 100}%` }}
-                    />
-                    <span className="text-[10px] text-muted-foreground whitespace-nowrap">{r.label}</span>
-                  </div>
-                ))}
-              </div>
+              <RevenueBarChart
+                data={revenueTrend}
+                heightClass="h-56"
+                labelClassName="text-[10px]"
+                className="overflow-x-auto pb-2 gap-1"
+              />
             ) : (
               <p className="text-center text-muted-foreground py-8">No revenue data for this period</p>
             )}
@@ -330,31 +359,31 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
-            <div className="rounded-2xl border bg-card shadow-soft overflow-hidden">
-              <div className="p-5">
-                <h2 className="text-lg font-serif font-bold">Donations by Category</h2>
-              </div>
-              <Separator />
-              <div className="p-5 space-y-3">
-                {categoryBreakdown.length > 0 ? categoryBreakdown.map((c, i) => {
-                  const maxCat = Math.max(...categoryBreakdown.map((x) => x.amount), 1);
-                  const pct = (c.amount / maxCat) * 100;
-                  return (
-                    <div key={i}>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span className="font-medium">{c.category}</span>
-                        <span className="text-muted-foreground">£{Number(c.amount).toLocaleString("en-GB")} ({c.count})</span>
+            {categoryBreakdown.length > 0 && (
+              <div className="rounded-2xl border bg-card shadow-soft overflow-hidden">
+                <div className="p-5">
+                  <h2 className="text-lg font-serif font-bold">Donations by Category</h2>
+                </div>
+                <Separator />
+                <div className="p-5 space-y-3">
+                  {categoryBreakdown.map((c, i) => {
+                    const maxCat = Math.max(...categoryBreakdown.map((x) => x.amount), 1);
+                    const pct = (c.amount / maxCat) * 100;
+                    return (
+                      <div key={i}>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="font-medium">{c.category}</span>
+                          <span className="text-muted-foreground">£{Number(c.amount).toLocaleString("en-GB")} ({c.count})</span>
+                        </div>
+                        <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                          <div className="h-full rounded-full bg-primary/70" style={{ width: `${pct}%` }} />
+                        </div>
                       </div>
-                      <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                        <div className="h-full rounded-full bg-primary/70" style={{ width: `${pct}%` }} />
-                      </div>
-                    </div>
-                  );
-                }) : (
-                  <p className="text-center text-muted-foreground py-8">No category data</p>
-                )}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </>
       )}

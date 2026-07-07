@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Mail, Phone, MapPin, Send, CheckCircle2, Loader2 } from "lucide-react";
-import { submitPublicContactMessage } from "@/lib/api";
+import { submitPublicContactMessage, getApiErrorMessage } from "@/lib/api";
 import { USE_MOCK_DATA } from "@/lib/config";
 import { toast } from "sonner";
 
@@ -21,9 +21,10 @@ export default function ContactPage() {
         await submitPublicContactMessage(form);
       }
       setSubmitted(true);
+      setForm({ name: "", email: "", subject: "", message: "" });
       toast.success("Message sent successfully");
-    } catch {
-      toast.error("Failed to send message. Please try again.");
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Failed to send message. Please try again."));
     } finally {
       setLoading(false);
     }
@@ -48,7 +49,7 @@ export default function ContactPage() {
               <CheckCircle2 className="w-16 h-16 text-primary mx-auto" />
               <h2 className="mt-4 font-serif text-2xl text-foreground">Message Sent!</h2>
               <p className="mt-2 text-muted-foreground">Thank you for reaching out. We&apos;ll get back to you within 24-48 hours.</p>
-              <Button onClick={() => setSubmitted(false)} className="mt-6 rounded-full">Send Another Message</Button>
+              <Button onClick={() => { setSubmitted(false); setForm({ name: "", email: "", subject: "", message: "" }); }} className="mt-6 rounded-full">Send Another Message</Button>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="rounded-3xl bg-card border border-border p-6 lg:p-8 shadow-soft space-y-5">

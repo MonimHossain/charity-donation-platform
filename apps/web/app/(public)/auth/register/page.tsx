@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Heart, Eye, EyeOff, UserPlus, Loader2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,9 +9,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { userRegister } from "@/lib/api";
 import SsoButtons from "@/components/auth/SsoButtons";
+import { buildAuthHref, sanitizeReturnTo } from "@/lib/auth-redirect";
 
-export default function RegisterPage() {
+function RegisterPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnTo = sanitizeReturnTo(searchParams.get("returnTo"));
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -63,7 +66,7 @@ export default function RegisterPage() {
           );
         }
       }
-      router.push("/account");
+      router.push(returnTo || "/account");
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data
@@ -283,13 +286,13 @@ export default function RegisterPage() {
           </div>
 
           <div className="mt-4">
-            <SsoButtons />
+            <SsoButtons returnTo={returnTo || undefined} />
           </div>
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
             Already have an account?{" "}
             <Link
-              href="/auth/login"
+              href={buildAuthHref("/auth/login", returnTo)}
               className="text-primary hover:underline font-semibold"
             >
               Sign In
@@ -298,5 +301,19 @@ export default function RegisterPage() {
         </div>
       </div>
     </section>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <section className="min-h-[80vh] flex items-center justify-center py-12 px-6">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </section>
+      }
+    >
+      <RegisterPageContent />
+    </Suspense>
   );
 }

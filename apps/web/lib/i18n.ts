@@ -1,139 +1,108 @@
-export type Locale = "en" | "ar" | "fr" | "ur" | "tr" | "bn";
+"use client";
+
+import { useCallback, useSyncExternalStore } from "react";
+
+/** Supported site languages (translated at runtime via Google Translate). */
+export type Locale = "en" | "fr" | "ar" | "es" | "de" | "nl";
 
 export interface LocaleInfo {
   code: Locale;
   name: string;
   nativeName: string;
   dir: "ltr" | "rtl";
+  flag: string;
 }
 
 export const LOCALES: Record<Locale, LocaleInfo> = {
-  en: { code: "en", name: "English", nativeName: "English", dir: "ltr" },
-  ar: { code: "ar", name: "Arabic", nativeName: "العربية", dir: "rtl" },
-  fr: { code: "fr", name: "French", nativeName: "Français", dir: "ltr" },
-  ur: { code: "ur", name: "Urdu", nativeName: "اردو", dir: "rtl" },
-  tr: { code: "tr", name: "Turkish", nativeName: "Türkçe", dir: "ltr" },
-  bn: { code: "bn", name: "Bengali", nativeName: "বাংলা", dir: "ltr" },
+  en: { code: "en", name: "English", nativeName: "English", dir: "ltr", flag: "🇬🇧" },
+  fr: { code: "fr", name: "French", nativeName: "Français", dir: "ltr", flag: "🇫🇷" },
+  ar: { code: "ar", name: "Arabic", nativeName: "العربية", dir: "rtl", flag: "🇸🇦" },
+  es: { code: "es", name: "Spanish", nativeName: "Español", dir: "ltr", flag: "🇪🇸" },
+  de: { code: "de", name: "German", nativeName: "Deutsch", dir: "ltr", flag: "🇩🇪" },
+  nl: { code: "nl", name: "Dutch", nativeName: "Nederlands", dir: "ltr", flag: "🇳🇱" },
 };
 
-const translations: Record<Locale, Record<string, string>> = {
-  en: {
-    "nav.home": "Home",
-    "nav.campaigns": "Campaigns",
-    "nav.about": "About Us",
-    "nav.blog": "Blog",
-    "nav.contact": "Contact",
-    "nav.donate": "Donate Now",
-    "nav.login": "Login",
-    "nav.register": "Register",
-    "hero.title": "Transform Lives. Deliver Hope.",
-    "hero.subtitle": "A trusted charity delivering food, water, education and emergency aid to families in crisis.",
-    "donate.title": "Make a Donation",
-    "donate.single": "Single",
-    "donate.monthly": "Monthly",
-    "donate.quarterly": "Quarterly",
-    "donate.annually": "Annually",
-    "donate.amount": "Donation Amount",
-    "donate.custom": "Custom Amount",
-    "donate.giftaid": "Gift Aid",
-    "donate.giftaid.desc": "I am a UK taxpayer and I consent to Gift Aid. The charity can claim 25% extra at no cost to you.",
-    "donate.name": "Full Name",
-    "donate.email": "Email Address",
-    "donate.phone": "Phone Number",
-    "donate.complete": "Complete Donation",
-    "donate.dedication": "Dedicate this donation",
-    "donate.dedication.memory": "In memory of",
-    "donate.dedication.honor": "In honor of",
-    "donate.dedication.behalf": "On behalf of",
-    "thankyou.title": "Thank You for Your Generous Donation!",
-    "thankyou.subtitle": "Your contribution will make a real difference in the lives of those in need.",
-    "zakat.title": "Zakat Calculator",
-    "zakat.calculate": "Calculate Zakat",
-    "zakat.pay": "Pay Your Zakat",
-    "footer.about": "About Us",
-    "footer.quicklinks": "Quick Links",
-    "footer.contact": "Contact Us",
-    "footer.social": "Follow Us",
-  },
-  ar: {
-    "nav.home": "الرئيسية",
-    "nav.campaigns": "الحملات",
-    "nav.about": "عن المؤسسة",
-    "nav.blog": "المدونة",
-    "nav.contact": "اتصل بنا",
-    "nav.donate": "تبرع الآن",
-    "nav.login": "تسجيل الدخول",
-    "nav.register": "إنشاء حساب",
-    "hero.title": "غيّر حياة. أوصل الأمل.",
-    "hero.subtitle": "مؤسسة خيرية موثوقة توفر الطعام والمياه والتعليم والمساعدات الطارئة.",
-    "donate.title": "قدّم تبرعاً",
-    "donate.single": "مرة واحدة",
-    "donate.monthly": "شهري",
-    "donate.quarterly": "ربع سنوي",
-    "donate.annually": "سنوي",
-    "donate.complete": "إتمام التبرع",
-    "thankyou.title": "شكراً لتبرعك الكريم!",
-    "zakat.title": "حاسبة الزكاة",
-    "zakat.calculate": "احسب الزكاة",
-    "zakat.pay": "ادفع زكاتك",
-  },
-  fr: {
-    "nav.home": "Accueil",
-    "nav.campaigns": "Campagnes",
-    "nav.about": "À propos",
-    "nav.donate": "Faire un don",
-    "donate.title": "Faire un don",
-    "donate.complete": "Finaliser le don",
-    "thankyou.title": "Merci pour votre don généreux !",
-  },
-  ur: {
-    "nav.home": "ہوم",
-    "nav.campaigns": "مہمات",
-    "nav.donate": "ابھی عطیہ دیں",
-    "donate.title": "عطیہ دیں",
-    "donate.complete": "عطیہ مکمل کریں",
-    "thankyou.title": "آپ کے فراخدلانہ عطیہ کا شکریہ!",
-    "zakat.title": "زکوٰۃ کیلکولیٹر",
-  },
-  tr: {
-    "nav.home": "Ana Sayfa",
-    "nav.donate": "Bağış Yap",
-    "donate.title": "Bağış Yap",
-    "donate.complete": "Bağışı Tamamla",
-  },
-  bn: {
-    "nav.home": "হোম",
-    "nav.donate": "দান করুন",
-    "donate.title": "দান করুন",
-    "donate.complete": "দান সম্পূর্ণ করুন",
-  },
+export const LOCALE_LIST = Object.values(LOCALES);
+
+const LEGACY_STORAGE_KEY = "locale";
+
+/** English UI strings — Google Translate localizes the rendered page. */
+const translations: Record<string, string> = {
+  "nav.home": "Home",
+  "nav.campaigns": "Campaigns",
+  "nav.about": "About",
+  "nav.blog": "Stories",
+  "nav.contact": "Contact",
+  "nav.donate": "Donate",
+  "nav.zakat": "Zakat",
+  "nav.login": "Sign in",
+  "nav.account": "My account",
+  "nav.whereWeWork": "Where we work",
+  "nav.namazTimes": "Namaz times",
+  "nav.language": "Language",
+  "donate.title": "Make a Donation",
+  "donate.now": "Donate Now",
+  "donate.inSeconds": "Donate in seconds",
+  "donate.secure": "Secure checkout",
+  "donate.amount": "Amount",
+  "donate.others": "Others",
+  "donate.complete": "Complete Donation",
+  "checkout.recurring.push": "Make this a recurring gift",
+  "checkout.recurring.days": "Repeat every how many days?",
+  "checkout.recurring.help":
+    "Your card will be charged today, then on the same schedule until you cancel from your account.",
+  "footer.appeals": "Appeals",
+  "footer.explore": "Explore",
+  "footer.contact": "Get in touch",
+  "footer.policy": "100% Donation Policy",
+  "footer.policyDesc": "Your Zakat goes 100% to those in need.",
 };
 
-let currentLocale: Locale = "en";
+const listeners = new Set<() => void>();
+
+function emit() {
+  listeners.forEach((l) => l());
+}
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+function getSnapshot(): Locale {
+  return "en";
+}
+
+function getServerSnapshot(): Locale {
+  return "en";
+}
+
+/** Clear legacy per-locale storage so it does not fight Google Translate. */
+export function initLocale() {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
 
 export function getLocale(): Locale {
-  return currentLocale;
+  return "en";
 }
 
-export function setLocale(locale: Locale) {
-  currentLocale = locale;
-  if (typeof window !== "undefined") {
-    localStorage.setItem("locale", locale);
-    document.documentElement.lang = locale;
-    document.documentElement.dir = LOCALES[locale].dir;
-  }
+/** No-op — language is switched via Google Translate in the header. */
+export function setLocale(_locale: Locale) {
+  emit();
 }
 
-export function t(key: string, locale?: Locale): string {
-  const l = locale || currentLocale;
-  return translations[l]?.[key] || translations.en[key] || key;
+export function t(key: string): string {
+  return translations[key] || key;
 }
 
-export function initLocale() {
-  if (typeof window !== "undefined") {
-    const saved = localStorage.getItem("locale") as Locale | null;
-    if (saved && LOCALES[saved]) {
-      setLocale(saved);
-    }
-  }
+export function useLocale() {
+  const locale = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const set = useCallback((code: Locale) => setLocale(code), []);
+  const translate = useCallback((key: string) => t(key), []);
+  return { locale, setLocale: set, t: translate, dir: "ltr" as const };
 }

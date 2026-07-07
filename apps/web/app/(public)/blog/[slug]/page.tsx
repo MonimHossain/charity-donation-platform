@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Loader2, Calendar, Clock, User, ChevronRight, Share2, Copy, Check } from "lucide-react";
-import MarkdownRenderer from "@/components/blog/MarkdownRenderer";
+import BlogContentRenderer from "@/components/blog/BlogContentRenderer";
 import { fetchBlogPostBySlug, subscribeNewsletter } from "@/lib/api";
 import { resolveMediaUrl } from "@/lib/campaign-media";
 import { toast } from "sonner";
@@ -184,7 +184,7 @@ function BlogDetailPageApi({ slug }: { slug: string }) {
                 className="h-80 w-full rounded-xl object-cover mb-8"
               />
             )}
-            <MarkdownRenderer content={post.content} />
+            <BlogContentRenderer content={post.content} />
           </article>
 
           {/* Sidebar */}

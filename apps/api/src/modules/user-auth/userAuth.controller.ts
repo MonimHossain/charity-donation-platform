@@ -30,7 +30,7 @@ export async function registerUser(req: Request, res: Response) {
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
-    const user = await findOrCreateDonorUser({
+    const { user } = await findOrCreateDonorUser({
       email: normalized,
       fullName,
       phone,
@@ -40,6 +40,15 @@ export async function registerUser(req: Request, res: Response) {
       emailVerified: false,
       passwordHash,
     });
+
+    try {
+      const { dispatchEvent } = await import("../notifications/notification.service.js");
+      void dispatchEvent("registration", { user }).catch((err) =>
+        console.error("[register] notification error:", err)
+      );
+    } catch {
+      /* notification module optional at compile time */
+    }
 
     const session = issueUserSession(res, user);
     return res.status(201).json(session);
@@ -63,9 +72,14 @@ export async function loginUser(req: Request, res: Response) {
     }
 
     if (!user.passwordHash) {
-      const provider = user.authProvider === "apple" ? "Apple" : user.authProvider === "google" ? "Google" : "social sign-in";
+      if (user.authProvider === "google") {
+        return res.status(401).json({
+          message: "This account uses Google. Please continue with Google sign-in.",
+        });
+      }
       return res.status(401).json({
-        message: `This account uses ${provider}. Please continue with that sign-in option.`,
+        message:
+          "This account does not have a password yet. Use the email link from checkout to set one.",
       });
     }
 
@@ -200,37 +214,6 @@ export async function changePassword(req: Request, res: Response) {
     await repo.save(user);
 
     return res.json({ message: "Password changed successfully" });
-  } catch (error) {
-    return res.status(500).json({ message: "Internal server error" });
-  }
-}
-
-export async function forgotPassword(req: Request, res: Response) {
-  try {
-    const { email } = req.body;
-    if (!email) {
-      return res.status(400).json({ message: "Email is required" });
-    }
-
-    return res.json({
-      message:
-        "If an account with that email exists, a reset link has been sent",
-    });
-  } catch (error) {
-    return res.status(500).json({ message: "Internal server error" });
-  }
-}
-
-export async function resetPassword(req: Request, res: Response) {
-  try {
-    const { token, newPassword } = req.body;
-    if (!token || !newPassword) {
-      return res
-        .status(400)
-        .json({ message: "Token and new password are required" });
-    }
-
-    return res.json({ message: "Password has been reset successfully" });
   } catch (error) {
     return res.status(500).json({ message: "Internal server error" });
   }

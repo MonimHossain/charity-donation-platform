@@ -45,9 +45,17 @@ import {
 import {
   CAMPAIGN_MODE_LABELS,
   DEFAULT_RAMADAN_CONFIG,
+  isAttributesSkippedMode,
   isExperienceCampaignMode,
   type RamadanSplitConfig,
 } from "@/lib/campaign-experience";
+import {
+  hasDuplicateAttributeSortOrders,
+  nextAttributeSortOrder,
+  sortCampaignAttributes,
+  swapAttributeSortOrders,
+  syncAttributeSortOrders,
+} from "@/lib/campaign-attributes";
 import {
   DEFAULT_REGULAR_PAYMENT_CONFIG,
   DEFAULT_SINGLE_PAYMENT_CONFIG,
@@ -122,6 +130,7 @@ interface CheckoutSettings {
   enableFeeCoverage: boolean;
   enableAdminSavesLife: boolean;
   adminSavesLifeAmount: number;
+  enablePushRecurringDonation: boolean;
 }
 
 interface VisibilitySettings {
@@ -170,6 +179,7 @@ interface CampaignForm {
   fundraiserSettings: FundraiserSettings;
   checkoutSettings: CheckoutSettings;
   visibilitySettings: VisibilitySettings;
+  displayDonorOffset: number;
   paymentGateways: string[];
   seoSettings: SeoSettings;
 }
@@ -218,13 +228,13 @@ const defaultQuantityConfig: QuantityConfig = {
   maxQuantity: 100,
 };
 
-function newAttribute(): CampaignAttribute {
+function newAttribute(sortOrder = 0): CampaignAttribute {
   return {
     id: uid(),
     name: "",
     description: "",
     image: "",
-    sortOrder: 0,
+    sortOrder,
     enableSinglePayment: true,
     enableRegularPayment: false,
     enableQuantity: false,
@@ -292,8 +302,10 @@ const defaultForm: CampaignForm = {
     enableFeeCoverage: false,
     enableAdminSavesLife: false,
     adminSavesLifeAmount: 0,
+    enablePushRecurringDonation: false,
   },
   visibilitySettings: { showInHeader: false, showOnHomepage: false, pinToTop: false, headerDisplayName: "" },
+  displayDonorOffset: 0,
   paymentGateways: ["stripe"],
   seoSettings: { metaTitle: "", metaDescription: "", ogTitle: "", ogDescription: "", ogImage: "" },
 };
@@ -360,11 +372,11 @@ function buildWizardSteps(form: CampaignForm): WizardStep[] {
     },
   ];
 
-  if (!experience) {
+  if (!isAttributesSkippedMode(form.campaignMode)) {
     steps.push({
       id: "attributes",
       title: "Donation options",
-      description: "Set preset amounts, payment types, and custom fields.",
+      description: "Set options, preset amounts, and display order (left to right on the donation page).",
     });
   }
 
@@ -435,7 +447,7 @@ function normalizeAttributePayment(attr: CampaignAttribute): CampaignAttribute {
 }
 
 function normalizeCampaignAttributes(attributes: CampaignAttribute[]) {
-  return attributes.map(normalizeAttributePayment);
+  return syncAttributeSortOrders(attributes.map(normalizeAttributePayment));
 }
 
 // ── Main Page ──
@@ -533,7 +545,8 @@ export default function CampaignsPage() {
       experienceConfig: (c as Campaign & { experienceConfig?: CampaignForm["experienceConfig"] }).experienceConfig
         ? { ...(c as Campaign & { experienceConfig?: CampaignForm["experienceConfig"] }).experienceConfig! }
         : {},
-      attributes: (c.attributes || []).map((attr) => {
+      attributes: syncAttributeSortOrders(
+        (c.attributes || []).map((attr) => {
         const normalized = normalizeAttributePayment(attr as CampaignAttribute);
         return {
           ...normalized,
@@ -552,13 +565,15 @@ export default function CampaignsPage() {
             options: [...field.options],
           })),
         };
-      }),
+      })
+      ),
       upsellIds: Array.isArray((c as Campaign & { upsellIds?: string[] }).upsellIds)
         ? [...((c as Campaign & { upsellIds?: string[] }).upsellIds || [])]
         : (c.upsells || []).map((u: { id?: string }) => u.id).filter(Boolean) as string[],
       fundraiserSettings: { ...defaultForm.fundraiserSettings, ...(c.fundraiserSettings || {}) },
       checkoutSettings: { ...defaultForm.checkoutSettings, ...(c.checkoutSettings || {}) },
       visibilitySettings: { ...defaultForm.visibilitySettings, ...(c.visibilitySettings || {}) },
+      displayDonorOffset: Math.max(0, Number((c as Campaign & { displayDonorOffset?: number }).displayDonorOffset ?? 0) || 0),
       paymentGateways: [...(c.paymentGateways || ["stripe"])],
       seoSettings: { ...defaultForm.seoSettings, ...(c.seoSettings || {}) },
     };
@@ -614,10 +629,14 @@ export default function CampaignsPage() {
       toast.warning("Please set a campaign expiration date and time.");
       return false;
     }
-    if (stepId === "attributes" && !isExperienceCampaignMode(form.campaignMode) && form.attributes.length === 0) {
+    if (stepId === "attributes" && !isAttributesSkippedMode(form.campaignMode) && form.attributes.length === 0) {
       toast.warning(
         "Add at least one donation attribute. Without it, this campaign will not show any payment options to donors."
       );
+      return false;
+    }
+    if (stepId === "attributes" && hasDuplicateAttributeSortOrders(form.attributes)) {
+      toast.warning("Each attribute must have a unique sort order. Adjust duplicate values before continuing.");
       return false;
     }
     return true;
@@ -629,10 +648,14 @@ export default function CampaignsPage() {
       toast.warning("Please set a campaign expiration date and time.");
       return false;
     }
-    if (!isExperienceCampaignMode(form.campaignMode) && form.attributes.length === 0) {
+    if (!isAttributesSkippedMode(form.campaignMode) && form.attributes.length === 0) {
       toast.warning(
         "Add at least one donation attribute. Without it, this campaign will not show any payment options to donors."
       );
+      return false;
+    }
+    if (hasDuplicateAttributeSortOrders(form.attributes)) {
+      toast.warning("Each attribute must have a unique sort order. Adjust duplicate values before saving.");
       return false;
     }
     return true;
@@ -643,7 +666,7 @@ export default function CampaignsPage() {
       if (!form.title.trim()) {
         toast.error("Title is required");
         setCurrentStepIndex(0);
-      } else if (!isExperienceCampaignMode(form.campaignMode)) {
+      } else if (!isAttributesSkippedMode(form.campaignMode)) {
         const attributesStepIndex = wizardSteps.findIndex((s) => s.id === "attributes");
         if (attributesStepIndex >= 0) setCurrentStepIndex(attributesStepIndex);
       }
@@ -798,7 +821,7 @@ export default function CampaignsPage() {
                         </span>
                       </td>
                       <td className="px-5 py-3 text-muted-foreground">
-                        {isExperienceCampaignMode(c.campaignMode || "standard")
+                        {isAttributesSkippedMode(c.campaignMode || "standard")
                           ? "—"
                           : `${c.attributes?.length || 0} attribute${(c.attributes?.length || 0) !== 1 ? "s" : ""}`}
                       </td>
@@ -1231,15 +1254,46 @@ export default function CampaignsPage() {
               <div>
                 <h3 className="font-serif font-semibold text-lg">Campaign Attributes</h3>
                 <p className="text-sm text-muted-foreground">
-                  Each attribute defines a donation option with its own payment types, preset amounts, and custom fields.
+                  Each attribute is a donation option on the public campaign page. Use sort order (or the arrows) to
+                  control which option appears first in the inline row — lower numbers are further left.
                 </p>
               </div>
-              <Button onClick={() => setForm((p) => ({ ...p, attributes: [newAttribute(), ...p.attributes] }))}>
+              <Button
+                onClick={() =>
+                  setForm((p) => ({
+                    ...p,
+                    attributes: [newAttribute(nextAttributeSortOrder(p.attributes)), ...p.attributes],
+                  }))
+                }
+              >
                 <Plus className="h-4 w-4" /> Add Attribute
               </Button>
             </div>
 
-            {!isExperienceCampaignMode(form.campaignMode) && form.attributes.length === 0 && (
+            {form.attributes.length > 1 && (
+              <div className="rounded-lg border bg-muted/20 p-4 space-y-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Donor page tab order (left → right)
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {sortCampaignAttributes(form.attributes).map((attr, i) => (
+                    <span
+                      key={attr.id}
+                      className={cn(
+                        "px-3 py-1.5 rounded-full text-xs font-medium border",
+                        i === 0
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background text-foreground border-border"
+                      )}
+                    >
+                      {i + 1}. {attr.name || `Option ${i + 1}`}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!isAttributesSkippedMode(form.campaignMode) && form.attributes.length === 0 && (
               <Alert className="border-amber-200 bg-amber-50 text-amber-950">
                 <AlertTriangle className="text-amber-600" />
                 <AlertDescription>
@@ -1256,61 +1310,72 @@ export default function CampaignsPage() {
             )}
 
             <div className="space-y-4">
-              {form.attributes.map((attr, ai) => (
+              {sortCampaignAttributes(form.attributes).map((attr, ai) => {
+                const conflicting = form.attributes.find(
+                  (other) => other.id !== attr.id && other.sortOrder === attr.sortOrder
+                );
+                const duplicateSortOrder = Boolean(conflicting);
+                return (
                 <AttributeEditor
                   key={attr.id}
                   attribute={attr}
                   index={ai}
                   total={form.attributes.length}
+                  duplicateSortOrder={duplicateSortOrder}
+                  conflictingAttributeName={conflicting?.name}
                   onChange={(updated) =>
                     setForm((p) => ({
                       ...p,
-                      attributes: p.attributes.map((a, i) => (i === ai ? updated : a)),
+                      attributes: p.attributes.map((a) => (a.id === updated.id ? updated : a)),
                     }))
                   }
                   onRemove={() =>
                     setForm((p) => ({
                       ...p,
-                      attributes: p.attributes.filter((_, i) => i !== ai),
+                      attributes: p.attributes.filter((a) => a.id !== attr.id),
                     }))
                   }
                   onMoveUp={() =>
                     setForm((p) => {
-                      if (ai === 0) return p;
-                      const arr = [...p.attributes];
-                      const prev = arr[ai - 1];
-                      const curr = arr[ai];
-                      if (prev && curr) {
-                        arr[ai - 1] = curr;
-                        arr[ai] = prev;
-                      }
-                      return { ...p, attributes: arr };
+                      const sorted = sortCampaignAttributes(p.attributes);
+                      const curr = sorted[ai];
+                      const prev = sorted[ai - 1];
+                      if (!curr || !prev || ai === 0) return p;
+                      return {
+                        ...p,
+                        attributes: swapAttributeSortOrders(p.attributes, curr.id, prev.id),
+                      };
                     })
                   }
                   onMoveDown={() =>
                     setForm((p) => {
-                      if (ai >= p.attributes.length - 1) return p;
-                      const arr = [...p.attributes];
-                      const curr = arr[ai];
-                      const next = arr[ai + 1];
-                      if (curr && next) {
-                        arr[ai] = next;
-                        arr[ai + 1] = curr;
-                      }
-                      return { ...p, attributes: arr };
+                      const sorted = sortCampaignAttributes(p.attributes);
+                      const curr = sorted[ai];
+                      const next = sorted[ai + 1];
+                      if (!curr || !next || ai >= sorted.length - 1) return p;
+                      return {
+                        ...p,
+                        attributes: swapAttributeSortOrders(p.attributes, curr.id, next.id),
+                      };
                     })
                   }
                   onDuplicate={() =>
                     setForm((p) => ({
                       ...p,
                       attributes: [
-                        { ...attr, id: uid(), name: `${attr.name} (copy)` },
+                        {
+                          ...attr,
+                          id: uid(),
+                          name: `${attr.name} (copy)`,
+                          sortOrder: nextAttributeSortOrder(p.attributes),
+                        },
                         ...p.attributes,
                       ],
                     }))
                   }
                 />
-              ))}
+              );
+              })}
             </div>
           </div>
         )}
@@ -1478,6 +1543,20 @@ export default function CampaignsPage() {
                   </p>
                 </div>
               )}
+              <SwitchRow
+                label="Push for recurring donation"
+                description="Offer single-donation checkout visitors an optional recurring gift on a custom day interval."
+                checked={form.checkoutSettings.enablePushRecurringDonation}
+                onChange={(v) =>
+                  setForm((p) => ({
+                    ...p,
+                    checkoutSettings: {
+                      ...p.checkoutSettings,
+                      enablePushRecurringDonation: v,
+                    },
+                  }))
+                }
+              />
             </div>
           </div>
         )}
@@ -1570,6 +1649,27 @@ export default function CampaignsPage() {
               <strong>published</strong> for any of these to take effect.
             </p>
             <div className="space-y-4 rounded-xl border bg-muted/30 p-4">
+              <div className="space-y-2">
+                <Label htmlFor="display-donor-offset">Display donor count boost</Label>
+                <Input
+                  id="display-donor-offset"
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={form.displayDonorOffset || ""}
+                  onChange={(e) =>
+                    setForm((p) => ({
+                      ...p,
+                      displayDonorOffset: Math.max(0, Number(e.target.value) || 0),
+                    }))
+                  }
+                  className="h-10"
+                  placeholder="0"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Cosmetic only — shown on public campaign cards as this number plus real donations. Does not affect admin reports or analytics.
+                </p>
+              </div>
               <div className="space-y-3">
                 <SwitchRow
                   label="Show in Header Navigation"
@@ -1757,6 +1857,8 @@ function AttributeEditor({
   attribute,
   index,
   total,
+  duplicateSortOrder = false,
+  conflictingAttributeName,
   onChange,
   onRemove,
   onMoveUp,
@@ -1766,6 +1868,8 @@ function AttributeEditor({
   attribute: CampaignAttribute;
   index: number;
   total: number;
+  duplicateSortOrder?: boolean;
+  conflictingAttributeName?: string;
   onChange: (attr: CampaignAttribute) => void;
   onRemove: () => void;
   onMoveUp: () => void;
@@ -1934,11 +2038,17 @@ function AttributeEditor({
     <div className="rounded-xl border bg-background">
       <div className="flex items-center gap-2 p-4">
         <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
-        <button type="button" onClick={() => setExpanded(!expanded)} className="flex-1 text-left">
-          <span className="font-medium text-sm">
-            {attribute.name || `Attribute ${index + 1}`}
-          </span>
-          <span className="text-xs text-muted-foreground ml-2">
+        <button type="button" onClick={() => setExpanded(!expanded)} className="flex-1 text-left min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-medium text-sm">
+              {attribute.name || `Attribute ${index + 1}`}
+            </span>
+            <Badge variant="outline" className="text-[10px] font-normal shrink-0">
+              Position {index + 1} of {total}
+              {index === 0 ? " · first on site" : index === total - 1 ? " · last on site" : ""}
+            </Badge>
+          </div>
+          <span className="text-xs text-muted-foreground">
             {[
               attribute.enableSinglePayment && "Single",
               attribute.enableRegularPayment && "Regular",
@@ -1975,8 +2085,26 @@ function AttributeEditor({
               <Input value={attribute.name} onChange={(e) => update("name", e.target.value)} placeholder="e.g. Feed a Family" />
             </div>
             <div className="space-y-2">
-              <Label className="text-xs">Sort Order</Label>
-              <Input type="number" value={attribute.sortOrder} onChange={(e) => update("sortOrder", Number(e.target.value))} />
+              <Label className="text-xs">Display position</Label>
+              <Input
+                type="number"
+                min={1}
+                max={total}
+                value={attribute.sortOrder + 1}
+                onChange={(e) => {
+                  const position = Math.max(1, Math.min(total, Number(e.target.value) || 1));
+                  update("sortOrder", position - 1);
+                }}
+                className={duplicateSortOrder ? "border-destructive focus-visible:ring-destructive" : undefined}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                1 = leftmost tab on the donation page. Use the arrows above or change this number.
+              </p>
+              {duplicateSortOrder && (
+                <p className="text-xs text-destructive">
+                  Position {attribute.sortOrder + 1} is already used by &ldquo;{conflictingAttributeName || "another attribute"}&rdquo;. Choose a different number or use the arrows.
+                </p>
+              )}
             </div>
           </div>
           <div className="space-y-2">

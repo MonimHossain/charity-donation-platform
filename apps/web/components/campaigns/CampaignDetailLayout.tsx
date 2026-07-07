@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { statValueSmClass } from "@/lib/home-buttons";
 import { useCurrency } from "@/lib/currency";
+import { getDisplayDonorCount } from "@/lib/campaign-fundraising";
 import { getCampaignHeroImage, getCampaignCardImage } from "@/lib/campaign-media";
 import { CampaignExpirationCountdown } from "@/components/campaigns/CampaignExpirationCountdown";
 import { CampaignFeaturedBadge } from "@/components/campaigns/CampaignFeaturedBadge";
@@ -81,6 +82,7 @@ export function CampaignDetailLayout({
     campaign.seoSettings?.metaDescription || campaign.shortDescription.slice(0, 155);
   const checkoutLink = donateHref ?? `/donate?cause=${campaign.slug}&campaignId=${campaign.id}`;
   const showSidebar = Boolean(heroSidebar);
+  const displayDonors = getDisplayDonorCount(campaign);
 
   return (
     <PageShell title={pageTitle} description={pageDescription}>
@@ -96,11 +98,11 @@ export function CampaignDetailLayout({
               )}
             >
               {/* 1. Banner image */}
-              <div className="mb-6 rounded-3xl overflow-hidden border border-border shadow-lift aspect-[16/9] bg-muted">
+              <div className="mb-6 rounded-3xl overflow-hidden border border-border shadow-lift bg-muted max-h-[min(70vh,520px)] flex items-center justify-center">
                 <img
                   src={heroImage}
                   alt={campaign.title}
-                  className="w-full h-full object-cover"
+                  className="w-full h-auto max-h-[min(70vh,520px)] object-contain"
                   onError={(e) => {
                     const img = e.currentTarget;
                     if (img.src.includes("hero-1.webp")) return;
@@ -179,7 +181,7 @@ export function CampaignDetailLayout({
                   <div className="mt-3 flex items-center justify-between text-xs text-primary/80">
                     <span className="flex items-center gap-1.5">
                       <Users className="w-3.5 h-3.5" />
-                      {campaign.donorCount?.toLocaleString() || 0} donors
+                      {displayDonors.toLocaleString()} donors
                     </span>
                     <span className="font-semibold text-accent">{percentage}% funded</span>
                     {daysLeft !== null && <span>{daysLeft}d left</span>}
@@ -249,7 +251,7 @@ export function CampaignDetailLayout({
                     />
                     <ImpactStatCard
                       icon={Users}
-                      value={(campaign.donorCount ?? 0).toLocaleString()}
+                      value={displayDonors.toLocaleString()}
                       label="Supporters"
                     />
                     <ImpactStatCard icon={Award} value={`${percentage}%`} label="Funded" />
@@ -272,7 +274,7 @@ export function CampaignDetailLayout({
                   Recent donations
                 </p>
                 <h2 className="mt-2 font-serif text-3xl md:text-4xl text-primary">
-                  Join {(campaign.donorCount ?? recentDonations.length).toLocaleString()} donors who
+                  Join {displayDonors.toLocaleString()} donors who
                   already gave
                 </h2>
               </div>

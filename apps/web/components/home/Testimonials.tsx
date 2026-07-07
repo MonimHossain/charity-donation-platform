@@ -1,23 +1,42 @@
 "use client";
 
 import { Star, Quote, UserRound, ChevronLeft, ChevronRight } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 
-import { testimonials as fallbackTestimonials } from "@/lib/mock/home";
 import { useTestimonials } from "@/lib/data/cms";
 
 const Testimonials = () => {
-  const { data: apiItems } = useTestimonials();
-  const source = apiItems?.length ? apiItems : fallbackTestimonials;
-  const testimonials = source.map((t: { name: string; location?: string; text?: string; quote?: string; role?: string }) => ({
-    name: t.name,
-    role: t.role ?? `${t.location ?? "Donor"} · Donor`,
-    quote: t.text ?? t.quote ?? "",
-    rating: 5,
-  }));
+  const { data: apiItems, isLoading } = useTestimonials();
+  const testimonials = useMemo(() => {
+    const source = apiItems ?? [];
+    return source.map(
+      (t: {
+        id?: string;
+        name: string;
+        location?: string;
+        text?: string;
+        quote?: string;
+        role?: string;
+        rating?: number;
+      }) => ({
+        id: t.id ?? t.name,
+        name: t.name,
+        role: t.role ?? (t.location ? `${t.location} · Donor` : "Donor"),
+        quote: t.text ?? t.quote ?? "",
+        rating: t.rating ?? 5,
+      })
+    );
+  }, [apiItems]);
+
   const [index, setIndex] = useState(0);
   const [perView, setPerView] = useState(3);
+
+  const avgRating = useMemo(() => {
+    if (!testimonials.length) return 0;
+    const sum = testimonials.reduce((acc, t) => acc + t.rating, 0);
+    return Math.round((sum / testimonials.length) * 10) / 10;
+  }, [testimonials]);
 
   useEffect(() => {
     const update = () => {
@@ -46,6 +65,9 @@ const Testimonials = () => {
   const prev = () => setIndex((i) => (i <= 0 ? maxIndex : i - 1));
   const next = () => setIndex((i) => (i >= maxIndex ? 0 : i + 1));
 
+  if (isLoading) return null;
+  if (!testimonials.length) return null;
+
   return (
     <section className="bg-secondary/40 border-y border-border">
       <div className="container-wide py-16 sm:py-20 lg:py-24">
@@ -55,12 +77,18 @@ const Testimonials = () => {
             Real people. <span className="underline-brush">Real impact.</span>
           </h2>
           <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-            <div className="flex" aria-label="5 out of 5 stars">
+            <div className="flex" aria-label={`${avgRating} out of 5 stars`}>
               {Array.from({ length: 5 }).map((_, i) => (
-                <Star key={i} className="w-4 h-4 fill-accent text-accent" />
+                <Star
+                  key={i}
+                  className={`w-4 h-4 ${i < Math.round(avgRating) ? "fill-accent text-accent" : "text-muted-foreground/40"}`}
+                />
               ))}
             </div>
-            <span><strong className="text-foreground">4.9/5</strong> from 2,400+ reviews</span>
+            <span>
+              <strong className="text-foreground">{avgRating}/5</strong> from {testimonials.length} review
+              {testimonials.length === 1 ? "" : "s"}
+            </span>
           </div>
         </div>
 
@@ -72,7 +100,7 @@ const Testimonials = () => {
             >
               {testimonials.map((t) => (
                 <figure
-                  key={t.name}
+                  key={t.id}
                   className="shrink-0 px-2 sm:px-3"
                   style={{ width: `${100 / perView}%` }}
                 >

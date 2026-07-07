@@ -6,6 +6,8 @@ import { DashboardQuickActions } from "@/components/admin/dashboard/DashboardQui
 import { DashboardStatCard } from "@/components/admin/dashboard/DashboardStatCard";
 import { ExpiringCertificationsTable } from "@/components/admin/dashboard/ExpiringCertificationsTable";
 import { RecentSubmissionsTable } from "@/components/admin/dashboard/RecentSubmissionsTable";
+import { RamadanSplitDashboardSection } from "@/components/admin/dashboard/RamadanSplitDashboardSection";
+import RevenueBarChart from "@/components/admin/RevenueBarChart";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -33,6 +35,11 @@ import {
   fetchCampaigns,
   fetchAdminDashboardOverview,
 } from "@/lib/api";
+import {
+  formatDonationTypeLabel,
+  QUICK_DONATION_TYPE,
+  resolveDonationCampaignName,
+} from "@/lib/quick-donate";
 
 const statusBadge: Record<string, string> = {
   completed: "bg-green-100 text-green-700",
@@ -40,6 +47,12 @@ const statusBadge: Record<string, string> = {
   failed: "bg-red-100 text-red-700",
   refunded: "bg-red-100 text-red-700",
 };
+
+function donationTypeBadgeClass(donationType?: string): string {
+  if (donationType === QUICK_DONATION_TYPE) return "bg-violet-100 text-violet-700";
+  if (donationType === "ramadan") return "bg-amber-100 text-amber-800";
+  return "bg-slate-100 text-slate-600";
+}
 
 interface OverviewStats {
   totalCharities: number;
@@ -167,7 +180,6 @@ function AdminDashboardPageApi() {
     { month: "May", amount: 5900 },
     { month: "Jun", amount: 7200 },
   ];
-  const maxRevenue = Math.max(...monthlyRevenue.map((m: { amount: number }) => m.amount), 1);
 
   const fundraisingCards = [
     {
@@ -319,6 +331,8 @@ function AdminDashboardPageApi() {
         )}
       </DashboardSection>
 
+      <RamadanSplitDashboardSection />
+
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 rounded-2xl border bg-card shadow-soft p-5">
           <h2 className="text-lg font-serif font-bold">Revenue Overview</h2>
@@ -326,20 +340,13 @@ function AdminDashboardPageApi() {
           {fundraisingLoading ? (
             <div className="mt-4 h-48 animate-pulse rounded-xl bg-muted" />
           ) : (
-            <div className="mt-4 flex items-end gap-2 h-48">
-              {monthlyRevenue.map((m: { month: string; amount: number }) => (
-                <div key={m.month} className="flex-1 flex flex-col items-center gap-1">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    £{(m.amount / 1000).toFixed(1)}k
-                  </span>
-                  <div
-                    className="w-full rounded-t-lg bg-primary/80 hover:bg-primary transition-colors min-h-[4px]"
-                    style={{ height: `${(m.amount / maxRevenue) * 100}%` }}
-                  />
-                  <span className="text-xs text-muted-foreground">{m.month}</span>
-                </div>
-              ))}
-            </div>
+            <RevenueBarChart
+              className="mt-4"
+              data={monthlyRevenue.map((m: { month: string; amount: number }) => ({
+                label: m.month,
+                amount: m.amount,
+              }))}
+            />
           )}
         </div>
         <DashboardQuickActions />
@@ -387,6 +394,8 @@ function AdminDashboardPageApi() {
                   <tr className="border-b bg-muted/40">
                     <th className="px-5 py-3 text-left font-medium text-muted-foreground">Donor</th>
                     <th className="px-5 py-3 text-left font-medium text-muted-foreground">Amount</th>
+                    <th className="px-5 py-3 text-left font-medium text-muted-foreground">Campaign</th>
+                    <th className="px-5 py-3 text-left font-medium text-muted-foreground">Type</th>
                     <th className="px-5 py-3 text-left font-medium text-muted-foreground">Date</th>
                     <th className="px-5 py-3 text-left font-medium text-muted-foreground">Status</th>
                   </tr>
@@ -394,7 +403,7 @@ function AdminDashboardPageApi() {
                 <tbody>
                   {fundraisingLoading ? (
                     <tr>
-                      <td colSpan={4} className="px-5 py-8 text-center text-muted-foreground">
+                      <td colSpan={6} className="px-5 py-8 text-center text-muted-foreground">
                         Loading donations...
                       </td>
                     </tr>
@@ -404,6 +413,19 @@ function AdminDashboardPageApi() {
                         <td className="px-5 py-3 font-medium">{d.donorName || d.donor || "Anonymous"}</td>
                         <td className="px-5 py-3 font-semibold">
                           £{Number(d.amount || 0).toLocaleString("en-GB", { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className="px-5 py-3 text-muted-foreground">
+                          {resolveDonationCampaignName(d) || "—"}
+                        </td>
+                        <td className="px-5 py-3">
+                          <span
+                            className={cn(
+                              "inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium",
+                              donationTypeBadgeClass(d.donationType)
+                            )}
+                          >
+                            {formatDonationTypeLabel(d.donationType)}
+                          </span>
                         </td>
                         <td className="px-5 py-3 text-muted-foreground">
                           {d.createdAt ? new Date(d.createdAt).toLocaleDateString() : "—"}
@@ -422,7 +444,7 @@ function AdminDashboardPageApi() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={4} className="px-5 py-10 text-center text-muted-foreground">
+                      <td colSpan={6} className="px-5 py-10 text-center text-muted-foreground">
                         No recent donations
                       </td>
                     </tr>

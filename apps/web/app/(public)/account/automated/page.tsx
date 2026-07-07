@@ -7,45 +7,34 @@ import {
   ChevronRight,
   Clock,
   Loader2,
+  Repeat,
   Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useCurrency } from "@/lib/currency";
 import {
-  fetchMyAutomatedSchedules,
-  cancelAutomatedSchedule,
-} from "@/lib/api";
+  formatAutomationType,
+  formatNextChargeDate,
+  normalizeAutomationItems,
+  type AutomationListItem,
+} from "@/lib/automation-list";
+import { fetchMyAutomatedSchedules, cancelAutomatedSchedule } from "@/lib/api";
 import { SCHEDULE_STATUS_STYLES } from "@/lib/payment-utils";
-
-interface Schedule {
-  id: string;
-  donorName: string;
-  totalAmount: number;
-  dailyAmount: number;
-  paidAmount: number;
-  completedDays: number;
-  totalDays: number;
-  startDate: string;
-  endDate: string;
-  status: string;
-  currency: string;
-  campaign?: { title?: string };
-  createdAt: string;
-}
+import { recurringIntervalLabel } from "@/lib/stripe-recurring";
 
 type Tab = "all" | "failed";
 
 export default function UserAutomatedPage() {
   const { formatMoney } = useCurrency();
-  const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [schedules, setSchedules] = useState<AutomationListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("all");
   const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchMyAutomatedSchedules()
-      .then((res) => setSchedules(res.items || res || []))
+      .then((res) => setSchedules(normalizeAutomationItems(res)))
       .catch(() => setSchedules([]))
       .finally(() => setLoading(false));
   }, []);
@@ -53,7 +42,7 @@ export default function UserAutomatedPage() {
   const filtered = useMemo(() => {
     if (tab === "failed") {
       return schedules.filter((s) => {
-        if (["awaiting_payment_method", "paused"].includes(s.status)) return true;
+        if (["awaiting_payment_method", "paused", "failed"].includes(s.status)) return true;
         if (s.status === "cancelled" && s.completedDays < s.totalDays) return true;
         return false;
       });
@@ -88,7 +77,7 @@ export default function UserAutomatedPage() {
           Automated Donations
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Ramadan splits and scheduled daily giving plans.
+          Recurring gifts and scheduled plans waiting for their next charge date.
         </p>
       </div>
 
@@ -105,7 +94,7 @@ export default function UserAutomatedPage() {
                 : "bg-secondary text-muted-foreground hover:text-foreground"
             )}
           >
-            {t === "all" ? "All plans" : "Failed & incomplete"}
+            {t === "all" ? "All automations" : "Failed & incomplete"}
           </button>
         ))}
       </div>
@@ -114,12 +103,12 @@ export default function UserAutomatedPage() {
         <div className="rounded-3xl bg-card border border-border p-12 shadow-soft text-center">
           <Sparkles className="w-12 h-12 text-muted-foreground/30 mx-auto" />
           <h2 className="font-serif text-xl text-primary mt-4">
-            {tab === "failed" ? "No failed payments" : "No automated plans yet"}
+            {tab === "failed" ? "No failed payments" : "No automated donations yet"}
           </h2>
           <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
             {tab === "failed"
               ? "All your scheduled donations are on track."
-              : "Set up a Ramadan split or daily giving plan from any campaign checkout."}
+              : "Set up a recurring gift or Ramadan split from any campaign checkout."}
           </p>
           {tab === "all" && (
             <Button asChild variant="accent" className="mt-6 rounded-full">
@@ -130,32 +119,53 @@ export default function UserAutomatedPage() {
       ) : (
         <div className="space-y-4">
           {filtered.map((s) => {
+            const isRecurring = s.automationType === "recurring";
             const pct =
-              s.totalDays > 0
+              !isRecurring && s.totalDays > 0
                 ? Math.round((s.completedDays / s.totalDays) * 100)
                 : 0;
+            const detailHref = isRecurring
+              ? "/account/recurring"
+              : `/account/automated/${s.id}`;
+
             return (
               <div
-                key={s.id}
+                key={`${s.automationType || "schedule"}-${s.id}`}
                 className="rounded-3xl bg-card border border-border p-6 shadow-soft"
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex-1 space-y-2">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-accent/15 flex items-center justify-center">
-                        <Clock className="w-5 h-5 text-accent-deep" />
+                        {isRecurring ? (
+                          <Repeat className="w-5 h-5 text-accent-deep" />
+                        ) : (
+                          <Clock className="w-5 h-5 text-accent-deep" />
+                        )}
                       </div>
                       <div>
                         <p className="font-semibold">
                           {s.campaign?.title || "General Fund"}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          {formatMoney(s.totalAmount, { from: s.currency })} total ·{" "}
-                          {formatMoney(s.dailyAmount, { from: s.currency })}/day
+                          {isRecurring ? (
+                            <>
+                              {formatMoney(s.totalAmount, { from: s.currency })} ·{" "}
+                              {recurringIntervalLabel(s.frequency || "monthly")}
+                            </>
+                          ) : (
+                            <>
+                              {formatMoney(s.totalAmount, { from: s.currency })} total ·{" "}
+                              {formatMoney(s.dailyAmount, { from: s.currency })}/day
+                            </>
+                          )}
                         </p>
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-3 text-xs">
+                      <span className="inline-flex px-2.5 py-0.5 rounded-full font-semibold bg-secondary text-foreground">
+                        {formatAutomationType(s)}
+                      </span>
                       <span
                         className={cn(
                           "inline-flex px-2.5 py-0.5 rounded-full font-semibold capitalize",
@@ -164,41 +174,46 @@ export default function UserAutomatedPage() {
                       >
                         {s.status.replace(/_/g, " ")}
                       </span>
-                      <span className="text-muted-foreground flex items-center gap-1">
-                        <Calendar className="w-3.5 h-3.5" />
-                        {new Date(s.startDate).toLocaleDateString("en-GB")} –{" "}
-                        {new Date(s.endDate).toLocaleDateString("en-GB")}
+                      <span className="text-muted-foreground flex items-center gap-1 font-medium text-foreground">
+                        <Calendar className="w-3.5 h-3.5 text-primary" />
+                        Next charge: {formatNextChargeDate(s.nextScheduledDate)}
                       </span>
-                      <span className="text-muted-foreground">
-                        {s.completedDays}/{s.totalDays} days ({pct}%)
-                      </span>
+                      {!isRecurring && (
+                        <span className="text-muted-foreground">
+                          {s.completedDays}/{s.totalDays} days ({pct}%)
+                        </span>
+                      )}
                     </div>
-                    <div className="h-1.5 max-w-xs rounded-full bg-muted overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-primary transition-all"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
+                    {!isRecurring && (
+                      <div className="h-1.5 max-w-xs rounded-full bg-muted overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-primary transition-all"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    )}
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {!["completed", "cancelled"].includes(s.status) && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="rounded-xl text-destructive"
-                        disabled={cancellingId === s.id}
-                        onClick={() => handleCancel(s.id)}
-                      >
-                        {cancellingId === s.id ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          "Cancel plan"
-                        )}
-                      </Button>
-                    )}
+                    {!isRecurring &&
+                      !["completed", "cancelled"].includes(s.status) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="rounded-xl text-destructive"
+                          disabled={cancellingId === s.id}
+                          onClick={() => handleCancel(s.id)}
+                        >
+                          {cancellingId === s.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            "Cancel plan"
+                          )}
+                        </Button>
+                      )}
                     <Button variant="outline" size="sm" asChild className="rounded-xl gap-1">
-                      <Link href={`/account/automated/${s.id}`}>
-                        View details <ChevronRight className="w-3.5 h-3.5" />
+                      <Link href={detailHref}>
+                        {isRecurring ? "Manage recurring" : "View details"}
+                        <ChevronRight className="w-3.5 h-3.5" />
                       </Link>
                     </Button>
                   </div>

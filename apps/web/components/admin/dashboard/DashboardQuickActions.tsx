@@ -2,21 +2,35 @@
 
 import Link from "next/link";
 import { Layers, Megaphone, TrendingUp, UserPlus } from "lucide-react";
+import { isSuperAdminSession, useAdminSession, hasAdminPermission } from "@/components/admin/AdminSessionProvider";
 
 const actions = [
-  { label: "Create Campaign", href: "/admin/campaigns", icon: Megaphone },
-  { label: "View Analytics", href: "/admin/analytics", icon: TrendingUp },
-  { label: "Manage Content", href: "/admin/cms/hero", icon: Layers },
-  { label: "Add Admin User", href: "/admin/admin-users", icon: UserPlus },
+  { label: "Create Campaign", href: "/admin/campaigns", icon: Megaphone, permission: "campaigns.view" },
+  { label: "View Analytics", href: "/admin/analytics", icon: TrendingUp, permission: "analytics.view" },
+  { label: "Manage Content", href: "/admin/cms", icon: Layers, permission: "cms.view" },
+  {
+    label: "Add Admin User",
+    href: "/admin/admin-users",
+    icon: UserPlus,
+    permission: "admins.view",
+    superAdminOnly: true,
+  },
 ];
 
 export function DashboardQuickActions() {
+  const session = useAdminSession();
+
+  const visible = actions.filter((action) => {
+    if (action.superAdminOnly) return isSuperAdminSession(session);
+    return hasAdminPermission(session, action.permission);
+  });
+
   return (
     <div className="rounded-2xl border bg-card p-5 shadow-soft h-full">
       <h3 className="text-lg font-serif font-bold text-foreground">Quick Actions</h3>
       <p className="text-xs text-muted-foreground mt-0.5">Common admin tasks</p>
       <div className="mt-4 space-y-1.5">
-        {actions.map((action) => (
+        {visible.map((action) => (
           <Link
             key={action.href}
             href={action.href}

@@ -44,6 +44,7 @@ api.interceptors.request.use((config) => {
     const isUserRoute =
       apiPath.startsWith("/auth/") ||
       apiPath.startsWith("/my/") ||
+      apiPath.startsWith("/notifications") ||
       apiPath.startsWith("/recurring/my") ||
       apiPath.startsWith("/zakat/history") ||
       apiPath.startsWith("/automated-donations/my") ||
@@ -289,6 +290,41 @@ export async function changeUserPassword(currentPassword: string, newPassword: s
   return data;
 }
 
+export type DonorEmailStatus = "new" | "password" | "google" | "needs_password_setup";
+
+export async function checkDonorEmail(email: string): Promise<{ status: DonorEmailStatus }> {
+  const { data } = await api.post("/auth/donor/check-email", { email });
+  return data;
+}
+
+export async function requestDonorAccess(
+  email: string,
+  fullName?: string,
+  returnTo?: string | null
+) {
+  const { data } = await api.post("/auth/donor/request-access", {
+    email,
+    fullName,
+    returnTo: returnTo ?? undefined,
+  });
+  return data as { message: string; status: DonorEmailStatus };
+}
+
+export async function activateAccount(token: string, password: string) {
+  const { data } = await api.post("/auth/activate-account", { token, password });
+  return data;
+}
+
+export async function forgotPassword(email: string) {
+  const { data } = await api.post("/auth/forgot-password", { email });
+  return data as { message: string };
+}
+
+export async function resetPassword(token: string, newPassword: string) {
+  const { data } = await api.post("/auth/reset-password", { token, newPassword });
+  return data as { message: string };
+}
+
 export async function fetchUserDonations(params?: Record<string, string>) {
   const { data } = await api.get("/my/donations", { params });
   if (Array.isArray(data)) return { items: data, total: data.length };
@@ -457,7 +493,25 @@ export async function fetchCampaignPaymentsConfig(campaignGateways: string[]) {
 
 export async function getDonationStatus(donationId: string) {
   const { data } = await api.get(`/donations/${donationId}/status`);
-  return data as { id: string; status: string; totalAmount: number; currency: string; receiptNumber?: string };
+  return data as {
+    id: string;
+    status: string;
+    amount?: number;
+    totalAmount: number;
+    currency: string;
+    receiptNumber?: string;
+    frequency?: string;
+    giftAid?: boolean;
+    donationType?: string;
+    paymentMethod?: string;
+    donorName?: string;
+    donorEmail?: string;
+    donorPhone?: string;
+    campaignSlug?: string;
+    campaignTitle?: string;
+    category?: string;
+    campaignMode?: string;
+  };
 }
 
 export async function initTelrPayment(payload: {
@@ -504,6 +558,35 @@ export async function fetchZakatHistory() {
   return data;
 }
 
+export type ZakatPageContent = {
+  id?: string;
+  heroEyebrow: string;
+  heroTitle: string;
+  heroDescription: string;
+  introHtml: string;
+  featureCardsHeading: string;
+  featureCards: Array<{ title: string; description: string }>;
+  contentBelowHtml: string;
+  showQuote: boolean;
+  status: "draft" | "published";
+  updatedAt?: string;
+};
+
+export async function fetchZakatPageContent() {
+  const { data } = await api.get("/cms/zakat-page");
+  return data as ZakatPageContent;
+}
+
+export async function fetchAdminZakatPageContent() {
+  const { data } = await api.get("/admin/cms/zakat-page");
+  return data as ZakatPageContent;
+}
+
+export async function updateZakatPageContent(payload: Partial<ZakatPageContent>) {
+  const { data } = await api.put("/admin/cms/zakat-page", payload);
+  return data as ZakatPageContent;
+}
+
 // ═══════════════════════════════════
 // AUTOMATED DONATIONS
 // ═══════════════════════════════════
@@ -514,7 +597,9 @@ export async function createAutomatedSchedule(payload: Record<string, unknown>) 
 
 export async function fetchMyAutomatedSchedules() {
   const { data } = await api.get("/automated-donations/my");
-  return data;
+  if (Array.isArray(data?.items)) return data;
+  if (Array.isArray(data)) return { items: data };
+  return { items: [] };
 }
 
 export async function cancelAutomatedSchedule(id: string) {
@@ -580,6 +665,37 @@ export async function adminChangePassword(currentPassword: string, newPassword: 
 export async function fetchAdminDonations(params?: Record<string, string>) {
   const { data } = await api.get("/admin/donations", { params });
   return data;
+}
+
+export async function fetchDonorSegmentCount(params: {
+  segment: string;
+  campaignId?: string;
+  startDate?: string;
+  endDate?: string;
+}) {
+  const { data } = await api.get("/admin/donor-segments/count", { params });
+  return data as { donorCount: number; userAccountCount: number };
+}
+
+export async function fetchDonorSegmentUsers(params?: Record<string, string | number>) {
+  const { data } = await api.get("/admin/donor-segments/users", { params });
+  return data as {
+    items: Array<{
+      id: string;
+      email: string;
+      fullName?: string;
+      donationCount?: number;
+      totalDonated?: number;
+    }>;
+    total: number;
+    page: number;
+    limit: number;
+  };
+}
+
+export async function fetchDonorSegmentAllIds(params?: Record<string, string>) {
+  const { data } = await api.get("/admin/donor-segments/all-ids", { params });
+  return data as { ids: string[]; total: number };
 }
 
 export async function fetchAdminDonationById(id: string) {
@@ -742,6 +858,43 @@ export async function adminDeleteFaq(id: string) {
   return data;
 }
 
+export async function submitDonorReview(payload: {
+  quote: string;
+  rating: number;
+  name?: string;
+  location?: string;
+}) {
+  const { data } = await api.post("/reviews", payload);
+  return data;
+}
+
+export async function fetchMyReviews() {
+  const { data } = await api.get("/reviews/my");
+  return data;
+}
+
+export async function fetchAdminReviews(status?: string) {
+  const { data } = await api.get("/admin/reviews", {
+    params: status ? { status } : {},
+  });
+  return data;
+}
+
+export async function createAdminReview(payload: Record<string, unknown>) {
+  const { data } = await api.post("/admin/reviews", payload);
+  return data;
+}
+
+export async function updateAdminReview(id: string, payload: Record<string, unknown>) {
+  const { data } = await api.patch(`/admin/reviews/${id}`, payload);
+  return data;
+}
+
+export async function deleteAdminReview(id: string) {
+  const { data } = await api.delete(`/admin/reviews/${id}`);
+  return data;
+}
+
 export async function adminUpsertSeoSettings(payload: Record<string, unknown>) {
   const { data } = await api.put("/admin/cms/seo", payload);
   return data;
@@ -871,6 +1024,11 @@ export async function fetchAnalyticsDonors(params?: Record<string, string>) {
 
 export async function fetchAnalyticsGiftAid(params?: Record<string, string>) {
   const { data } = await api.get("/admin/analytics/gift-aid", { params });
+  return data;
+}
+
+export async function fetchAnalyticsCategories(params?: Record<string, string>) {
+  const { data } = await api.get("/admin/analytics/categories", { params });
   return data;
 }
 
@@ -1126,12 +1284,12 @@ export async function fetchAdminContactMessages(params?: Record<string, string>)
   return data;
 }
 
-export async function updateAdminContactMessage(id: number, payload: Record<string, unknown>) {
+export async function updateAdminContactMessage(id: string, payload: Record<string, unknown>) {
   const { data } = await api.patch(`/admin/contact-messages/${id}`, payload);
   return data;
 }
 
-export async function deleteAdminContactMessage(id: number) {
+export async function deleteAdminContactMessage(id: string) {
   const { data } = await api.delete(`/admin/contact-messages/${id}`);
   return data;
 }
@@ -1210,7 +1368,7 @@ export async function fetchEmailTemplates() {
   return data;
 }
 
-export async function fetchEmailTemplate(id: number) {
+export async function fetchEmailTemplate(id: string) {
   const { data } = await api.get(`/admin/email-management/templates/${id}`);
   return data;
 }
@@ -1220,12 +1378,12 @@ export async function createEmailTemplate(payload: Record<string, unknown>) {
   return data;
 }
 
-export async function updateEmailTemplate(id: number, payload: Record<string, unknown>) {
+export async function updateEmailTemplate(id: string, payload: Record<string, unknown>) {
   const { data } = await api.patch(`/admin/email-management/templates/${id}`, payload);
   return data;
 }
 
-export async function deleteEmailTemplate(id: number) {
+export async function deleteEmailTemplate(id: string) {
   const { data } = await api.delete(`/admin/email-management/templates/${id}`);
   return data;
 }
@@ -1242,6 +1400,71 @@ export async function updateReminderSettings(payload: Record<string, unknown>) {
 
 export async function fetchEmailLogs(params?: Record<string, string>) {
   const { data } = await api.get("/admin/email-management/logs", { params });
+  return data;
+}
+
+export async function previewEmailTemplate(payload: Record<string, unknown>) {
+  const { data } = await api.post("/admin/email-management/preview", payload);
+  return data;
+}
+
+export async function sendBulkEmail(payload: Record<string, unknown>) {
+  const { data } = await api.post("/admin/email-management/send-bulk", payload);
+  return data;
+}
+
+export async function fetchEmailCampaigns() {
+  const { data } = await api.get("/admin/email-management/campaigns");
+  return data;
+}
+
+export async function createEmailCampaign(payload: Record<string, unknown>) {
+  const { data } = await api.post("/admin/email-management/campaigns", payload);
+  return data;
+}
+
+export async function fetchEmailCampaign(id: string) {
+  const { data } = await api.get(`/admin/email-management/campaigns/${id}`);
+  return data;
+}
+
+export async function fetchNotifications(params?: Record<string, string>) {
+  const { data } = await api.get("/notifications", { params });
+  return data;
+}
+
+export async function fetchNotificationUnreadCount() {
+  const { data } = await api.get("/notifications/unread-count");
+  return data;
+}
+
+export async function markNotificationRead(id: string) {
+  const { data } = await api.patch(`/notifications/${id}/read`);
+  return data;
+}
+
+export async function markAllNotificationsRead() {
+  const { data } = await api.post("/notifications/read-all");
+  return data;
+}
+
+export async function fetchAdminNotifications(params?: Record<string, string>) {
+  const { data } = await api.get("/admin/notifications", { params });
+  return data;
+}
+
+export async function fetchAdminNotificationUnreadCount() {
+  const { data } = await api.get("/admin/notifications/unread-count");
+  return data;
+}
+
+export async function markAdminNotificationRead(id: string) {
+  const { data } = await api.patch(`/admin/notifications/${id}/read`);
+  return data;
+}
+
+export async function markAllAdminNotificationsRead() {
+  const { data } = await api.post("/admin/notifications/read-all");
   return data;
 }
 

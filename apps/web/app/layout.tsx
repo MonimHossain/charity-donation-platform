@@ -20,13 +20,36 @@ const fraunces = Fraunces({
   display: "swap",
 });
 
+const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://yourimpactdev.com";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(appUrl),
   title: {
     default: "Charity Donation Platform — Making a Difference Together",
     template: "%s | Charity Donation Platform",
   },
   description:
     "A trusted charity platform delivering food, water, education and emergency aid to communities worldwide. 100% donation policy on Zakat.",
+  icons: {
+    icon: "/images/favicon.png",
+    shortcut: "/images/favicon.png",
+    apple: "/images/favicon.png",
+  },
+  openGraph: {
+    type: "website",
+    siteName: "Charity Donation Platform",
+    title: "Charity Donation Platform — Making a Difference Together",
+    description:
+      "A trusted charity platform delivering food, water, education and emergency aid to communities worldwide. 100% donation policy on Zakat.",
+    images: [{ url: "/images/hero-1.webp", width: 1200, height: 630, alt: "Charity Donation Platform" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Charity Donation Platform — Making a Difference Together",
+    description:
+      "A trusted charity platform delivering food, water, education and emergency aid to communities worldwide.",
+    images: ["/images/hero-1.webp"],
+  },
 };
 
 export default async function RootLayout({

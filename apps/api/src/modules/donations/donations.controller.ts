@@ -5,12 +5,28 @@ import { Donation } from "../../components/donation/donation.entity.js";
 import { Campaign } from "../../components/campaign/campaign.entity.js";
 import { PaymentLog } from "../../components/paymentLog/paymentLog.entity.js";
 import { logAudit } from "../../helper/auditLog.js";
-import { ensureDonorUserForDonation } from "../user-auth/userAuth.service.js";
+import { ensureDonorUserForDonation, normalizeEmail } from "../user-auth/userAuth.service.js";
 import { resolveCampaignId } from "../campaigns/resolveCampaignId.js";
+import {
+  applySegmentToDonations,
+  parseSegmentParams,
+} from "../donors/donorSegment.service.js";
 
 const repo = () => AppDataSource.getRepository(Donation);
 const campaignRepo = () => AppDataSource.getRepository(Campaign);
 const paymentLogRepo = () => AppDataSource.getRepository(PaymentLog);
+
+function mapDonationListItem(donation: Donation) {
+  return {
+    ...donation,
+    amount: Number(donation.amount),
+    totalAmount: Number(donation.totalAmount),
+    giftAidAmount: Number(donation.giftAidAmount),
+    upsellTotal: Number(donation.upsellTotal),
+    unitPrice: donation.unitPrice != null ? Number(donation.unitPrice) : undefined,
+    campaignTitle: donation.campaign?.title,
+  };
+}
 
 function mapDonationDetail(donation: Donation, paymentLogs: PaymentLog[] = []) {
   return {
@@ -65,6 +81,13 @@ export async function createDonation(req: Request, res: Response) {
     const totalAmount = +(numericAmount + giftAidAmount).toFixed(2);
 
     const authUserId = (req as any).user?.id as string | undefined;
+    const authUserEmail = (req as any).user?.email as string | undefined;
+    if (authUserId && authUserEmail) {
+      if (normalizeEmail(donorEmail) !== normalizeEmail(authUserEmail)) {
+        return res.status(403).json({ message: "Donor email must match your account email" });
+      }
+    }
+
     const donorUser = await ensureDonorUserForDonation({
       donorEmail,
       donorName,
@@ -119,19 +142,42 @@ export async function createDonation(req: Request, res: Response) {
 
 export async function getDonations(req: Request, res: Response) {
   try {
-    const { status, frequency, campaign, page = "1", limit = "20", search, failedOnly } = req.query;
-    const qb = repo().createQueryBuilder("d")
-      .leftJoinAndSelect("d.campaign", "campaign")
-      .orderBy("d.createdAt", "DESC")
+    const {
+      status,
+      frequency,
+      campaign,
+      page = "1",
+      limit = "20",
+      search,
+      failedOnly,
+      sort,
+    } = req.query;
+
+    const segmentParams = parseSegmentParams(req.query as Record<string, unknown>);
+
+    const qb = repo()
+      .createQueryBuilder("d")
+      .leftJoinAndSelect("d.campaign", "campaign");
+
+    const sortDir = sort === "createdAt:asc" ? "ASC" : "DESC";
+    qb.orderBy("d.createdAt", sortDir)
       .skip((Number(page) - 1) * Number(limit))
       .take(Number(limit));
 
-    if (status) qb.andWhere("d.status = :status", { status });
-    if (failedOnly === "true" || failedOnly === "1") {
-      qb.andWhere("d.status IN (:...badStatuses)", { badStatuses: ["failed", "pending"] });
+    if (segmentParams) {
+      if (segmentParams.segment === "campaign" && !segmentParams.campaignId) {
+        return res.status(400).json({ message: "campaignId is required for campaign segment" });
+      }
+      applySegmentToDonations(qb, segmentParams);
+    } else {
+      if (status) qb.andWhere("d.status = :status", { status });
+      if (failedOnly === "true" || failedOnly === "1") {
+        qb.andWhere("d.status IN (:...badStatuses)", { badStatuses: ["failed", "pending"] });
+      }
+      if (frequency) qb.andWhere("d.frequency = :frequency", { frequency });
+      if (campaign) qb.andWhere("d.campaignId = :campaign", { campaign });
     }
-    if (frequency) qb.andWhere("d.frequency = :frequency", { frequency });
-    if (campaign) qb.andWhere("d.campaignId = :campaign", { campaign });
+
     if (search) {
       qb.andWhere("(d.donorName ILIKE :search OR d.donorEmail ILIKE :search)", {
         search: `%${search}%`,
@@ -139,7 +185,13 @@ export async function getDonations(req: Request, res: Response) {
     }
 
     const [items, total] = await qb.getManyAndCount();
-    return res.json({ items, total, page: Number(page), limit: Number(limit) });
+    return res.json({
+      items: items.map(mapDonationListItem),
+      total,
+      page: Number(page),
+      limit: Number(limit),
+      totalPages: Math.ceil(total / Number(limit)),
+    });
   } catch (error) {
     console.error("getDonations error:", error);
     return res.status(500).json({ message: "Internal server error" });
@@ -273,15 +325,27 @@ export async function getDonationStatus(req: Request, res: Response) {
   try {
     const donation = await repo().findOne({
       where: { id: routeParam(req, 'id') },
-      select: ["id", "status", "totalAmount", "currency", "receiptNumber"],
+      relations: ["campaign"],
     });
     if (!donation) return res.status(404).json({ message: "Donation not found" });
     return res.json({
       id: donation.id,
       status: donation.status,
+      amount: donation.amount,
       totalAmount: donation.totalAmount,
       currency: donation.currency,
       receiptNumber: donation.receiptNumber,
+      frequency: donation.frequency,
+      giftAid: donation.giftAid,
+      donationType: donation.donationType,
+      paymentMethod: donation.paymentMethod,
+      donorName: donation.donorName,
+      donorEmail: donation.donorEmail,
+      donorPhone: donation.donorPhone,
+      campaignSlug: donation.campaign?.slug,
+      campaignTitle: donation.campaign?.title,
+      category: donation.campaign?.category,
+      campaignMode: donation.campaign?.campaignMode,
     });
   } catch (error) {
     return res.status(500).json({ message: "Internal server error" });

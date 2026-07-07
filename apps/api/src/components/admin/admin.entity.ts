@@ -23,6 +23,9 @@ export class Admin {
   @Column({ type: "varchar", length: 20, default: "admin" })
   role!: string;
 
+  @Column({ type: "jsonb", default: () => "'[]'" })
+  permissions!: string[];
+
   @Column({ type: "boolean", default: true })
   isActive!: boolean;
 

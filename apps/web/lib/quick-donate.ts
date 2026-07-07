@@ -1,3 +1,13 @@
+import type { QuickDonateCampaignPayload } from "@/lib/quick-donate-campaign";
+
+export const QUICK_DONATE_CAMPAIGN_MODES = ["standard", "fundraiser", "ramadan_split"] as const;
+
+export type QuickDonateCampaignMode = (typeof QUICK_DONATE_CAMPAIGN_MODES)[number];
+
+export function isQuickDonateCampaignMode(mode: string | undefined | null): mode is QuickDonateCampaignMode {
+  return QUICK_DONATE_CAMPAIGN_MODES.includes(mode as QuickDonateCampaignMode);
+}
+
 export interface QuickDonatePrice {
   amount: number;
   sortOrder: number;
@@ -9,8 +19,13 @@ export interface QuickDonateOption {
   campaignId?: string | null;
   campaignSlug?: string | null;
   campaignTitle?: string | null;
-  prices: QuickDonatePrice[];
   sortOrder?: number;
+  /** Populated from linked campaign on the public API */
+  campaign?: QuickDonateCampaignPayload | null;
+  /** @deprecated Prices now come from the linked campaign */
+  prices?: QuickDonatePrice[];
+  /** @deprecated Derived from campaign attribute payment config */
+  allowCustomPrice?: boolean;
 }
 
 export interface DonationCategoryOption {
@@ -52,7 +67,12 @@ export const FALLBACK_QUICK_DONATE: QuickDonateConfig = {
 };
 
 export function resolveQuickDonateConfig(raw: Partial<QuickDonateConfig> | null | undefined): QuickDonateConfig {
-  const options = Array.isArray(raw?.options) && raw.options.length > 0 ? raw.options : FALLBACK_QUICK_DONATE.options;
+  const options =
+    raw == null
+      ? FALLBACK_QUICK_DONATE.options
+      : Array.isArray(raw.options)
+        ? raw.options.filter((o) => o.campaignId && o.campaign)
+        : [];
   const categories =
     Array.isArray(raw?.settings?.donationCategories) && raw.settings.donationCategories.length > 0
       ? raw.settings.donationCategories.filter((c) => c.isActive)
@@ -89,6 +109,14 @@ export function slugifyLabel(text: string): string {
 }
 
 export const QUICK_DONATION_TYPE = "quick_donation";
+
+export function resolveDonationCampaignName(donation: {
+  campaignTitle?: string | null;
+  campaign?: { title?: string | null } | null;
+}): string | null {
+  const title = donation.campaignTitle || donation.campaign?.title;
+  return title?.trim() ? title.trim() : null;
+}
 
 export function formatDonationTypeLabel(donationType?: string): string {
   if (!donationType) return "—";

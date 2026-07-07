@@ -118,9 +118,9 @@
   }
 
   * { @apply border-border; }
-  html { scroll-behavior: smooth; scroll-padding-top: 5rem; }
+  html { scroll-behavior: smooth; scroll-padding-top: 5rem; overflow-x: hidden; }
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background text-foreground antialiased overflow-x-hidden;
     font-family: var(--font-sans);
     font-feature-settings: "ss01", "cv11";
     font-size: 16px;
@@ -185,6 +185,35 @@
 @keyframes float-slow {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-8px); }
+}
+
+@keyframes donate-shimmer {
+  0% { transform: translateX(-120%) skewX(-18deg); }
+  100% { transform: translateX(220%) skewX(-18deg); }
+}
+
+@keyframes donate-glow-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--accent) / 0.35); }
+  50% { box-shadow: 0 0 18px 2px hsl(var(--accent) / 0.45); }
+}
+
+.donate-button-effect::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    hsl(0 0% 100% / 0.45) 50%,
+    transparent 65%
+  );
+  transform: translateX(-120%) skewX(-18deg);
+  animation: donate-shimmer 2.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.donate-button-effect {
+  animation: donate-glow-pulse 2.8s ease-in-out infinite;
 }
 
 @utility animate-fade-up { animation: fade-up 0.7s var(--transition-smooth) both; }
@@ -259,4 +288,120 @@
 }
 .stripe-payment-fields .p-TabList {
   display: none;
+}
+
+/* Google Translate language switcher — match currency dropdown */
+.ngt-site-header.ngtContainer {
+  --ngt-bg: hsl(var(--secondary) / 0.7);
+  --ngt-bg-hover: hsl(var(--secondary));
+  --ngt-border: hsl(var(--border));
+  --ngt-text: hsl(var(--primary));
+  --ngt-menu-bg: hsl(var(--card));
+  --ngt-menu-border: hsl(var(--border));
+  --ngt-active-bg: hsl(var(--accent) / 0.15);
+}
+
+@media (prefers-color-scheme: dark) {
+  .ngt-site-header.ngtContainer {
+    --ngt-bg: hsl(var(--secondary) / 0.7);
+    --ngt-bg-hover: hsl(var(--secondary));
+    --ngt-border: hsl(var(--border));
+    --ngt-text: hsl(var(--primary));
+    --ngt-menu-bg: hsl(var(--card));
+    --ngt-menu-border: hsl(var(--border));
+    --ngt-active-bg: hsl(var(--accent) / 0.15);
+  }
+
+  .ngt-site-header .ngtOption:hover {
+    background: hsl(var(--secondary)) !important;
+  }
+}
+
+.ngt-site-header .ngtButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  height: 2.25rem;
+  padding: 0 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: hsl(var(--secondary) / 0.7) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  color: hsl(var(--primary)) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.ngt-site-header .ngtButton:hover {
+  background: hsl(var(--secondary)) !important;
+}
+
+.ngt-site-header.ngt-compact .ngtButton {
+  height: 2rem;
+  padding: 0 0.5rem;
+  font-size: 0.625rem;
+  min-width: 0;
+  gap: 0.125rem;
+}
+
+.ngt-site-header .ngtArrow {
+  color: hsl(var(--primary));
+  opacity: 1;
+  font-size: 0.625rem;
+}
+
+.ngt-site-header .ngtMenu {
+  min-width: 11rem;
+  border-radius: 1rem;
+  background: hsl(var(--card)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  box-shadow: 0 10px 30px hsl(var(--foreground) / 0.08);
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.ngt-site-header .ngtOption {
+  font-size: 0.875rem;
+  color: hsl(var(--foreground));
+}
+
+.ngt-site-header .ngtOption:hover {
+  background: hsl(var(--secondary)) !important;
+}
+
+.ngt-site-header .ngtOptionActive {
+  background: hsl(var(--accent) / 0.15) !important;
+  color: hsl(var(--primary));
+  font-weight: 600;
+}
+
+/* Hide language switcher while site search modal is open */
+html[data-search-open="true"] .ngt-site-header,
+html[data-search-open="true"] .ngt-site-header .ngtMenu {
+  visibility: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+}
+
+[cmdk-input] {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+[cmdk-input]:focus,
+[cmdk-input]:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Keep layout stable when Google injects translate UI */
+body {
+  top: 0 !important;
+}
+
+.skiptranslate,
+.goog-te-banner-frame {
+  display: none !important;
 }

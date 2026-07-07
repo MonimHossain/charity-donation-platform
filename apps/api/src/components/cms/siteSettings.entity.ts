@@ -83,6 +83,22 @@ export class SiteSettings {
   @Column({ type: "json", default: {} })
   currencyRates!: Record<string, number>;
 
+  @Column({ type: "timestamptz", nullable: true })
+  currencyRatesUpdatedAt?: Date;
+
+  @Column({ type: "json", default: {} })
+  emailSettings!: {
+    donationConfirmation?: boolean;
+    recurringReminders?: boolean;
+    campaignUpdates?: boolean;
+    newsletterDigest?: boolean;
+    adminAlerts?: boolean;
+    senderName?: string;
+    senderEmail?: string;
+    reminderHoursMin?: number;
+    reminderHoursMax?: number;
+  };
+
   @CreateDateColumn()
   createdAt!: Date;
 

@@ -62,7 +62,6 @@ export default function SeoPage() {
   const [showRedirectModal, setShowRedirectModal] = useState(false);
   const [editingRedirectId, setEditingRedirectId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [sitemapSettings, setSitemapSettings] = useState({ autoGenerate: true, changeFreq: "weekly", priority: "0.8" });
 
   useEffect(() => {
     loadData();
@@ -70,16 +69,12 @@ export default function SeoPage() {
 
   async function loadData() {
     try {
-      const [seoRes, redirectRes, sitemapRes] = await Promise.all([
+      const [seoRes, redirectRes] = await Promise.all([
         api.get("/admin/cms/seo").catch(() => ({ data: [] })),
         api.get("/admin/cms/redirects").catch(() => ({ data: [] })),
-        api.get("/admin/cms/sitemap-settings").catch(() => ({ data: {} })),
       ]);
       setEntries(seoRes.data?.items || seoRes.data || []);
       setRedirects(redirectRes.data?.items || redirectRes.data || []);
-      if (sitemapRes.data && Object.keys(sitemapRes.data).length > 0) {
-        setSitemapSettings({ ...sitemapSettings, ...sitemapRes.data });
-      }
     } catch {
       toast.error("Failed to load SEO data");
     } finally {
@@ -185,18 +180,6 @@ export default function SeoPage() {
       setRedirects((prev) => prev.filter((r) => r.id !== id));
     } catch {
       toast.error("Failed to delete");
-    }
-  }
-
-  async function handleSaveSitemap() {
-    setSaving(true);
-    try {
-      await api.put("/admin/cms/sitemap-settings", sitemapSettings);
-      toast.success("Sitemap settings saved");
-    } catch {
-      toast.error("Failed to save sitemap settings");
-    } finally {
-      setSaving(false);
     }
   }
 
@@ -314,32 +297,16 @@ export default function SeoPage() {
 
       {tab === "sitemap" && (
         <div className="rounded-2xl border bg-card shadow-soft p-6 space-y-4">
-          <h2 className="text-lg font-serif font-bold">Sitemap Settings</h2>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={sitemapSettings.autoGenerate} onChange={(e) => setSitemapSettings({ ...sitemapSettings, autoGenerate: e.target.checked })} className="h-4 w-4 rounded border-input accent-primary" />
-            Auto-generate sitemap.xml
-          </label>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Default Change Frequency</Label>
-              <select value={sitemapSettings.changeFreq} onChange={(e) => setSitemapSettings({ ...sitemapSettings, changeFreq: e.target.value })} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
-                <option value="always">Always</option>
-                <option value="hourly">Hourly</option>
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-                <option value="yearly">Yearly</option>
-                <option value="never">Never</option>
-              </select>
-            </div>
-            <div className="space-y-2">
-              <Label>Default Priority</Label>
-              <Input value={sitemapSettings.priority} onChange={(e) => setSitemapSettings({ ...sitemapSettings, priority: e.target.value })} placeholder="0.8" />
-            </div>
-          </div>
-          <Button onClick={handleSaveSitemap} disabled={saving}>
-            {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</> : <><Save className="h-4 w-4" /> Save Settings</>}
-          </Button>
+          <h2 className="text-lg font-serif font-bold">Sitemap</h2>
+          <p className="text-sm text-muted-foreground">
+            The sitemap is generated automatically by Next.js at{" "}
+            <code className="text-xs bg-muted px-1.5 py-0.5 rounded">/sitemap.xml</code> and includes
+            static pages, published campaigns, and blog posts. Search engines are directed via{" "}
+            <code className="text-xs bg-muted px-1.5 py-0.5 rounded">/robots.txt</code>.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Default change frequency for dynamic URLs is weekly; homepage is refreshed daily.
+          </p>
         </div>
       )}
 

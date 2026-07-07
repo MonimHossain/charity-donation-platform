@@ -6,7 +6,7 @@ import { Donation } from "../../components/donation/donation.entity.js";
 import { RecurringDonation } from "../../components/recurringDonation/recurringDonation.entity.js";
 import { PaymentLog } from "../../components/paymentLog/paymentLog.entity.js";
 import { completeDonation, failDonation } from "./paymentCompletion.js";
-import { sendRecurringFailedPaymentEmail } from "../../helper/mailer.js";
+import { dispatchEvent } from "../notifications/notification.service.js";
 import { createStripeClient } from "../../helper/stripeClient.js";
 import { User } from "../../components/user/user.entity.js";
 import { issueUserSession, createUserToken } from "../user-auth/userAuth.service.js";
@@ -25,6 +25,21 @@ const getStripe = () => createStripeClient(process.env.STRIPE_SECRET_KEY!);
 const donationRepo = () => AppDataSource.getRepository(Donation);
 const recurringRepo = () => AppDataSource.getRepository(RecurringDonation);
 const paymentLogRepo = () => AppDataSource.getRepository(PaymentLog);
+
+async function syncRecurringStripeSubscription(
+  recurringDonationId: string,
+  subscription: Stripe.Subscription,
+  customerId: string
+): Promise<void> {
+  const update: Partial<RecurringDonation> = {
+    stripeSubscriptionId: subscription.id,
+    stripeCustomerId: customerId,
+  };
+  if (subscription.cancel_at) {
+    update.cancelAt = new Date(subscription.cancel_at * 1000);
+  }
+  await recurringRepo().update(recurringDonationId, update);
+}
 
 async function buildDonorSessionPayload(donationId?: string) {
   if (!donationId) return {};
@@ -256,10 +271,7 @@ export async function createSubscriptionCheckout(req: Request, res: Response) {
     });
 
     if (recurringDonationId) {
-      await recurringRepo().update(recurringDonationId, {
-        stripeSubscriptionId: subscription.id,
-        stripeCustomerId: customer.id,
-      });
+      await syncRecurringStripeSubscription(recurringDonationId, subscription, customer.id);
     }
 
     if (userId && customer.id) {
@@ -331,10 +343,7 @@ export async function createSubscription(req: Request, res: Response) {
     });
 
     if (recurringDonationId) {
-      await recurringRepo().update(recurringDonationId, {
-        stripeSubscriptionId: subscription.id,
-        stripeCustomerId: customer.id,
-      });
+      await syncRecurringStripeSubscription(recurringDonationId, subscription, customer.id);
     }
 
     return res.json({
@@ -430,7 +439,15 @@ export async function handleWebhook(req: Request, res: Response) {
         const sub = event.data.object as Stripe.Subscription;
         const recurringId = sub.metadata.recurringDonationId;
         if (recurringId) {
-          await recurringRepo().update(recurringId, { status: sub.status === "active" ? "active" : "paused" });
+          const update: Record<string, unknown> = {
+            status: sub.status === "active" ? "active" : "paused",
+          };
+          if (sub.cancel_at) {
+            update.cancelAt = new Date(sub.cancel_at * 1000);
+          } else {
+            update.cancelAt = null;
+          }
+          await recurringRepo().update(recurringId, update);
         }
         break;
       }
@@ -492,9 +509,16 @@ export async function handleWebhook(req: Request, res: Response) {
             await recurringRepo().save(recurring);
 
             try {
-              await sendRecurringFailedPaymentEmail(recurring);
+              await dispatchEvent("payment_failed", {
+                donorEmail: recurring.donorEmail,
+                donorName: recurring.donorName,
+                amount: Number(recurring.amount),
+                currency: recurring.currency,
+                userId: recurring.userId,
+                isRecurring: true,
+              });
             } catch (emailErr) {
-              console.error("[webhook] Failed payment email error:", emailErr);
+              console.error("[webhook] Failed payment notification error:", emailErr);
             }
 
             await paymentLogRepo().save(

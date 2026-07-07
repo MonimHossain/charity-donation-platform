@@ -5,8 +5,12 @@ import {
   getAdminProfile,
   logoutAdmin,
   changeAdminPassword,
+  forgotAdminPassword,
+  resetAdminPasswordHandler,
 } from "../modules/admin-auth/adminAuth.controller.js";
 import { requireAdmin } from "../modules/admin-auth/adminAuth.middleware.js";
+import { adminRoutePermissionMiddleware } from "../modules/admin-auth/adminRoutePermissions.js";
+import { authRateLimit } from "../modules/security/rateLimiter.js";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -125,7 +129,7 @@ router.get("/public/verify/:certificateId", async (req, res) => {
   const { verifyCertificationById } = await import("../modules/charities/charities.controller.js");
   return verifyCertificationById(req, res);
 });
-router.post("/public/contact-messages", async (req, res) => {
+router.post("/public/contact-messages", authRateLimit, async (req, res) => {
   const { submitContactMessage } = await import("../modules/charities/charities.controller.js");
   return submitContactMessage(req, res);
 });
@@ -145,11 +149,11 @@ router.get("/public/experts", async (req, res) => {
 // ═══════════════════════════════════
 // USER AUTH ROUTES (lazy-loaded)
 // ═══════════════════════════════════
-router.post("/auth/register", async (req, res) => {
+router.post("/auth/register", authRateLimit, async (req, res) => {
   const { registerUser } = await import("../modules/user-auth/userAuth.controller.js");
   return registerUser(req, res);
 });
-router.post("/auth/login", async (req, res) => {
+router.post("/auth/login", authRateLimit, async (req, res) => {
   const { loginUser } = await import("../modules/user-auth/userAuth.controller.js");
   return loginUser(req, res);
 });
@@ -199,13 +203,41 @@ router.put("/auth/change-password", async (req, res) => {
   });
 });
 
+router.post("/reviews", async (req, res) => {
+  const { requireUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  requireUser(req, res, async () => {
+    const { submitReview } = await import("../modules/reviews/reviews.controller.js");
+    return submitReview(req, res);
+  });
+});
+router.get("/reviews/my", async (req, res) => {
+  const { requireUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  requireUser(req, res, async () => {
+    const { getMyReviews } = await import("../modules/reviews/reviews.controller.js");
+    return getMyReviews(req, res);
+  });
+});
+
+router.post("/auth/donor/check-email", authRateLimit, async (req, res) => {
+  const { checkDonorEmailHandler } = await import("../modules/user-auth/donorAccess.controller.js");
+  return checkDonorEmailHandler(req, res);
+});
+router.post("/auth/donor/request-access", authRateLimit, async (req, res) => {
+  const { requestDonorAccessHandler } = await import("../modules/user-auth/donorAccess.controller.js");
+  return requestDonorAccessHandler(req, res);
+});
+router.post("/auth/activate-account", authRateLimit, async (req, res) => {
+  const { activateAccountHandler } = await import("../modules/user-auth/donorAccess.controller.js");
+  return activateAccountHandler(req, res);
+});
+
 // Password reset (public)
-router.post("/auth/forgot-password", async (req, res) => {
-  const { forgotPassword } = await import("../modules/user-auth/userAuth.controller.js");
+router.post("/auth/forgot-password", authRateLimit, async (req, res) => {
+  const { forgotPassword } = await import("../modules/user-auth/donorAccess.controller.js");
   return forgotPassword(req, res);
 });
-router.post("/auth/reset-password", async (req, res) => {
-  const { resetPassword } = await import("../modules/user-auth/userAuth.controller.js");
+router.post("/auth/reset-password", authRateLimit, async (req, res) => {
+  const { resetPassword } = await import("../modules/user-auth/donorAccess.controller.js");
   return resetPassword(req, res);
 });
 
@@ -236,8 +268,11 @@ router.get("/recurring/my", async (req, res) => {
   });
 });
 router.post("/recurring", async (req, res) => {
-  const { createRecurringDonation } = await import("../modules/recurring/recurring.controller.js");
-  return createRecurringDonation(req, res);
+  const { optionalUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  optionalUser(req, res, async () => {
+    const { createRecurringDonation } = await import("../modules/recurring/recurring.controller.js");
+    return createRecurringDonation(req, res);
+  });
 });
 router.put("/recurring/:id/pause", async (req, res) => {
   const { pauseRecurringDonation } = await import("../modules/recurring/recurring.controller.js");
@@ -376,6 +411,10 @@ router.get("/cms/page-blocks", async (req, res) => {
   const { getPageBlocks } = await import("../modules/cms/cmsExtended.controller.js");
   return getPageBlocks(req, res);
 });
+router.get("/cms/zakat-page", async (req, res) => {
+  const { getPublicZakatPage } = await import("../modules/cms/zakatPage.controller.js");
+  return getPublicZakatPage(req, res);
+});
 router.get("/cms/translations", async (req, res) => {
   const { getTranslations } = await import("../modules/cms/cmsExtended.controller.js");
   return getTranslations(req, res);
@@ -388,7 +427,11 @@ router.get("/blog/categories", async (req, res) => {
 // ═══════════════════════════════════
 // ADMIN AUTH
 // ═══════════════════════════════════
-router.post("/admin/login", loginAdmin);
+const adminPermCheck = adminRoutePermissionMiddleware();
+
+router.post("/admin/login", authRateLimit, loginAdmin);
+router.post("/admin/forgot-password", authRateLimit, forgotAdminPassword);
+router.post("/admin/reset-password", authRateLimit, resetAdminPasswordHandler);
 router.post("/admin/logout", requireAdmin, logoutAdmin);
 router.get("/admin/profile", requireAdmin, getAdminProfile);
 router.put("/admin/profile/password", requireAdmin, changeAdminPassword);
@@ -396,28 +439,28 @@ router.put("/admin/profile/password", requireAdmin, changeAdminPassword);
 // ═══════════════════════════════════
 // ADMIN CAMPAIGNS
 // ═══════════════════════════════════
-router.get("/admin/campaigns", requireAdmin, getCampaigns);
-router.get("/admin/campaigns/:id", requireAdmin, getCampaignById);
-router.post("/admin/campaigns", requireAdmin, createCampaign);
-router.put("/admin/campaigns/:id", requireAdmin, updateCampaign);
-router.delete("/admin/campaigns/:id", requireAdmin, deleteCampaign);
+router.get("/admin/campaigns", requireAdmin, adminPermCheck, getCampaigns);
+router.get("/admin/campaigns/:id", requireAdmin, adminPermCheck, getCampaignById);
+router.post("/admin/campaigns", requireAdmin, adminPermCheck, createCampaign);
+router.put("/admin/campaigns/:id", requireAdmin, adminPermCheck, updateCampaign);
+router.delete("/admin/campaigns/:id", requireAdmin, adminPermCheck, deleteCampaign);
 
 // ═══════════════════════════════════
 // ADMIN UPSELLS
 // ═══════════════════════════════════
-router.get("/admin/upsells", requireAdmin, async (req, res) => {
+router.get("/admin/upsells", requireAdmin, adminPermCheck, async (req, res) => {
   const { getAdminUpsells } = await import("../modules/upsells/upsells.controller.js");
   return getAdminUpsells(req, res);
 });
-router.post("/admin/upsells", requireAdmin, async (req, res) => {
+router.post("/admin/upsells", requireAdmin, adminPermCheck, async (req, res) => {
   const { createUpsell } = await import("../modules/upsells/upsells.controller.js");
   return createUpsell(req, res);
 });
-router.put("/admin/upsells/:id", requireAdmin, async (req, res) => {
+router.put("/admin/upsells/:id", requireAdmin, adminPermCheck, async (req, res) => {
   const { updateUpsell } = await import("../modules/upsells/upsells.controller.js");
   return updateUpsell(req, res);
 });
-router.delete("/admin/upsells/:id", requireAdmin, async (req, res) => {
+router.delete("/admin/upsells/:id", requireAdmin, adminPermCheck, async (req, res) => {
   const { deleteUpsell } = await import("../modules/upsells/upsells.controller.js");
   return deleteUpsell(req, res);
 });
@@ -425,11 +468,23 @@ router.delete("/admin/upsells/:id", requireAdmin, async (req, res) => {
 // ═══════════════════════════════════
 // ADMIN DONATIONS
 // ═══════════════════════════════════
-router.get("/admin/donations", requireAdmin, getDonations);
-router.get("/admin/donations/stats", requireAdmin, getDonationStats);
-router.get("/admin/donations/:id", requireAdmin, getDonationById);
-router.put("/admin/donations/:id/refund", requireAdmin, refundDonation);
-router.get("/admin/payment-logs", requireAdmin, async (req, res) => {
+router.get("/admin/donations", requireAdmin, adminPermCheck, getDonations);
+router.get("/admin/donations/stats", requireAdmin, adminPermCheck, getDonationStats);
+router.get("/admin/donations/:id", requireAdmin, adminPermCheck, getDonationById);
+router.put("/admin/donations/:id/refund", requireAdmin, adminPermCheck, refundDonation);
+router.get("/admin/donor-segments/count", requireAdmin, adminPermCheck, async (req, res) => {
+  const { getDonorSegmentCount } = await import("../modules/donors/donorSegment.controller.js");
+  return getDonorSegmentCount(req, res);
+});
+router.get("/admin/donor-segments/users", requireAdmin, adminPermCheck, async (req, res) => {
+  const { getDonorSegmentUsers } = await import("../modules/donors/donorSegment.controller.js");
+  return getDonorSegmentUsers(req, res);
+});
+router.get("/admin/donor-segments/all-ids", requireAdmin, adminPermCheck, async (req, res) => {
+  const { getDonorSegmentAllIds } = await import("../modules/donors/donorSegment.controller.js");
+  return getDonorSegmentAllIds(req, res);
+});
+router.get("/admin/payment-logs", requireAdmin, adminPermCheck, async (req, res) => {
   const { getAdminPaymentLogs } = await import("../modules/payments/paymentLogs.controller.js");
   return getAdminPaymentLogs(req, res);
 });
@@ -437,199 +492,252 @@ router.get("/admin/payment-logs", requireAdmin, async (req, res) => {
 // ═══════════════════════════════════
 // ADMIN CMS
 // ═══════════════════════════════════
-router.post("/admin/cms/hero-slides", requireAdmin, createHeroSlide);
-router.put("/admin/cms/hero-slides/:id", requireAdmin, updateHeroSlide);
-router.delete("/admin/cms/hero-slides/:id", requireAdmin, deleteHeroSlide);
-router.put("/admin/cms/homepage-sections/:id", requireAdmin, updateHomepageSection);
-router.post("/admin/cms/homepage-sections/reorder", requireAdmin, reorderHomepageSections);
-router.put("/admin/cms/settings", requireAdmin, updateSiteSettings);
-router.get("/admin/payments/status", requireAdmin, async (req, res) => {
+router.post("/admin/cms/hero-slides", requireAdmin, adminPermCheck, createHeroSlide);
+router.put("/admin/cms/hero-slides/:id", requireAdmin, adminPermCheck, updateHeroSlide);
+router.delete("/admin/cms/hero-slides/:id", requireAdmin, adminPermCheck, deleteHeroSlide);
+router.put("/admin/cms/homepage-sections/:id", requireAdmin, adminPermCheck, updateHomepageSection);
+router.post("/admin/cms/homepage-sections/reorder", requireAdmin, adminPermCheck, reorderHomepageSections);
+router.put("/admin/cms/settings", requireAdmin, adminPermCheck, updateSiteSettings);
+router.post("/admin/settings/sync-currency-rates", requireAdmin, adminPermCheck, async (req, res) => {
+  const { syncCurrencyRatesFromApi } = await import("../modules/cms/currencyRateSync.service.js");
+  try {
+    const result = await syncCurrencyRatesFromApi();
+    return res.json({
+      currencyRates: result.rates,
+      currencyRatesUpdatedAt: result.updatedAt,
+      fetched: result.fetched,
+    });
+  } catch {
+    return res.status(500).json({ message: "Failed to sync currency rates" });
+  }
+});
+router.get("/admin/reviews", requireAdmin, adminPermCheck, async (req, res) => {
+  const { getAdminReviews } = await import("../modules/reviews/reviews.controller.js");
+  return getAdminReviews(req, res);
+});
+router.post("/admin/reviews", requireAdmin, adminPermCheck, async (req, res) => {
+  const { createAdminReview } = await import("../modules/reviews/reviews.controller.js");
+  return createAdminReview(req, res);
+});
+router.patch("/admin/reviews/:id", requireAdmin, adminPermCheck, async (req, res) => {
+  const { updateAdminReview } = await import("../modules/reviews/reviews.controller.js");
+  return updateAdminReview(req, res);
+});
+router.delete("/admin/reviews/:id", requireAdmin, adminPermCheck, async (req, res) => {
+  const { deleteAdminReview } = await import("../modules/reviews/reviews.controller.js");
+  return deleteAdminReview(req, res);
+});
+router.get("/admin/backup/history", requireAdmin, adminPermCheck, async (req, res) => {
+  const { getBackupHistory } = await import("../modules/backup/backup.controller.js");
+  return getBackupHistory(req, res);
+});
+router.get("/admin/backup/database", requireAdmin, adminPermCheck, async (req, res) => {
+  const { downloadDatabaseBackup } = await import("../modules/backup/backup.controller.js");
+  return downloadDatabaseBackup(req, res);
+});
+router.get("/admin/backup/media", requireAdmin, adminPermCheck, async (req, res) => {
+  const { downloadMediaBackup } = await import("../modules/backup/backup.controller.js");
+  return downloadMediaBackup(req, res);
+});
+router.get("/admin/payments/status", requireAdmin, adminPermCheck, async (req, res) => {
   const { getAdminPaymentStatus } = await import("../modules/payments/payments.config.controller.js");
   return getAdminPaymentStatus(req, res);
 });
-router.put("/admin/cms/donation-presets/:id", requireAdmin, updateDonationPreset);
-router.get("/admin/quick-donate/options", requireAdmin, async (req, res) => {
+router.put("/admin/cms/donation-presets/:id", requireAdmin, adminPermCheck, updateDonationPreset);
+router.get("/admin/quick-donate/options", requireAdmin, adminPermCheck, async (req, res) => {
   const { listQuickDonateOptions } = await import("../modules/quick-donate/quickDonate.controller.js");
   return listQuickDonateOptions(req, res);
 });
-router.post("/admin/quick-donate/options", requireAdmin, async (req, res) => {
+router.post("/admin/quick-donate/options", requireAdmin, adminPermCheck, async (req, res) => {
   const { createQuickDonateOption } = await import("../modules/quick-donate/quickDonate.controller.js");
   return createQuickDonateOption(req, res);
 });
-router.put("/admin/quick-donate/options/:id", requireAdmin, async (req, res) => {
+router.put("/admin/quick-donate/options/:id", requireAdmin, adminPermCheck, async (req, res) => {
   const { updateQuickDonateOption } = await import("../modules/quick-donate/quickDonate.controller.js");
   return updateQuickDonateOption(req, res);
 });
-router.delete("/admin/quick-donate/options/:id", requireAdmin, async (req, res) => {
+router.delete("/admin/quick-donate/options/:id", requireAdmin, adminPermCheck, async (req, res) => {
   const { deleteQuickDonateOption } = await import("../modules/quick-donate/quickDonate.controller.js");
   return deleteQuickDonateOption(req, res);
 });
-router.get("/admin/quick-donate/settings", requireAdmin, async (req, res) => {
+router.get("/admin/quick-donate/settings", requireAdmin, adminPermCheck, async (req, res) => {
   const { getQuickDonateSettings } = await import("../modules/quick-donate/quickDonate.controller.js");
   return getQuickDonateSettings(req, res);
 });
-router.put("/admin/quick-donate/settings", requireAdmin, async (req, res) => {
+router.put("/admin/quick-donate/settings", requireAdmin, adminPermCheck, async (req, res) => {
   const { updateQuickDonateSettings } = await import("../modules/quick-donate/quickDonate.controller.js");
   return updateQuickDonateSettings(req, res);
 });
 
 // Admin CMS Extended (lazy-loaded)
-router.post("/admin/cms/navigation", requireAdmin, async (req, res) => {
+router.post("/admin/cms/navigation", requireAdmin, adminPermCheck, async (req, res) => {
   const { createNavigationMenu } = await import("../modules/cms/cmsExtended.controller.js");
   return createNavigationMenu(req, res);
 });
-router.put("/admin/cms/navigation/:id", requireAdmin, async (req, res) => {
+router.put("/admin/cms/navigation/:id", requireAdmin, adminPermCheck, async (req, res) => {
   const { updateNavigationMenu } = await import("../modules/cms/cmsExtended.controller.js");
   return updateNavigationMenu(req, res);
 });
-router.delete("/admin/cms/navigation/:id", requireAdmin, async (req, res) => {
+router.delete("/admin/cms/navigation/:id", requireAdmin, adminPermCheck, async (req, res) => {
   const { deleteNavigationMenu } = await import("../modules/cms/cmsExtended.controller.js");
   return deleteNavigationMenu(req, res);
 });
-router.post("/admin/cms/navigation/reorder", requireAdmin, async (req, res) => {
+router.post("/admin/cms/navigation/reorder", requireAdmin, adminPermCheck, async (req, res) => {
   const { reorderNavigationMenus } = await import("../modules/cms/cmsExtended.controller.js");
   return reorderNavigationMenus(req, res);
 });
-router.get("/admin/cms/banners", requireAdmin, async (req, res) => {
+router.get("/admin/cms/banners", requireAdmin, adminPermCheck, async (req, res) => {
   const { getBanners } = await import("../modules/cms/cmsExtended.controller.js");
   return getBanners(req, res);
 });
-router.post("/admin/cms/banners", requireAdmin, async (req, res) => {
+router.post("/admin/cms/banners", requireAdmin, adminPermCheck, async (req, res) => {
   const { createBanner } = await import("../modules/cms/cmsExtended.controller.js");
   return createBanner(req, res);
 });
-router.put("/admin/cms/banners/:id", requireAdmin, async (req, res) => {
+router.put("/admin/cms/banners/:id", requireAdmin, adminPermCheck, async (req, res) => {
   const { updateBanner } = await import("../modules/cms/cmsExtended.controller.js");
   return updateBanner(req, res);
 });
-router.delete("/admin/cms/banners/:id", requireAdmin, async (req, res) => {
+router.delete("/admin/cms/banners/:id", requireAdmin, adminPermCheck, async (req, res) => {
   const { deleteBanner } = await import("../modules/cms/cmsExtended.controller.js");
   return deleteBanner(req, res);
 });
-router.post("/admin/cms/faqs", requireAdmin, async (req, res) => {
+router.post("/admin/cms/faqs", requireAdmin, adminPermCheck, async (req, res) => {
   const { createFaq } = await import("../modules/cms/cmsExtended.controller.js");
   return createFaq(req, res);
 });
-router.put("/admin/cms/faqs/:id", requireAdmin, async (req, res) => {
+router.get("/admin/cms/faqs", requireAdmin, adminPermCheck, async (req, res) => {
+  const { getAdminFaqs } = await import("../modules/cms/cmsExtended.controller.js");
+  return getAdminFaqs(req, res);
+});
+router.put("/admin/cms/faqs/:id", requireAdmin, adminPermCheck, async (req, res) => {
   const { updateFaq } = await import("../modules/cms/cmsExtended.controller.js");
   return updateFaq(req, res);
 });
-router.delete("/admin/cms/faqs/:id", requireAdmin, async (req, res) => {
+router.delete("/admin/cms/faqs/:id", requireAdmin, adminPermCheck, async (req, res) => {
   const { deleteFaq } = await import("../modules/cms/cmsExtended.controller.js");
   return deleteFaq(req, res);
 });
-router.put("/admin/cms/seo", requireAdmin, async (req, res) => {
+router.put("/admin/cms/seo", requireAdmin, adminPermCheck, async (req, res) => {
   const { upsertSeoSettings } = await import("../modules/cms/cmsExtended.controller.js");
   return upsertSeoSettings(req, res);
 });
-router.post("/admin/cms/page-blocks", requireAdmin, async (req, res) => {
+router.post("/admin/cms/page-blocks", requireAdmin, adminPermCheck, async (req, res) => {
   const { createPageBlock } = await import("../modules/cms/cmsExtended.controller.js");
   return createPageBlock(req, res);
 });
-router.put("/admin/cms/page-blocks/:id", requireAdmin, async (req, res) => {
+router.put("/admin/cms/page-blocks/:id", requireAdmin, adminPermCheck, async (req, res) => {
   const { updatePageBlock } = await import("../modules/cms/cmsExtended.controller.js");
   return updatePageBlock(req, res);
 });
-router.delete("/admin/cms/page-blocks/:id", requireAdmin, async (req, res) => {
+router.delete("/admin/cms/page-blocks/:id", requireAdmin, adminPermCheck, async (req, res) => {
   const { deletePageBlock } = await import("../modules/cms/cmsExtended.controller.js");
   return deletePageBlock(req, res);
 });
-router.post("/admin/cms/page-blocks/reorder", requireAdmin, async (req, res) => {
+router.post("/admin/cms/page-blocks/reorder", requireAdmin, adminPermCheck, async (req, res) => {
   const { reorderPageBlocks } = await import("../modules/cms/cmsExtended.controller.js");
   return reorderPageBlocks(req, res);
 });
-router.put("/admin/cms/translations", requireAdmin, async (req, res) => {
+router.put("/admin/cms/translations", requireAdmin, adminPermCheck, async (req, res) => {
   const { upsertTranslation } = await import("../modules/cms/cmsExtended.controller.js");
   return upsertTranslation(req, res);
 });
 // ─── File Management & Upload ────────────────────────────────────────────────
-router.get("/admin/cms/media/stats", requireAdmin, async (req, res) => {
+router.get("/admin/cms/media/stats", requireAdmin, adminPermCheck, async (req, res) => {
   const { getMediaStats } = await import("../modules/media/media.controller.js");
   return getMediaStats(req, res);
 });
-router.get("/admin/cms/media", requireAdmin, async (req, res) => {
+router.get("/admin/cms/media", requireAdmin, adminPermCheck, async (req, res) => {
   const { getMediaFiles } = await import("../modules/media/media.controller.js");
   return getMediaFiles(req, res);
 });
-router.post("/admin/cms/media/upload", requireAdmin, upload.single("file"), async (req, res) => {
+router.post("/admin/cms/media/upload", requireAdmin, adminPermCheck, upload.single("file"), async (req, res) => {
   const { uploadMediaFile } = await import("../modules/media/media.controller.js");
   return uploadMediaFile(req, res);
 });
-router.post("/admin/cms/media/upload-multiple", requireAdmin, upload.array("files", 20), async (req, res) => {
+router.post("/admin/cms/media/upload-multiple", requireAdmin, adminPermCheck, upload.array("files", 20), async (req, res) => {
   const { uploadMultipleFiles } = await import("../modules/media/media.controller.js");
   return uploadMultipleFiles(req, res);
 });
-router.post("/admin/cms/media/bulk-delete", requireAdmin, async (req, res) => {
+router.post("/admin/cms/media/bulk-delete", requireAdmin, adminPermCheck, async (req, res) => {
   const { bulkDeleteMedia } = await import("../modules/media/media.controller.js");
   return bulkDeleteMedia(req, res);
 });
-router.post("/admin/cms/media/folders", requireAdmin, async (req, res) => {
+router.post("/admin/cms/media/folders", requireAdmin, adminPermCheck, async (req, res) => {
   const { createFolder } = await import("../modules/media/media.controller.js");
   return createFolder(req, res);
 });
-router.post("/admin/cms/media/move", requireAdmin, async (req, res) => {
+router.post("/admin/cms/media/move", requireAdmin, adminPermCheck, async (req, res) => {
   const { moveFiles } = await import("../modules/media/media.controller.js");
   return moveFiles(req, res);
 });
-router.put("/admin/cms/media/:id", requireAdmin, async (req, res) => {
+router.put("/admin/cms/media/:id", requireAdmin, adminPermCheck, async (req, res) => {
   const { updateMediaFile } = await import("../modules/media/media.controller.js");
   return updateMediaFile(req, res);
 });
-router.delete("/admin/cms/media/:id", requireAdmin, async (req, res) => {
+router.delete("/admin/cms/media/:id", requireAdmin, adminPermCheck, async (req, res) => {
   const { deleteMediaFile } = await import("../modules/media/media.controller.js");
   return deleteMediaFile(req, res);
 });
 
 // Admin CMS Footer
-router.get("/admin/cms/footer", requireAdmin, async (req, res) => {
+router.get("/admin/cms/footer", requireAdmin, adminPermCheck, async (req, res) => {
   const { getFooterContent } = await import("../modules/cms/cmsExtended.controller.js");
   return getFooterContent(req, res);
 });
-router.put("/admin/cms/footer", requireAdmin, async (req, res) => {
+router.put("/admin/cms/footer", requireAdmin, adminPermCheck, async (req, res) => {
   const { updateFooterContent } = await import("../modules/cms/cmsExtended.controller.js");
   return updateFooterContent(req, res);
 });
+router.get("/admin/cms/zakat-page", requireAdmin, adminPermCheck, async (req, res) => {
+  const { getAdminZakatPage } = await import("../modules/cms/zakatPage.controller.js");
+  return getAdminZakatPage(req, res);
+});
+router.put("/admin/cms/zakat-page", requireAdmin, adminPermCheck, async (req, res) => {
+  const { updateZakatPage } = await import("../modules/cms/zakatPage.controller.js");
+  return updateZakatPage(req, res);
+});
 
 // Admin CMS Pages (aliases for page-block operations, grouped by page)
-router.get("/admin/cms/pages", requireAdmin, async (req, res) => {
+router.get("/admin/cms/pages", requireAdmin, adminPermCheck, async (req, res) => {
   const { getPages } = await import("../modules/cms/cmsExtended.controller.js");
   return getPages(req, res);
 });
-router.post("/admin/cms/pages", requireAdmin, async (req, res) => {
+router.post("/admin/cms/pages", requireAdmin, adminPermCheck, async (req, res) => {
   const { createPageBlock } = await import("../modules/cms/cmsExtended.controller.js");
   return createPageBlock(req, res);
 });
-router.delete("/admin/cms/pages/:id", requireAdmin, async (req, res) => {
+router.delete("/admin/cms/pages/:id", requireAdmin, adminPermCheck, async (req, res) => {
   const { deletePage } = await import("../modules/cms/cmsExtended.controller.js");
   return deletePage(req, res);
 });
-router.post("/admin/cms/pages/:id/blocks", requireAdmin, async (req, res) => {
+router.post("/admin/cms/pages/:id/blocks", requireAdmin, adminPermCheck, async (req, res) => {
   const { addBlockToPage } = await import("../modules/cms/cmsExtended.controller.js");
   return addBlockToPage(req, res);
 });
-router.put("/admin/cms/pages/:id/blocks/:blockId", requireAdmin, async (req, res) => {
+router.put("/admin/cms/pages/:id/blocks/:blockId", requireAdmin, adminPermCheck, async (req, res) => {
   const { updateBlockInPage } = await import("../modules/cms/cmsExtended.controller.js");
   return updateBlockInPage(req, res);
 });
-router.delete("/admin/cms/pages/:id/blocks/:blockId", requireAdmin, async (req, res) => {
+router.delete("/admin/cms/pages/:id/blocks/:blockId", requireAdmin, adminPermCheck, async (req, res) => {
   const { deleteBlockFromPage } = await import("../modules/cms/cmsExtended.controller.js");
   return deleteBlockFromPage(req, res);
 });
 
 // Admin CMS SEO stubs (redirects + sitemap)
-router.get("/admin/cms/redirects", requireAdmin, async (req, res) => {
+router.get("/admin/cms/redirects", requireAdmin, adminPermCheck, async (req, res) => {
   const { getRedirects } = await import("../modules/cms/cmsExtended.controller.js");
   return getRedirects(req, res);
 });
-router.post("/admin/cms/redirects", requireAdmin, async (req, res) => {
+router.post("/admin/cms/redirects", requireAdmin, adminPermCheck, async (req, res) => {
   const { createRedirect } = await import("../modules/cms/cmsExtended.controller.js");
   return createRedirect(req, res);
 });
-router.delete("/admin/cms/redirects/:id", requireAdmin, async (req, res) => {
+router.delete("/admin/cms/redirects/:id", requireAdmin, adminPermCheck, async (req, res) => {
   const { deleteRedirect } = await import("../modules/cms/cmsExtended.controller.js");
   return deleteRedirect(req, res);
 });
-router.get("/admin/cms/sitemap-settings", requireAdmin, async (req, res) => {
+router.get("/admin/cms/sitemap-settings", requireAdmin, adminPermCheck, async (req, res) => {
   const { getSitemapSettings } = await import("../modules/cms/cmsExtended.controller.js");
   return getSitemapSettings(req, res);
 });
@@ -637,36 +745,36 @@ router.get("/admin/cms/sitemap-settings", requireAdmin, async (req, res) => {
 // ═══════════════════════════════════
 // ADMIN BLOG
 // ═══════════════════════════════════
-router.get("/admin/blog/categories", requireAdmin, async (req, res) => {
+router.get("/admin/blog/categories", requireAdmin, adminPermCheck, async (req, res) => {
   const { getAdminBlogCategories } = await import("../modules/cms/cmsExtended.controller.js");
   return getAdminBlogCategories(req, res);
 });
-router.post("/admin/blog/categories", requireAdmin, async (req, res) => {
+router.post("/admin/blog/categories", requireAdmin, adminPermCheck, async (req, res) => {
   const { createBlogCategory } = await import("../modules/cms/cmsExtended.controller.js");
   return createBlogCategory(req, res);
 });
-router.post("/admin/blog/categories/reorder", requireAdmin, async (req, res) => {
+router.post("/admin/blog/categories/reorder", requireAdmin, adminPermCheck, async (req, res) => {
   const { reorderBlogCategories } = await import("../modules/cms/cmsExtended.controller.js");
   return reorderBlogCategories(req, res);
 });
-router.put("/admin/blog/categories/:id", requireAdmin, async (req, res) => {
+router.put("/admin/blog/categories/:id", requireAdmin, adminPermCheck, async (req, res) => {
   const { updateBlogCategory } = await import("../modules/cms/cmsExtended.controller.js");
   return updateBlogCategory(req, res);
 });
-router.delete("/admin/blog/categories/:id", requireAdmin, async (req, res) => {
+router.delete("/admin/blog/categories/:id", requireAdmin, adminPermCheck, async (req, res) => {
   const { deleteBlogCategory } = await import("../modules/cms/cmsExtended.controller.js");
   return deleteBlogCategory(req, res);
 });
-router.get("/admin/blog", requireAdmin, getAdminBlogPosts);
-router.get("/admin/blog/:id", requireAdmin, getAdminBlogPost);
-router.post("/admin/blog", requireAdmin, createBlogPost);
-router.put("/admin/blog/:id", requireAdmin, updateBlogPost);
-router.delete("/admin/blog/:id", requireAdmin, deleteBlogPost);
+router.get("/admin/blog", requireAdmin, adminPermCheck, getAdminBlogPosts);
+router.get("/admin/blog/:id", requireAdmin, adminPermCheck, getAdminBlogPost);
+router.post("/admin/blog", requireAdmin, adminPermCheck, createBlogPost);
+router.put("/admin/blog/:id", requireAdmin, adminPermCheck, updateBlogPost);
+router.delete("/admin/blog/:id", requireAdmin, adminPermCheck, deleteBlogPost);
 
 // ═══════════════════════════════════
 // ADMIN RECURRING
 // ═══════════════════════════════════
-router.get("/admin/recurring", requireAdmin, async (req, res) => {
+router.get("/admin/recurring", requireAdmin, adminPermCheck, async (req, res) => {
   const { getRecurringDonations } = await import("../modules/recurring/recurring.controller.js");
   return getRecurringDonations(req, res);
 });
@@ -674,11 +782,11 @@ router.get("/admin/recurring", requireAdmin, async (req, res) => {
 // ═══════════════════════════════════
 // ADMIN USERS
 // ═══════════════════════════════════
-router.get("/admin/users", requireAdmin, async (req, res) => {
+router.get("/admin/users", requireAdmin, adminPermCheck, async (req, res) => {
   const { getUsers } = await import("../modules/user-auth/userAuth.controller.js");
   return getUsers(req, res);
 });
-router.put("/admin/users/:id/deactivate", requireAdmin, async (req, res) => {
+router.put("/admin/users/:id/deactivate", requireAdmin, adminPermCheck, async (req, res) => {
   const { deactivateUser } = await import("../modules/user-auth/userAuth.controller.js");
   return deactivateUser(req, res);
 });
@@ -686,31 +794,35 @@ router.put("/admin/users/:id/deactivate", requireAdmin, async (req, res) => {
 // ═══════════════════════════════════
 // ADMIN ANALYTICS
 // ═══════════════════════════════════
-router.get("/admin/analytics/dashboard", requireAdmin, async (req, res) => {
+router.get("/admin/analytics/dashboard", requireAdmin, adminPermCheck, async (req, res) => {
   const { getDashboardStats } = await import("../modules/analytics/analytics.controller.js");
   return getDashboardStats(req, res);
 });
-router.get("/admin/analytics/campaigns", requireAdmin, async (req, res) => {
+router.get("/admin/analytics/campaigns", requireAdmin, adminPermCheck, async (req, res) => {
   const { getCampaignReport } = await import("../modules/analytics/analytics.controller.js");
   return getCampaignReport(req, res);
 });
-router.get("/admin/analytics/recurring", requireAdmin, async (req, res) => {
+router.get("/admin/analytics/categories", requireAdmin, adminPermCheck, async (req, res) => {
+  const { getCategoryReport } = await import("../modules/analytics/analytics.controller.js");
+  return getCategoryReport(req, res);
+});
+router.get("/admin/analytics/recurring", requireAdmin, adminPermCheck, async (req, res) => {
   const { getRecurringReport } = await import("../modules/analytics/analytics.controller.js");
   return getRecurringReport(req, res);
 });
-router.get("/admin/analytics/donors", requireAdmin, async (req, res) => {
+router.get("/admin/analytics/donors", requireAdmin, adminPermCheck, async (req, res) => {
   const { getDonorReport } = await import("../modules/analytics/analytics.controller.js");
   return getDonorReport(req, res);
 });
-router.get("/admin/analytics/revenue", requireAdmin, async (req, res) => {
+router.get("/admin/analytics/revenue", requireAdmin, adminPermCheck, async (req, res) => {
   const { getRevenueReport } = await import("../modules/analytics/analytics.controller.js");
   return getRevenueReport(req, res);
 });
-router.get("/admin/analytics/gift-aid", requireAdmin, async (req, res) => {
+router.get("/admin/analytics/gift-aid", requireAdmin, adminPermCheck, async (req, res) => {
   const { getGiftAidReport } = await import("../modules/analytics/analytics.controller.js");
   return getGiftAidReport(req, res);
 });
-router.get("/admin/analytics/export/donations", requireAdmin, async (req, res) => {
+router.get("/admin/analytics/export/donations", requireAdmin, adminPermCheck, async (req, res) => {
   const { exportDonations } = await import("../modules/analytics/analytics.controller.js");
   return exportDonations(req, res);
 });
@@ -718,11 +830,11 @@ router.get("/admin/analytics/export/donations", requireAdmin, async (req, res) =
 // ═══════════════════════════════════
 // ADMIN ACTIVITY LOGS
 // ═══════════════════════════════════
-router.get("/admin/activity-logs", requireAdmin, async (req, res) => {
+router.get("/admin/activity-logs", requireAdmin, adminPermCheck, async (req, res) => {
   const { getActivityLogs } = await import("../modules/analytics/analytics.controller.js");
   return getActivityLogs(req, res);
 });
-router.get("/admin/audit-logs", requireAdmin, async (req, res) => {
+router.get("/admin/audit-logs", requireAdmin, adminPermCheck, async (req, res) => {
   const { getAuditLogs } = await import("../modules/analytics/analytics.controller.js");
   return getAuditLogs(req, res);
 });
@@ -730,84 +842,96 @@ router.get("/admin/audit-logs", requireAdmin, async (req, res) => {
 // ═══════════════════════════════════
 // ADMIN NEWSLETTER
 // ═══════════════════════════════════
-router.get("/admin/newsletter/subscribers", requireAdmin, getSubscribers);
+router.get("/admin/newsletter/subscribers", requireAdmin, adminPermCheck, getSubscribers);
 
 // Admin charities / certifications / concerns / apply-review
-router.get("/admin/charities", requireAdmin, async (req, res) => {
+router.get("/admin/charities", requireAdmin, adminPermCheck, async (req, res) => {
   const { getAdminCharities } = await import("../modules/charities/charities.controller.js");
   return getAdminCharities(req, res);
 });
-router.get("/admin/charities/:id", requireAdmin, async (req, res) => {
+router.get("/admin/charities/:id", requireAdmin, adminPermCheck, async (req, res) => {
   const { getAdminCharityById } = await import("../modules/charities/charities.controller.js");
   return getAdminCharityById(req, res);
 });
-router.post("/admin/charities", requireAdmin, async (req, res) => {
+router.post("/admin/charities", requireAdmin, adminPermCheck, async (req, res) => {
   const { createAdminCharity } = await import("../modules/charities/charities.controller.js");
   return createAdminCharity(req, res);
 });
-router.patch("/admin/charities/:id", requireAdmin, async (req, res) => {
+router.patch("/admin/charities/:id", requireAdmin, adminPermCheck, async (req, res) => {
   const { updateAdminCharity } = await import("../modules/charities/charities.controller.js");
   return updateAdminCharity(req, res);
 });
-router.delete("/admin/charities/:id", requireAdmin, async (req, res) => {
+router.delete("/admin/charities/:id", requireAdmin, adminPermCheck, async (req, res) => {
   const { deleteAdminCharity } = await import("../modules/charities/charities.controller.js");
   return deleteAdminCharity(req, res);
 });
-router.get("/admin/certifications", requireAdmin, async (req, res) => {
+router.get("/admin/certifications", requireAdmin, adminPermCheck, async (req, res) => {
   const { getAdminCertifications } = await import("../modules/charities/charities.controller.js");
   return getAdminCertifications(req, res);
 });
-router.get("/admin/certifications/:id", requireAdmin, async (req, res) => {
+router.get("/admin/certifications/:id", requireAdmin, adminPermCheck, async (req, res) => {
   const { getAdminCertificationById } = await import("../modules/charities/charities.controller.js");
   return getAdminCertificationById(req, res);
 });
-router.post("/admin/certifications", requireAdmin, async (req, res) => {
+router.post("/admin/certifications", requireAdmin, adminPermCheck, async (req, res) => {
   const { createAdminCertification } = await import("../modules/charities/charities.controller.js");
   return createAdminCertification(req, res);
 });
-router.patch("/admin/certifications/:id", requireAdmin, async (req, res) => {
+router.patch("/admin/certifications/:id", requireAdmin, adminPermCheck, async (req, res) => {
   const { updateAdminCertification } = await import("../modules/charities/charities.controller.js");
   return updateAdminCertification(req, res);
 });
-router.delete("/admin/certifications/:id", requireAdmin, async (req, res) => {
+router.delete("/admin/certifications/:id", requireAdmin, adminPermCheck, async (req, res) => {
   const { deleteAdminCertification } = await import("../modules/charities/charities.controller.js");
   return deleteAdminCertification(req, res);
 });
-router.get("/admin/concerns", requireAdmin, async (req, res) => {
+router.get("/admin/concerns", requireAdmin, adminPermCheck, async (req, res) => {
   const { getAdminConcerns } = await import("../modules/charities/charities.controller.js");
   return getAdminConcerns(req, res);
 });
-router.get("/admin/apply-review", requireAdmin, async (req, res) => {
+router.get("/admin/apply-review", requireAdmin, adminPermCheck, async (req, res) => {
   const { getAdminApplyReview } = await import("../modules/charities/charities.controller.js");
   return getAdminApplyReview(req, res);
 });
-router.patch("/admin/apply-review/:id", requireAdmin, async (req, res) => {
+router.patch("/admin/apply-review/:id", requireAdmin, adminPermCheck, async (req, res) => {
   const { updateAdminApplyReview } = await import("../modules/charities/charities.controller.js");
   return updateAdminApplyReview(req, res);
 });
-router.delete("/admin/apply-review/:id", requireAdmin, async (req, res) => {
+router.delete("/admin/apply-review/:id", requireAdmin, adminPermCheck, async (req, res) => {
   const { deleteAdminApplyReview } = await import("../modules/charities/charities.controller.js");
   return deleteAdminApplyReview(req, res);
 });
+router.get("/admin/contact-messages", requireAdmin, adminPermCheck, async (req, res) => {
+  const { getAdminContactMessages } = await import("../modules/charities/charities.controller.js");
+  return getAdminContactMessages(req, res);
+});
+router.patch("/admin/contact-messages/:id", requireAdmin, adminPermCheck, async (req, res) => {
+  const { updateAdminContactMessage } = await import("../modules/charities/charities.controller.js");
+  return updateAdminContactMessage(req, res);
+});
+router.delete("/admin/contact-messages/:id", requireAdmin, adminPermCheck, async (req, res) => {
+  const { deleteAdminContactMessage } = await import("../modules/charities/charities.controller.js");
+  return deleteAdminContactMessage(req, res);
+});
 
 // Admin donation pages
-router.get("/admin/donation-pages", requireAdmin, async (req, res) => {
+router.get("/admin/donation-pages", requireAdmin, adminPermCheck, async (req, res) => {
   const { getAdminDonationPages } = await import("../modules/donation-pages/donationPages.controller.js");
   return getAdminDonationPages(req, res);
 });
-router.get("/admin/donation-pages/:id", requireAdmin, async (req, res) => {
+router.get("/admin/donation-pages/:id", requireAdmin, adminPermCheck, async (req, res) => {
   const { getAdminDonationPageById } = await import("../modules/donation-pages/donationPages.controller.js");
   return getAdminDonationPageById(req, res);
 });
-router.post("/admin/donation-pages", requireAdmin, async (req, res) => {
+router.post("/admin/donation-pages", requireAdmin, adminPermCheck, async (req, res) => {
   const { createAdminDonationPage } = await import("../modules/donation-pages/donationPages.controller.js");
   return createAdminDonationPage(req, res);
 });
-router.put("/admin/donation-pages/:id", requireAdmin, async (req, res) => {
+router.put("/admin/donation-pages/:id", requireAdmin, adminPermCheck, async (req, res) => {
   const { updateAdminDonationPage } = await import("../modules/donation-pages/donationPages.controller.js");
   return updateAdminDonationPage(req, res);
 });
-router.delete("/admin/donation-pages/:id", requireAdmin, async (req, res) => {
+router.delete("/admin/donation-pages/:id", requireAdmin, adminPermCheck, async (req, res) => {
   const { deleteAdminDonationPage } = await import("../modules/donation-pages/donationPages.controller.js");
   return deleteAdminDonationPage(req, res);
 });
@@ -821,35 +945,35 @@ router.get("/donation-pages/:slug", async (req, res) => {
 });
 
 // Admin staff (IAM)
-router.get("/admin/staff", requireAdmin, async (req, res) => {
+router.get("/admin/staff", requireAdmin, adminPermCheck, async (req, res) => {
   const { listAdminStaff } = await import("../modules/admin-auth/adminStaff.controller.js");
   return listAdminStaff(req, res);
 });
-router.post("/admin/staff", requireAdmin, async (req, res) => {
+router.post("/admin/staff", requireAdmin, adminPermCheck, async (req, res) => {
   const { createAdminStaff } = await import("../modules/admin-auth/adminStaff.controller.js");
   return createAdminStaff(req, res);
 });
-router.patch("/admin/staff/:id", requireAdmin, async (req, res) => {
+router.patch("/admin/staff/:id", requireAdmin, adminPermCheck, async (req, res) => {
   const { updateAdminStaff } = await import("../modules/admin-auth/adminStaff.controller.js");
   return updateAdminStaff(req, res);
 });
-router.delete("/admin/staff/:id", requireAdmin, async (req, res) => {
+router.delete("/admin/staff/:id", requireAdmin, adminPermCheck, async (req, res) => {
   const { deleteAdminStaff } = await import("../modules/admin-auth/adminStaff.controller.js");
   return deleteAdminStaff(req, res);
 });
-router.patch("/admin/staff/:id/status", requireAdmin, async (req, res) => {
+router.patch("/admin/staff/:id/status", requireAdmin, adminPermCheck, async (req, res) => {
   const { updateAdminStaffStatus } = await import("../modules/admin-auth/adminStaff.controller.js");
   return updateAdminStaffStatus(req, res);
 });
-router.post("/admin/staff/:id/reset-password", requireAdmin, async (req, res) => {
+router.post("/admin/staff/:id/reset-password", requireAdmin, adminPermCheck, async (req, res) => {
   const { resetAdminStaffPassword } = await import("../modules/admin-auth/adminStaff.controller.js");
   return resetAdminStaffPassword(req, res);
 });
-router.get("/admin/roles", requireAdmin, async (req, res) => {
+router.get("/admin/roles", requireAdmin, adminPermCheck, async (req, res) => {
   const { listAdminRoles } = await import("../modules/admin-auth/adminStaff.controller.js");
   return listAdminRoles(req, res);
 });
-router.get("/admin/permissions", requireAdmin, async (req, res) => {
+router.get("/admin/permissions", requireAdmin, adminPermCheck, async (req, res) => {
   const { listAdminPermissions } = await import("../modules/admin-auth/adminStaff.controller.js");
   return listAdminPermissions(req, res);
 });
@@ -881,8 +1005,11 @@ router.get("/zakat/history", async (req, res) => {
 // AUTOMATED DONATIONS (public/user)
 // ═══════════════════════════════════
 router.post("/automated-donations", async (req, res) => {
-  const { createAutomatedSchedule } = await import("../modules/automated/automated.controller.js");
-  return createAutomatedSchedule(req, res);
+  const { optionalUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  optionalUser(req, res, async () => {
+    const { createAutomatedSchedule } = await import("../modules/automated/automated.controller.js");
+    return createAutomatedSchedule(req, res);
+  });
 });
 router.get("/automated-donations/my", async (req, res) => {
   const { requireUser } = await import("../modules/user-auth/userAuth.middleware.js");
@@ -906,11 +1033,11 @@ router.put("/automated-donations/:id/cancel", async (req, res) => {
 // ═══════════════════════════════════
 // ADMIN AUTOMATED DONATIONS
 // ═══════════════════════════════════
-router.get("/admin/automated-donations", requireAdmin, async (req, res) => {
+router.get("/admin/automated-donations", requireAdmin, adminPermCheck, async (req, res) => {
   const { getAdminAutomatedSchedules } = await import("../modules/automated/automated.controller.js");
   return getAdminAutomatedSchedules(req, res);
 });
-router.get("/admin/automated-donations/:id", requireAdmin, async (req, res) => {
+router.get("/admin/automated-donations/:id", requireAdmin, adminPermCheck, async (req, res) => {
   const { getAdminAutomatedScheduleById } = await import("../modules/automated/automated.controller.js");
   return getAdminAutomatedScheduleById(req, res);
 });
@@ -921,6 +1048,123 @@ router.get("/admin/automated-donations/:id", requireAdmin, async (req, res) => {
 router.post("/track", async (req, res) => {
   const { trackActivity } = await import("../modules/analytics/analytics.controller.js");
   return trackActivity(req, res);
+});
+
+// ═══════════════════════════════════
+// NOTIFICATIONS (user)
+// ═══════════════════════════════════
+router.get("/notifications", async (req, res) => {
+  const { requireUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  return requireUser(req, res, async () => {
+    const { listNotifications } = await import("../modules/notifications/notifications.controller.js");
+    return listNotifications(req, res);
+  });
+});
+router.get("/notifications/unread-count", async (req, res) => {
+  const { requireUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  return requireUser(req, res, async () => {
+    const { getUnreadCount } = await import("../modules/notifications/notifications.controller.js");
+    return getUnreadCount(req, res);
+  });
+});
+router.patch("/notifications/:id/read", async (req, res) => {
+  const { requireUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  return requireUser(req, res, async () => {
+    const { markNotificationRead } = await import("../modules/notifications/notifications.controller.js");
+    return markNotificationRead(req, res);
+  });
+});
+router.post("/notifications/read-all", async (req, res) => {
+  const { requireUser } = await import("../modules/user-auth/userAuth.middleware.js");
+  return requireUser(req, res, async () => {
+    const { markAllNotificationsRead } = await import("../modules/notifications/notifications.controller.js");
+    return markAllNotificationsRead(req, res);
+  });
+});
+
+router.get("/admin/notifications", requireAdmin, adminPermCheck, async (req, res) => {
+  const { listNotifications } = await import("../modules/notifications/notifications.controller.js");
+  return listNotifications(req, res);
+});
+router.get("/admin/notifications/unread-count", requireAdmin, adminPermCheck, async (req, res) => {
+  const { getUnreadCount } = await import("../modules/notifications/notifications.controller.js");
+  return getUnreadCount(req, res);
+});
+router.patch("/admin/notifications/:id/read", requireAdmin, adminPermCheck, async (req, res) => {
+  const { markNotificationRead } = await import("../modules/notifications/notifications.controller.js");
+  return markNotificationRead(req, res);
+});
+router.post("/admin/notifications/read-all", requireAdmin, adminPermCheck, async (req, res) => {
+  const { markAllNotificationsRead } = await import("../modules/notifications/notifications.controller.js");
+  return markAllNotificationsRead(req, res);
+});
+
+// ═══════════════════════════════════
+// ADMIN EMAIL MANAGEMENT
+// ═══════════════════════════════════
+router.get("/admin/email-management/smtp", requireAdmin, adminPermCheck, async (req, res) => {
+  const { getSmtpConfig } = await import("../modules/email-management/emailManagement.controller.js");
+  return getSmtpConfig(req, res);
+});
+router.patch("/admin/email-management/smtp", requireAdmin, adminPermCheck, async (req, res) => {
+  const { updateSmtpConfig } = await import("../modules/email-management/emailManagement.controller.js");
+  return updateSmtpConfig(req, res);
+});
+router.post("/admin/email-management/test-smtp", requireAdmin, adminPermCheck, async (req, res) => {
+  const { sendTestSmtp } = await import("../modules/email-management/emailManagement.controller.js");
+  return sendTestSmtp(req, res);
+});
+router.get("/admin/email-management/templates", requireAdmin, adminPermCheck, async (req, res) => {
+  const { listEmailTemplates } = await import("../modules/email-management/emailManagement.controller.js");
+  return listEmailTemplates(req, res);
+});
+router.get("/admin/email-management/templates/:id", requireAdmin, adminPermCheck, async (req, res) => {
+  const { getEmailTemplate } = await import("../modules/email-management/emailManagement.controller.js");
+  return getEmailTemplate(req, res);
+});
+router.post("/admin/email-management/templates", requireAdmin, adminPermCheck, async (req, res) => {
+  const { createEmailTemplate } = await import("../modules/email-management/emailManagement.controller.js");
+  return createEmailTemplate(req, res);
+});
+router.patch("/admin/email-management/templates/:id", requireAdmin, adminPermCheck, async (req, res) => {
+  const { updateEmailTemplate } = await import("../modules/email-management/emailManagement.controller.js");
+  return updateEmailTemplate(req, res);
+});
+router.delete("/admin/email-management/templates/:id", requireAdmin, adminPermCheck, async (req, res) => {
+  const { deleteEmailTemplate } = await import("../modules/email-management/emailManagement.controller.js");
+  return deleteEmailTemplate(req, res);
+});
+router.get("/admin/email-management/reminder-settings", requireAdmin, adminPermCheck, async (req, res) => {
+  const { getReminderSettings } = await import("../modules/email-management/emailManagement.controller.js");
+  return getReminderSettings(req, res);
+});
+router.patch("/admin/email-management/reminder-settings", requireAdmin, adminPermCheck, async (req, res) => {
+  const { updateReminderSettings } = await import("../modules/email-management/emailManagement.controller.js");
+  return updateReminderSettings(req, res);
+});
+router.get("/admin/email-management/logs", requireAdmin, adminPermCheck, async (req, res) => {
+  const { listEmailLogs } = await import("../modules/email-management/emailManagement.controller.js");
+  return listEmailLogs(req, res);
+});
+router.post("/admin/email-management/preview", requireAdmin, adminPermCheck, async (req, res) => {
+  const { previewEmailTemplate } = await import("../modules/email-management/emailManagement.controller.js");
+  return previewEmailTemplate(req, res);
+});
+router.post("/admin/email-management/send-bulk", requireAdmin, adminPermCheck, async (req, res) => {
+  const { sendBulkEmail } = await import("../modules/email-management/emailManagement.controller.js");
+  return sendBulkEmail(req, res);
+});
+router.get("/admin/email-management/campaigns", requireAdmin, adminPermCheck, async (req, res) => {
+  const { listEmailCampaigns } = await import("../modules/email-management/emailManagement.controller.js");
+  return listEmailCampaigns(req, res);
+});
+router.post("/admin/email-management/campaigns", requireAdmin, adminPermCheck, async (req, res) => {
+  const { createEmailCampaign } = await import("../modules/email-management/emailManagement.controller.js");
+  return createEmailCampaign(req, res);
+});
+router.get("/admin/email-management/campaigns/:id", requireAdmin, adminPermCheck, async (req, res) => {
+  const { getEmailCampaign } = await import("../modules/email-management/emailManagement.controller.js");
+  return getEmailCampaign(req, res);
 });
 
 export default router;

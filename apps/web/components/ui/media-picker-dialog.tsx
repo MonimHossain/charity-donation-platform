@@ -8,6 +8,12 @@ import { Button } from "./button";
 import { Input } from "./input";
 import { cn } from "@/lib/utils";
 import { resolveMediaUrl } from "@/lib/campaign-media";
+import {
+  matchesMediaAccept,
+  mediaAcceptAttribute,
+  uploadMediaFile,
+  type UploadedMediaFile,
+} from "@/lib/media-upload";
 
 interface MediaFile {
   id: string;
@@ -38,7 +44,9 @@ export function MediaPickerDialog({
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [search, setSearch] = useState("");
+  const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dragDepth = useRef(0);
 
   async function loadFiles() {
     setLoading(true);
@@ -68,21 +76,24 @@ export function MediaPickerDialog({
   }, [open, search, accept]);
 
   async function handleUpload(fileList: FileList | null) {
-    if (!fileList || fileList.length === 0) return;
+    const file = fileList?.[0];
+    if (!file) return;
+
+    if (!matchesMediaAccept(file, accept)) {
+      toast.error(
+        accept === "image"
+          ? "Please upload an image file"
+          : accept === "video"
+          ? "Please upload a video file"
+          : "This file type is not supported here"
+      );
+      return;
+    }
+
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", fileList[0]);
-      const { data } = await api.post("/admin/cms/media/upload", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      onSelect(data.url, {
-        id: data.id,
-        name: data.name,
-        url: data.url,
-        type: data.type,
-        size: data.size,
-      });
+      const uploaded: UploadedMediaFile = await uploadMediaFile(file);
+      onSelect(uploaded.url, uploaded);
       onOpenChange(false);
       toast.success("File uploaded");
     } catch {
@@ -93,10 +104,37 @@ export function MediaPickerDialog({
     }
   }
 
-  if (!open) return null;
+  function onDragEnter(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    dragDepth.current += 1;
+    setDragOver(true);
+  }
 
-  const acceptAttr =
-    accept === "image" ? "image/*" : accept === "video" ? "video/*" : undefined;
+  function onDragLeave(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    dragDepth.current -= 1;
+    if (dragDepth.current <= 0) {
+      dragDepth.current = 0;
+      setDragOver(false);
+    }
+  }
+
+  function onDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    dragDepth.current = 0;
+    setDragOver(false);
+    void handleUpload(e.dataTransfer.files);
+  }
+
+  if (!open) return null;
 
   return (
     <div
@@ -123,7 +161,7 @@ export function MediaPickerDialog({
               ref={fileInputRef}
               type="file"
               className="hidden"
-              accept={acceptAttr}
+              accept={mediaAcceptAttribute(accept)}
               onChange={(e) => handleUpload(e.target.files)}
             />
             <Button
@@ -149,6 +187,35 @@ export function MediaPickerDialog({
             </Button>
           </div>
         </div>
+
+        <div
+          className={cn(
+            "mx-4 mt-4 rounded-xl border-2 border-dashed px-4 py-5 text-center transition-all",
+            dragOver
+              ? "border-primary bg-primary/5"
+              : "border-muted-foreground/20 hover:border-muted-foreground/40"
+          )}
+          onDragEnter={onDragEnter}
+          onDragLeave={onDragLeave}
+          onDragOver={onDragOver}
+          onDrop={onDrop}
+        >
+          {uploading ? (
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Uploading...
+            </div>
+          ) : (
+            <>
+              <Upload className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
+              <p className="text-sm text-muted-foreground">
+                {dragOver ? "Drop file to upload" : "Drag & drop a file here"}
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-1">or use Upload from device above</p>
+            </>
+          )}
+        </div>
+
         <div className="flex-1 overflow-y-auto p-4">
           {loading ? (
             <div className="flex items-center justify-center py-12 text-muted-foreground">
@@ -197,7 +264,7 @@ export function MediaPickerDialog({
               })}
             </div>
           ) : (
-            <div className="text-center py-12 text-muted-foreground text-sm space-y-3">
+            <div className="text-center py-8 text-muted-foreground text-sm space-y-3">
               <div className="flex justify-center">
                 {accept === "video" ? (
                   <Film className="h-10 w-10 opacity-40" />
@@ -207,7 +274,7 @@ export function MediaPickerDialog({
                   <FileText className="h-10 w-10 opacity-40" />
                 )}
               </div>
-              <p>No files found. Upload one from your device to get started.</p>
+              <p>No files in the library yet. Drag & drop above or upload from your device.</p>
             </div>
           )}
         </div>

@@ -7,6 +7,11 @@ import { ActivityLog } from "../../components/activityLog/activityLog.entity.js"
 import { AuditLog } from "../../components/auditLog/auditLog.entity.js";
 import { logAudit } from "../../helper/auditLog.js";
 import { mapAuditLogForClient, parseDateFilter } from "../../helper/auditLogFormat.js";
+import {
+  analyticsQueryFromRequest,
+  applyDonationCampaignFilter,
+  applyDonationDateFilter,
+} from "./analytics.helpers.js";
 
 const donationRepo = () => AppDataSource.getRepository(Donation);
 const campaignRepo = () => AppDataSource.getRepository(Campaign);
@@ -14,29 +19,48 @@ const recurringRepo = () => AppDataSource.getRepository(RecurringDonation);
 const activityLogRepo = () => AppDataSource.getRepository(ActivityLog);
 const auditLogRepo = () => AppDataSource.getRepository(AuditLog);
 
-export async function getDashboardStats(_req: Request, res: Response) {
+function donationBaseQb() {
+  return donationRepo()
+    .createQueryBuilder("d")
+    .where("d.status = :status", { status: "completed" });
+}
+
+export async function getDashboardStats(req: Request, res: Response) {
   try {
-    const totalDonations = await donationRepo().count({ where: { status: "completed" } });
+    const { dateRange, campaignId } = analyticsQueryFromRequest(req);
 
-    const revenueResult = await donationRepo()
-      .createQueryBuilder("d")
+    const qb = donationBaseQb();
+    applyDonationDateFilter(qb, dateRange);
+    applyDonationCampaignFilter(qb, campaignId);
+
+    const totalDonations = await qb.clone().getCount();
+
+    const revenueResult = await qb
+      .clone()
       .select("SUM(d.totalAmount)", "totalRevenue")
-      .where("d.status = :status", { status: "completed" })
       .getRawOne();
 
-    const monthlyDonors = await recurringRepo().count({
-      where: { status: "active", frequency: "monthly" },
-    });
-
-    const avgResult = await donationRepo()
-      .createQueryBuilder("d")
+    const avgResult = await qb
+      .clone()
       .select("AVG(d.totalAmount)", "avgDonation")
-      .where("d.status = :status", { status: "completed" })
       .getRawOne();
 
-    const allDonations = await donationRepo().count();
-    const completedDonations = await donationRepo().count({ where: { status: "completed" } });
-    const conversionRate = allDonations > 0 ? ((completedDonations / allDonations) * 100).toFixed(2) : "0.00";
+    const monthlyDonorsQb = recurringRepo()
+      .createQueryBuilder("r")
+      .where("r.status = :active", { active: "active" })
+      .andWhere("r.frequency = :freq", { freq: "monthly" });
+    if (campaignId) {
+      monthlyDonorsQb.andWhere("r.campaignId = :campaignId", { campaignId });
+    }
+    const monthlyDonors = await monthlyDonorsQb.getCount();
+
+    const allDonationsQb = donationRepo().createQueryBuilder("d");
+    applyDonationDateFilter(allDonationsQb, dateRange);
+    applyDonationCampaignFilter(allDonationsQb, campaignId);
+    const allDonations = await allDonationsQb.getCount();
+    const completedDonations = totalDonations;
+    const conversionRate =
+      allDonations > 0 ? ((completedDonations / allDonations) * 100).toFixed(2) : "0.00";
 
     return res.json({
       totalDonations,
@@ -51,29 +75,76 @@ export async function getDashboardStats(_req: Request, res: Response) {
   }
 }
 
-export async function getCampaignReport(_req: Request, res: Response) {
+export async function getCampaignReport(req: Request, res: Response) {
   try {
-    const campaigns = await campaignRepo()
+    const { dateRange, campaignId } = analyticsQueryFromRequest(req);
+
+    const qb = campaignRepo()
       .createQueryBuilder("c")
-      .leftJoin("donations", "d", "d.campaignId = c.id AND d.status = :status", { status: "completed" })
+      .leftJoin(
+        "donations",
+        "d",
+        "d.campaignId = c.id AND d.status = :status",
+        { status: "completed" }
+      )
       .select([
         "c.id AS id",
-        "c.title AS title",
-        "c.goalAmount AS \"goalAmount\"",
-        "c.raisedAmount AS \"raisedAmount\"",
-        "c.donorCount AS \"donorCount\"",
-        "c.status AS status",
-        "COUNT(d.id) AS \"totalDonations\"",
-        "COALESCE(SUM(d.totalAmount), 0) AS \"calculatedRevenue\"",
-        "COALESCE(AVG(d.totalAmount), 0) AS \"avgDonation\"",
+        'c.title AS "title"',
+        'c.goalAmount AS "goalAmount"',
+        'c.raisedAmount AS "raisedAmount"',
+        'c.donorCount AS "donorCount"',
+        'c.status AS "status"',
+        'c.category AS "category"',
+        'COUNT(d.id) AS "totalDonations"',
+        'COALESCE(SUM(d.totalAmount), 0) AS "calculatedRevenue"',
+        'COALESCE(AVG(d.totalAmount), 0) AS "avgDonation"',
       ])
-      .groupBy("c.id")
-      .orderBy("\"raisedAmount\"", "DESC")
-      .getRawMany();
+      .groupBy("c.id");
+
+    if (campaignId) {
+      qb.andWhere("c.id = :campaignId", { campaignId });
+    }
+    if (dateRange) {
+      qb.andWhere("d.createdAt >= :analyticsStart", { analyticsStart: dateRange.start });
+      qb.andWhere("d.createdAt <= :analyticsEnd", { analyticsEnd: dateRange.end });
+    }
+
+    const campaigns = await qb.orderBy('"calculatedRevenue"', "DESC").getRawMany();
 
     return res.json(campaigns);
   } catch (error) {
     console.error("Campaign report error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+export async function getCategoryReport(req: Request, res: Response) {
+  try {
+    const { dateRange, campaignId } = analyticsQueryFromRequest(req);
+
+    const qb = donationRepo()
+      .createQueryBuilder("d")
+      .innerJoin("campaigns", "c", "c.id = d.campaignId")
+      .select('COALESCE(c.category, \'Uncategorised\')', "category")
+      .addSelect("COUNT(*)", "count")
+      .addSelect("SUM(d.totalAmount)", "amount")
+      .where("d.status = :status", { status: "completed" })
+      .groupBy("c.category")
+      .orderBy("amount", "DESC");
+
+    applyDonationDateFilter(qb, dateRange);
+    applyDonationCampaignFilter(qb, campaignId);
+
+    const rows = await qb.getRawMany();
+    return res.json(
+      rows.map((r) => ({
+        category: r.category || "Uncategorised",
+        count: Number(r.count || 0),
+        amount: Number(r.amount || 0),
+      }))
+    );
+  } catch (error) {
+    console.error("Category report error:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 }
@@ -117,25 +188,29 @@ export async function getRecurringReport(_req: Request, res: Response) {
 export async function getDonorReport(req: Request, res: Response) {
   try {
     const { limit = "20" } = req.query;
+    const { dateRange, campaignId } = analyticsQueryFromRequest(req);
 
-    const topDonors = await donationRepo()
+    const qb = donationRepo()
       .createQueryBuilder("d")
       .select([
-        "d.donorEmail AS \"donorEmail\"",
-        "d.donorName AS \"donorName\"",
-        "COUNT(*) AS \"totalDonations\"",
-        "SUM(d.totalAmount) AS \"lifetimeValue\"",
-        "AVG(d.totalAmount) AS \"avgDonation\"",
-        "MIN(d.createdAt) AS \"firstDonation\"",
-        "MAX(d.createdAt) AS \"lastDonation\"",
+        'd.donorEmail AS "donorEmail"',
+        'd.donorName AS "donorName"',
+        'COUNT(*) AS "totalDonations"',
+        'SUM(d.totalAmount) AS "lifetimeValue"',
+        'AVG(d.totalAmount) AS "avgDonation"',
+        'MIN(d.createdAt) AS "firstDonation"',
+        'MAX(d.createdAt) AS "lastDonation"',
       ])
       .where("d.status = :status", { status: "completed" })
       .groupBy("d.donorEmail")
       .addGroupBy("d.donorName")
-      .orderBy("\"lifetimeValue\"", "DESC")
-      .limit(Number(limit))
-      .getRawMany();
+      .orderBy('"lifetimeValue"', "DESC")
+      .limit(Number(limit));
 
+    applyDonationDateFilter(qb, dateRange);
+    applyDonationCampaignFilter(qb, campaignId);
+
+    const topDonors = await qb.getRawMany();
     return res.json(topDonors);
   } catch (error) {
     console.error("Donor report error:", error);
@@ -146,6 +221,7 @@ export async function getDonorReport(req: Request, res: Response) {
 export async function getRevenueReport(req: Request, res: Response) {
   try {
     const { groupBy = "month" } = req.query;
+    const { dateRange, campaignId } = analyticsQueryFromRequest(req);
 
     let dateFormat: string;
     switch (groupBy) {
@@ -161,7 +237,7 @@ export async function getRevenueReport(req: Request, res: Response) {
         break;
     }
 
-    const revenue = await donationRepo()
+    const qb = donationRepo()
       .createQueryBuilder("d")
       .select(`TO_CHAR(d.createdAt, '${dateFormat}')`, "period")
       .addSelect("COUNT(*)", "donations")
@@ -169,9 +245,12 @@ export async function getRevenueReport(req: Request, res: Response) {
       .addSelect("AVG(d.totalAmount)", "avgDonation")
       .where("d.status = :status", { status: "completed" })
       .groupBy("period")
-      .orderBy("period", "ASC")
-      .getRawMany();
+      .orderBy("period", "ASC");
 
+    applyDonationDateFilter(qb, dateRange);
+    applyDonationCampaignFilter(qb, campaignId);
+
+    const revenue = await qb.getRawMany();
     return res.json(revenue);
   } catch (error) {
     console.error("Revenue report error:", error);
@@ -179,28 +258,36 @@ export async function getRevenueReport(req: Request, res: Response) {
   }
 }
 
-export async function getGiftAidReport(_req: Request, res: Response) {
+export async function getGiftAidReport(req: Request, res: Response) {
   try {
-    const summary = await donationRepo()
+    const { dateRange, campaignId } = analyticsQueryFromRequest(req);
+
+    const summaryQb = donationRepo()
       .createQueryBuilder("d")
       .select([
-        "COUNT(*) FILTER (WHERE d.giftAid = true) AS \"giftAidCount\"",
-        "COUNT(*) FILTER (WHERE d.giftAid = false) AS \"nonGiftAidCount\"",
-        "COALESCE(SUM(d.totalAmount) FILTER (WHERE d.giftAid = true), 0) AS \"giftAidRevenue\"",
-        "COALESCE(SUM(d.giftAidAmount) FILTER (WHERE d.giftAid = true), 0) AS \"totalGiftAidClaimed\"",
+        'COUNT(*) FILTER (WHERE d.giftAid = true) AS "giftAidCount"',
+        'COUNT(*) FILTER (WHERE d.giftAid = false) AS "nonGiftAidCount"',
+        'COALESCE(SUM(d.totalAmount) FILTER (WHERE d.giftAid = true), 0) AS "giftAidRevenue"',
+        'COALESCE(SUM(d.giftAidAmount) FILTER (WHERE d.giftAid = true), 0) AS "totalGiftAidClaimed"',
       ])
-      .where("d.status = :status", { status: "completed" })
-      .getRawOne();
+      .where("d.status = :status", { status: "completed" });
 
-    const monthlyGiftAid = await donationRepo()
+    applyDonationDateFilter(summaryQb, dateRange);
+    applyDonationCampaignFilter(summaryQb, campaignId);
+    const summary = await summaryQb.getRawOne();
+
+    const monthlyQb = donationRepo()
       .createQueryBuilder("d")
       .select("TO_CHAR(d.createdAt, 'YYYY-MM')", "period")
       .addSelect("COUNT(*)", "count")
       .addSelect("SUM(d.giftAidAmount)", "giftAidAmount")
       .where("d.status = :status AND d.giftAid = true", { status: "completed" })
       .groupBy("period")
-      .orderBy("period", "ASC")
-      .getRawMany();
+      .orderBy("period", "ASC");
+
+    applyDonationDateFilter(monthlyQb, dateRange);
+    applyDonationCampaignFilter(monthlyQb, campaignId);
+    const monthlyGiftAid = await monthlyQb.getRawMany();
 
     return res.json({ summary, monthlyGiftAid });
   } catch (error) {

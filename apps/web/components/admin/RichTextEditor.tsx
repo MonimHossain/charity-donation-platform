@@ -27,9 +27,12 @@ import type { Editor } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import {
   AlignCenter, AlignLeft, AlignRight, Bold, Code, Code2,
-  ImageIcon, Link2, List, ListOrdered, Quote, Redo2, Undo2,
+  Heart, ImageIcon, Link2, List, ListOrdered, Quote, Redo2, Undo2,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { CampaignDonationEmbedExtension } from "@/components/admin/rich-text-campaign-embed-extension";
+import { CampaignDonationEmbedDialog } from "@/components/admin/CampaignDonationEmbedDialog";
+import BlogContentRenderer from "@/components/blog/BlogContentRenderer";
 
 const FontSizeExtension = Extension.create({
   name: "fontSize",
@@ -106,9 +109,17 @@ interface RichTextEditorProps {
   onChange: (html: string) => void;
   placeholder?: string;
   error?: string;
+  /** Show toolbar control to embed a campaign donation block (blog articles). */
+  enableCampaignEmbeds?: boolean;
 }
 
-export default function RichTextEditor({ value, onChange, placeholder = "Write content here.", error }: RichTextEditorProps) {
+export default function RichTextEditor({
+  value,
+  onChange,
+  placeholder = "Write content here.",
+  error,
+  enableCampaignEmbeds = false,
+}: RichTextEditorProps) {
   const lastEmittedRef = useRef(value);
   const [activeTab, setActiveTab] = useState<"write" | "preview">("write");
   const [fontFamily, setFontFamily] = useState("default");
@@ -117,6 +128,7 @@ export default function RichTextEditor({ value, onChange, placeholder = "Write c
   const [markColor, setMarkColor] = useState("#fef08a");
   const [mediaPicker, setMediaPicker] = useState<"image" | "video" | null>(null);
   const [selectedMedia, setSelectedMedia] = useState<"image" | "video" | null>(null);
+  const [campaignEmbedOpen, setCampaignEmbedOpen] = useState(false);
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -125,6 +137,7 @@ export default function RichTextEditor({ value, onChange, placeholder = "Write c
         bulletList: { keepMarks: true, keepAttributes: false },
         orderedList: { keepMarks: true, keepAttributes: false },
       }),
+      ...(enableCampaignEmbeds ? [CampaignDonationEmbedExtension] : []),
       TextStyle,
       Color.configure({ types: ["textStyle"] }),
       FontFamily.configure({ types: ["textStyle"] }),
@@ -367,6 +380,14 @@ export default function RichTextEditor({ value, onChange, placeholder = "Write c
               <Btn onClick={handleInsertImage} title="Upload Image"><ImageIcon className="h-4 w-4" /></Btn>
               <Btn onClick={handleInsertVideo} title="Upload Video"><span className="text-xs">Video</span></Btn>
               <Btn onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} title="Insert Table"><span className="text-xs">Table</span></Btn>
+              {enableCampaignEmbeds && (
+                <Btn
+                  onClick={() => setCampaignEmbedOpen(true)}
+                  title="Insert campaign donation block"
+                >
+                  <Heart className="h-4 w-4" />
+                </Btn>
+              )}
 
               <div className="w-px bg-gray-300 mx-1" />
 
@@ -388,11 +409,29 @@ export default function RichTextEditor({ value, onChange, placeholder = "Write c
       {activeTab === "preview" && (
         <div className="rounded-lg border border-gray-200 bg-white p-6">
           {value.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, "").trim() ? (
-            <MarkdownRenderer content={value} />
+            enableCampaignEmbeds ? (
+              <BlogContentRenderer content={value} />
+            ) : (
+              <MarkdownRenderer content={value} />
+            )
           ) : (
             <p className="text-sm text-gray-400">Add content to preview the article.</p>
           )}
         </div>
+      )}
+
+      {enableCampaignEmbeds && (
+        <CampaignDonationEmbedDialog
+          open={campaignEmbedOpen}
+          onOpenChange={setCampaignEmbedOpen}
+          onSelect={({ slug, title }) => {
+            editor
+              ?.chain()
+              .focus()
+              .insertCampaignDonationEmbed({ slug, title })
+              .run();
+          }}
+        />
       )}
 
       <MediaPickerDialog

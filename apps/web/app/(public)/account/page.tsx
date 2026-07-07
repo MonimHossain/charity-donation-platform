@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { statValueSmClass } from "@/lib/home-buttons";
 import { fetchUserProfile, fetchUserDonations, fetchUserRecurringDonations } from "@/lib/api";
 import { useCurrency } from "@/lib/currency";
+import { AccountReviewCard } from "@/components/account/AccountReviewCard";
 
 interface DashboardData {
   totalDonated: number;
@@ -167,6 +168,8 @@ function AccountDashboardApi() {
         ))}
       </div>
 
+      <AccountReviewCard />
+
       {/* Recent donations */}
       <div className="rounded-3xl bg-card border border-border p-6 shadow-soft">
         <div className="flex items-center justify-between mb-4">
@@ -291,6 +294,114 @@ function AccountDashboardApi() {
           </div>
         </div>
       )}
+
+      {/* Upcoming automated donations */}
+      <UpcomingAutomationsPreview />
+    </div>
+  );
+}
+
+function UpcomingAutomationsPreview() {
+  const { formatMoney } = useCurrency();
+  const [items, setItems] = useState<
+    Array<{
+      id: string;
+      automationType?: string;
+      amount: number;
+      currency: string;
+      campaign?: string;
+      status: string;
+      nextScheduledDate?: string | null;
+      frequency?: string;
+    }>
+  >([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    import("@/lib/api")
+      .then(({ fetchMyAutomatedSchedules }) => fetchMyAutomatedSchedules())
+      .then((res) => {
+        const list = Array.isArray(res.items) ? res.items : [];
+        setItems(
+          list
+            .filter((item: { status?: string }) =>
+              ["active", "scheduled", "awaiting_payment_method", "paused"].includes(
+                item.status || ""
+              )
+            )
+            .slice(0, 5)
+            .map(
+              (item: {
+                id: string;
+                automationType?: string;
+                totalAmount?: number;
+                currency?: string;
+                campaign?: { title?: string };
+                status?: string;
+                nextScheduledDate?: string | null;
+                frequency?: string;
+              }) => ({
+                id: item.id,
+                automationType: item.automationType,
+                amount: Number(item.totalAmount || 0),
+                currency: item.currency || "GBP",
+                campaign: item.campaign?.title,
+                status: item.status || "active",
+                nextScheduledDate: item.nextScheduledDate,
+                frequency: item.frequency,
+              })
+            )
+        );
+      })
+      .catch(() => setItems([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading || items.length === 0) return null;
+
+  return (
+    <div className="rounded-3xl bg-card border border-border p-6 shadow-soft">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-serif text-xl text-primary">Upcoming automated donations</h2>
+        <Link
+          href="/account/automated"
+          className="text-sm text-primary hover:underline flex items-center gap-1"
+        >
+          View all <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
+      </div>
+      <div className="space-y-3">
+        {items.map((item) => (
+          <div
+            key={item.id}
+            className="flex items-center justify-between p-4 rounded-2xl bg-secondary/50 border border-border"
+          >
+            <div>
+              <p className="font-semibold">
+                {formatMoney(item.amount, { from: item.currency })}
+                {item.automationType === "recurring" && item.frequency
+                  ? ` / ${item.frequency}`
+                  : ""}
+              </p>
+              <p className="text-xs text-muted-foreground">{item.campaign || "General Fund"}</p>
+            </div>
+            <div className="text-right">
+              <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700 capitalize">
+                {item.status.replace(/_/g, " ")}
+              </span>
+              {item.nextScheduledDate && (
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Next:{" "}
+                  {new Date(item.nextScheduledDate).toLocaleDateString("en-GB", {
+                    day: "numeric",
+                    month: "short",
+                  })}
+                </p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

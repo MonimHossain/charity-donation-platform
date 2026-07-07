@@ -3,6 +3,7 @@ import { routeParam } from "../../helper/requestParams.js";
 import { AppDataSource } from "../../helper/connectDB.js";
 import { MediaLibrary } from "../../components/cms/mediaLibrary.entity.js";
 import { uploadFile, deleteFile, deleteFiles, listFolders, ensureBucket, normalizeStoredMediaUrl } from "../../helper/storage.js";
+import { validateMediaUpload } from "./uploadValidation.js";
 import { logAudit } from "../../helper/auditLog.js";
 import { ILike, In } from "typeorm";
 
@@ -100,11 +101,16 @@ export async function uploadMediaFile(req: Request, res: Response) {
     const tags = req.body.tags ? JSON.parse(req.body.tags) : [];
     const admin = (req as any).admin;
 
-    const result = await uploadFile(file.buffer, file.originalname, file.mimetype, folder);
+    const validation = validateMediaUpload(file);
+    if (!validation.ok) {
+      return res.status(400).json({ message: validation.message });
+    }
+
+    const result = await uploadFile(file.buffer, file.originalname, validation.mimeType, folder);
 
     let width: number | undefined;
     let height: number | undefined;
-    if (file.mimetype.startsWith("image/")) {
+    if (validation.mimeType.startsWith("image/")) {
       try {
         const { imageSize } = await import("image-size");
         const dims = imageSize(file.buffer);
@@ -116,7 +122,7 @@ export async function uploadMediaFile(req: Request, res: Response) {
     const media = repo().create({
       filename: result.objectName.split("/").pop()!,
       originalName: file.originalname,
-      mimeType: file.mimetype,
+      mimeType: validation.mimeType,
       size: result.size,
       url: result.url,
       alt,
@@ -169,12 +175,17 @@ export async function uploadMultipleFiles(req: Request, res: Response) {
     const uploaded: any[] = [];
 
     for (const file of files) {
-      const result = await uploadFile(file.buffer, file.originalname, file.mimetype, folder);
+      const validation = validateMediaUpload(file);
+      if (!validation.ok) {
+        return res.status(400).json({ message: validation.message });
+      }
+
+      const result = await uploadFile(file.buffer, file.originalname, validation.mimeType, folder);
 
       const media = repo().create({
         filename: result.objectName.split("/").pop()!,
         originalName: file.originalname,
-        mimeType: file.mimetype,
+        mimeType: validation.mimeType,
         size: result.size,
         url: result.url,
         folder,

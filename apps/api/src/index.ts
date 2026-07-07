@@ -1,6 +1,6 @@
+import "./load-env.js";
 import cookieParser from "cookie-parser";
 import cors from "cors";
-import "dotenv/config";
 import express from "express";
 import http from "http";
 import morgan from "morgan";
@@ -12,6 +12,8 @@ import { seedDonationPresets } from "./modules/seed/seedDonationPresets.js";
 import { seedHomepageSections } from "./modules/seed/seedHomepageSections.js";
 import { seedCharities } from "./modules/seed/seedCharities.js";
 import { seedQuickDonate } from "./modules/seed/seedQuickDonate.js";
+import { seedZakatPage } from "./modules/seed/seedZakatPage.js";
+import { seedEmailTemplates } from "./modules/seed/seedEmailTemplates.js";
 import { securityHeaders, csrfProtection, sanitizeInput } from "./modules/security/securityHeaders.js";
 import { apiRateLimit } from "./modules/security/rateLimiter.js";
 import routes from "./routes/index.js";
@@ -109,7 +111,32 @@ app.use((_req, res) => {
 });
 
 const startServer = async () => {
-  await connectDB();
+  const httpServer = http.createServer(app);
+
+  process.on("SIGTERM", () => {
+    httpServer.close(() => process.exit(0));
+  });
+  process.on("SIGINT", () => {
+    httpServer.close(() => process.exit(0));
+  });
+
+  httpServer.listen(port, () => {
+    console.log(`Server running on http://localhost:${port}`);
+  });
+
+  try {
+    await connectDB();
+  } catch (error: unknown) {
+    const err = error as { code?: string; message?: string };
+    console.error("Database startup failed:", err?.message ?? err);
+    if (err.code === "ECONNREFUSED") {
+      console.error("Connection refused. Check DB_HOST / DB_PORT and that PostgreSQL is running.");
+    }
+    console.error(
+      "HTTP server is up (health OK) but API data routes will fail until the database connects."
+    );
+  }
+
   try {
     await seedAdminUser();
     await seedCampaigns(AppDataSource);
@@ -117,6 +144,8 @@ const startServer = async () => {
     await seedHomepageSections(AppDataSource);
     await seedCharities(AppDataSource);
     await seedQuickDonate(AppDataSource);
+    await seedZakatPage(AppDataSource);
+    await seedEmailTemplates(AppDataSource);
   } catch (error) {
     console.error("Seeding failed:", error);
   }
@@ -128,11 +157,6 @@ const startServer = async () => {
     console.warn("MinIO bucket init skipped (MinIO may not be running):", (error as Error).message);
   }
 
-  const httpServer = http.createServer(app);
-  httpServer.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}`);
-  });
-
   try {
     const { startAutomatedPaymentWorker } = await import("./modules/automated/automatedPayment.service.js");
     startAutomatedPaymentWorker();
@@ -140,12 +164,24 @@ const startServer = async () => {
     console.warn("Automated payment worker not started:", (error as Error).message);
   }
 
-  process.on("SIGTERM", () => {
-    httpServer.close(() => process.exit(0));
-  });
-  process.on("SIGINT", () => {
-    httpServer.close(() => process.exit(0));
-  });
+  try {
+    const { startNotificationWorker } = await import("./modules/notifications/notificationWorker.js");
+    startNotificationWorker();
+  } catch (error) {
+    console.warn("Notification worker not started:", (error as Error).message);
+  }
+
+  try {
+    const { maybeSyncCurrencyRatesOnBoot, startCurrencyRateSyncWorker } = await import(
+      "./modules/cms/currencyRateSync.service.js"
+    );
+    await maybeSyncCurrencyRatesOnBoot();
+    startCurrencyRateSyncWorker();
+  } catch (error) {
+    console.warn("Currency rate sync not started:", (error as Error).message);
+  }
 };
 
-startServer();
+startServer().catch((error) => {
+  console.error("Unhandled startServer error:", error);
+});

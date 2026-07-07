@@ -1,0 +1,10 @@
+services:
+  sgtm:
+    image: gcr.io/cloud-tagging-10302018/gtm-cloud-image:stable
+    container_name: sgtm_core
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      # Server-side GTM container config (from GTM dashboard → Admin → Install)
+      - CONTAINER_CONFIG=aWQ9R1RNLTVURlNSV05SJmVudj0xJmF1dGg9b2VoRGFTSFU5b3l5akI1T3VnT1NNdw==
+    restart: always

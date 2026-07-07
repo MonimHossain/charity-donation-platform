@@ -5,44 +5,21 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
-  LayoutDashboard,
-  Megaphone,
-  HandCoins,
-  CreditCard,
-  FileText,
-  ImageIcon,
-  Layers,
-  Sparkles,
-  Settings,
-  Coins,
-  Mail,
   LogOut,
   Menu,
   X,
   ChevronDown,
   Heart,
-  BarChart3,
-  Users,
-  Repeat,
-  Navigation,
-  Flag,
-  PanelBottom,
-  Search,
-  Image,
-  FileStack,
-  Tag,
-  HelpCircle,
-  Globe,
-  Activity,
-  Clock,
-  Calculator,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { fetchAdminProfile, adminLogout } from "@/lib/api";
-import { AdminSessionProvider } from "@/components/admin/AdminSessionProvider";
+import { AdminSessionProvider, useAdminSession } from "@/components/admin/AdminSessionProvider";
+import { AdminPageGuard, canAccessAdminNav } from "@/components/admin/AdminPageGuard";
+import { adminNavItems, filterAdminNavItems, type AdminNavItem } from "@/lib/adminNav";
 import { AdminAccountMenu } from "@/components/admin/AdminAccountMenu";
+import { AdminNotificationBell } from "@/components/notifications/AdminNotificationBell";
 import {
   DEFAULT_DEMO_ADMIN_PROFILE,
   isMockAdminSession,
@@ -50,63 +27,12 @@ import {
   purgeStaleAdminTokens,
 } from "@/lib/admin-auth";
 
-interface NavItem {
-  label: string;
-  href: string;
-  icon: React.ElementType;
-  children?: { label: string; href: string; icon: React.ElementType }[];
-}
-
-const navItems: NavItem[] = [
-  { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
-  { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
-  { label: "Campaigns", href: "/admin/campaigns", icon: Megaphone },
-  { label: "Upsells", href: "/admin/upsells", icon: Sparkles },
-  { label: "Quick Donate Form", href: "/admin/quick-donate", icon: Coins },
-  { label: "Donations", href: "/admin/donations", icon: HandCoins },
-  { label: "Payments", href: "/admin/payments", icon: CreditCard },
-  { label: "Recurring", href: "/admin/recurring", icon: Repeat },
-  { label: "Automated", href: "/admin/automated", icon: Clock },
-  { label: "Users", href: "/admin/users", icon: Users },
-  {
-    label: "Blog",
-    href: "/admin/blog",
-    icon: FileText,
-    children: [
-      { label: "Posts", href: "/admin/blog", icon: FileText },
-      { label: "Categories", href: "/admin/blog/categories", icon: Tag },
-    ],
-  },
-  {
-    label: "CMS",
-    href: "/admin/cms",
-    icon: Layers,
-    children: [
-      { label: "Hero", href: "/admin/cms/hero", icon: ImageIcon },
-      { label: "Sections", href: "/admin/cms/sections", icon: Layers },
-      { label: "Pages", href: "/admin/cms/pages", icon: FileStack },
-      { label: "Menus", href: "/admin/cms/menus", icon: Navigation },
-      { label: "Banners", href: "/admin/cms/banners", icon: Flag },
-      { label: "Footer", href: "/admin/cms/footer", icon: PanelBottom },
-      { label: "FAQs", href: "/admin/cms/faqs", icon: HelpCircle },
-      { label: "File Manager", href: "/admin/cms/media", icon: Image },
-      { label: "SEO", href: "/admin/cms/seo", icon: Search },
-      { label: "Languages", href: "/admin/cms/languages", icon: Globe },
-      { label: "Presets", href: "/admin/cms/presets", icon: Coins },
-      { label: "Settings", href: "/admin/cms/settings", icon: Settings },
-    ],
-  },
-  { label: "Newsletter", href: "/admin/newsletter", icon: Mail },
-  { label: "Activity Log", href: "/admin/activity", icon: Activity },
-  { label: "Settings", href: "/admin/settings", icon: Settings },
-];
-
 function SidebarLink({
   item,
   pathname,
   collapsed,
 }: {
-  item: NavItem;
+  item: AdminNavItem;
   pathname: string;
   collapsed?: boolean;
 }) {
@@ -191,8 +117,17 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
+  return (
+    <AdminSessionProvider>
+      <AdminLayoutShell>{children}</AdminLayoutShell>
+    </AdminSessionProvider>
+  );
+}
+
+function AdminLayoutShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const session = useAdminSession();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [admin, setAdmin] = useState<{ name?: string; email?: string } | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
@@ -283,6 +218,10 @@ export default function AdminLayout({
     router.replace("/admin/login");
   }
 
+  const visibleNavItems = filterAdminNavItems(adminNavItems, (permission, superAdminOnly) =>
+    canAccessAdminNav(session, permission, superAdminOnly)
+  );
+
   if (pathname === "/admin/login" || pathname === "/admin/forgot-password" || pathname === "/admin/reset-password") {
     return <>{children}</>;
   }
@@ -331,7 +270,7 @@ export default function AdminLayout({
         <Separator />
 
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-          {navItems.map((item) => (
+          {visibleNavItems.map((item) => (
             <SidebarLink
               key={item.label}
               item={item}
@@ -367,6 +306,8 @@ export default function AdminLayout({
 
           <div className="flex-1" />
 
+          <AdminNotificationBell />
+
           <AdminAccountMenu
             name={admin?.name || (admin as { fullName?: string })?.fullName}
             email={admin?.email}
@@ -374,7 +315,7 @@ export default function AdminLayout({
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">
-          <AdminSessionProvider>{children}</AdminSessionProvider>
+          <AdminPageGuard>{children}</AdminPageGuard>
         </main>
       </div>
     </div>

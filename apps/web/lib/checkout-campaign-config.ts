@@ -27,6 +27,7 @@ export const DEFAULT_CHECKOUT_SETTINGS: CheckoutSettings = {
   enableFeeCoverage: false,
   enableAdminSavesLife: false,
   adminSavesLifeAmount: 0,
+  enablePushRecurringDonation: false,
 };
 
 export const DEFAULT_CAMPAIGN_CONFIG: CheckoutCampaignConfig = {
@@ -49,6 +50,7 @@ export function normalizeCheckoutSettings(raw?: Partial<CheckoutSettings> | null
     enableFeeCoverage: asBool(raw.enableFeeCoverage),
     enableAdminSavesLife: asBool(raw.enableAdminSavesLife),
     adminSavesLifeAmount: Math.max(0, Number(raw.adminSavesLifeAmount ?? 0) || 0),
+    enablePushRecurringDonation: asBool(raw.enablePushRecurringDonation),
   };
 }
 
@@ -67,6 +69,8 @@ function mergeCheckoutSettings(
     adminSavesLifeAmount: next.enableAdminSavesLife
       ? next.adminSavesLifeAmount
       : base.adminSavesLifeAmount,
+    enablePushRecurringDonation:
+      base.enablePushRecurringDonation || next.enablePushRecurringDonation,
   };
 }
 

@@ -364,21 +364,12 @@ function CheckoutForm({
 
   const finalizePayment = useCallback(
     async (paymentIntentId: string, subscriptionId?: string) => {
-      const result = await confirmStripePayment({
+      await confirmStripePayment({
         paymentIntentId,
         donationId,
         recurringDonationId,
         subscriptionId,
       });
-      if (result.token) {
-        localStorage.setItem("user_token", result.token);
-        if (result.user) {
-          localStorage.setItem(
-            "user_profile",
-            JSON.stringify({ ...result.user, name: result.user.fullName || result.user.name })
-          );
-        }
-      }
       onSuccess();
     },
     [donationId, onSuccess, recurringDonationId]
@@ -425,21 +416,12 @@ function CheckoutForm({
       if (!setupIntent?.id) {
         throw new Error("Payment method could not be saved");
       }
-      const result = await confirmStripeSetup({
+      await confirmStripeSetup({
         setupIntentId: setupIntent.id,
         automatedScheduleId: primaryScheduleId,
         automatedScheduleIds,
         donationId,
       });
-      if (result.token) {
-        localStorage.setItem("user_token", result.token);
-        if (result.user) {
-          localStorage.setItem(
-            "user_profile",
-            JSON.stringify({ ...result.user, name: result.user.fullName || result.user.name })
-          );
-        }
-      }
       onSuccess();
       return;
     }
@@ -581,7 +563,7 @@ function CheckoutForm({
         : `Donate ${formattedAmount} now`;
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-soft space-y-5">
+    <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-soft space-y-5 min-w-0 max-w-full overflow-hidden">
       {automatedScheduleIds.length > 0 && ramadanCommitmentTotal && (
         <p className="text-xs text-center text-accent-deep font-medium rounded-xl bg-secondary/60 px-3 py-2 leading-relaxed">
           Paying <span className="font-bold">{currencySymbol}{Math.ceil(perNight).toLocaleString()}</span> now (night 1
@@ -602,75 +584,10 @@ function CheckoutForm({
           their scheduled dates.
         </p>
       )}
-      <div className="space-y-3">
-        <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-accent-deep">
-          Express checkout
-        </p>
-        <div className="stripe-express-checkout min-h-[48px] w-full">
-          <ExpressCheckoutElement
-            onConfirm={handleExpressConfirm}
-            onReady={({ availablePaymentMethods }) => {
-              setExpressReady(true);
-              setExpressWalletsAvailable(
-                Boolean(availablePaymentMethods?.applePay || availablePaymentMethods?.googlePay)
-              );
-            }}
-            onAvailablePaymentMethodsChange={({ paymentMethods }) => {
-              setExpressWalletsAvailable(
-                Boolean(paymentMethods?.applePay || paymentMethods?.googlePay)
-              );
-            }}
-            onLoadError={({ error }) => {
-              setExpressReady(true);
-              onError(error.message || "Wallet buttons could not load");
-            }}
-            options={{
-              business: { name: "Your Impact Foundation" },
-              buttonTheme: {
-                applePay: "black",
-                googlePay: "black",
-              },
-              buttonType: {
-                applePay: "plain",
-                googlePay: "plain",
-              },
-              layout: {
-                maxColumns: 2,
-                maxRows: 1,
-              },
-              buttonHeight: 48,
-              paymentMethodOrder: ["apple_pay", "google_pay"],
-              paymentMethods: {
-                applePay: "always",
-                googlePay: "always",
-                link: "never",
-                paypal: "never",
-                amazonPay: "never",
-                klarna: "never",
-              },
-            }}
-          />
-        </div>
-        {showWalletFallback && (
-          <WalletPaymentRequestFallback
-            amount={amount}
-            currencyCode={currencyCode}
-            donationId={donationId}
-            paymentMode={paymentMode}
-            automatedScheduleIds={automatedScheduleIds}
-            donorName={donorName}
-            donorEmail={donorEmail}
-            onAvailable={() => setFallbackWalletAvailable(true)}
-            onSuccess={onSuccess}
-            onError={onError}
-          />
-        )}
-        {showWalletHint && <WalletSetupHint showHttpsHelp={needsHttps} />}
-      </div>
 
       <OrPayByCardDivider />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 min-w-0">
         <div className="space-y-1.5">
           <Label htmlFor="stripe-donor-name" className="text-sm font-medium text-primary">
             Full name
@@ -739,6 +656,77 @@ function CheckoutForm({
           </>
         )}
       </button>
+
+      <div className="relative flex items-center gap-3 py-1">
+        <div className="h-px flex-1 bg-border" />
+        <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+          or pay with
+        </span>
+        <div className="h-px flex-1 bg-border" />
+      </div>
+
+      <div className="space-y-3 min-w-0">
+        <div className="stripe-express-checkout min-h-[48px] w-full max-w-full overflow-hidden">
+          <ExpressCheckoutElement
+            onConfirm={handleExpressConfirm}
+            onReady={({ availablePaymentMethods }) => {
+              setExpressReady(true);
+              setExpressWalletsAvailable(
+                Boolean(availablePaymentMethods?.applePay || availablePaymentMethods?.googlePay)
+              );
+            }}
+            onAvailablePaymentMethodsChange={({ paymentMethods }) => {
+              setExpressWalletsAvailable(
+                Boolean(paymentMethods?.applePay || paymentMethods?.googlePay)
+              );
+            }}
+            onLoadError={({ error }) => {
+              setExpressReady(true);
+              onError(error.message || "Wallet buttons could not load");
+            }}
+            options={{
+              business: { name: "Your Impact Foundation" },
+              buttonTheme: {
+                applePay: "black",
+                googlePay: "black",
+              },
+              buttonType: {
+                applePay: "plain",
+                googlePay: "plain",
+              },
+              layout: {
+                maxColumns: 2,
+                maxRows: 1,
+              },
+              buttonHeight: 48,
+              paymentMethodOrder: ["apple_pay", "google_pay"],
+              paymentMethods: {
+                applePay: "always",
+                googlePay: "always",
+                link: "never",
+                paypal: "never",
+                amazonPay: "never",
+                klarna: "never",
+              },
+            }}
+          />
+        </div>
+        {showWalletFallback && (
+          <WalletPaymentRequestFallback
+            amount={amount}
+            currencyCode={currencyCode}
+            donationId={donationId}
+            paymentMode={paymentMode}
+            automatedScheduleIds={automatedScheduleIds}
+            donorName={donorName}
+            donorEmail={donorEmail}
+            onAvailable={() => setFallbackWalletAvailable(true)}
+            onSuccess={onSuccess}
+            onError={onError}
+          />
+        )}
+        {showWalletHint && <WalletSetupHint showHttpsHelp={needsHttps} />}
+      </div>
 
       <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
         By donating you agree to our terms. You can cancel monthly gifts anytime. Charged in{" "}
@@ -882,7 +870,8 @@ export function StripeCheckoutForm({
   const elementsKey = `${donationId}-${paymentMode}-${stripeCustomerId ?? "guest"}-${customerSessionClientSecret ?? "none"}`;
 
   return (
-    <Elements key={elementsKey} stripe={stripePromise} options={elementsOptions}>
+    <div className="notranslate" translate="no">
+      <Elements key={elementsKey} stripe={stripePromise} options={elementsOptions}>
       <CheckoutForm
         donationId={donationId}
         donorName={donorName}
@@ -905,5 +894,6 @@ export function StripeCheckoutForm({
         onError={onError}
       />
     </Elements>
+    </div>
   );
 }

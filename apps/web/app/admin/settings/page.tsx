@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import {
   Save,
@@ -12,6 +13,11 @@ import {
   Database,
   Download,
   Coins,
+  HelpCircle,
+  Search,
+  RefreshCw,
+  ImageIcon,
+  Calculator,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +33,8 @@ import {
   type CurrencyCode,
 } from "@/lib/currency";
 import { AdminChangePasswordForm } from "@/components/admin/AdminChangePasswordForm";
+import { SettingsHeroPanel, SettingsSeoPanel, SettingsZakatPanel } from "@/components/admin/settings/SettingsContentPanel";
+import { SettingsFaqPanel } from "@/components/admin/settings/SettingsFaqPanel";
 
 interface SettingsData {
   general: {
@@ -34,6 +42,9 @@ interface SettingsData {
     siteDescription: string;
     logoUrl: string;
     faviconUrl: string;
+    charityRegNumber: string;
+    donationPolicy: string;
+    gtmId: string;
   };
   contact: {
     email: string;
@@ -84,7 +95,7 @@ interface Backup {
 }
 
 const defaultSettings: SettingsData = {
-  general: { siteName: "", siteDescription: "", logoUrl: "", faviconUrl: "" },
+  general: { siteName: "", siteDescription: "", logoUrl: "", faviconUrl: "/images/favicon.png", charityRegNumber: "", donationPolicy: "", gtmId: "" },
   contact: { email: "", phone: "", address: "" },
   social: { facebook: "", twitter: "", instagram: "", youtube: "", linkedin: "" },
   email: {
@@ -116,37 +127,110 @@ const defaultSettings: SettingsData = {
   },
 };
 
-type Tab = "general" | "email" | "payment" | "currency" | "security" | "backup";
+type Tab = "general" | "hero" | "zakat" | "faq" | "seo" | "email" | "payment" | "currency" | "security" | "backup";
 
-export default function AdminSettingsPage() {
+const TAB_FROM_SECTION: Record<string, Tab> = {
+  general: "general",
+  hero: "hero",
+  zakat: "zakat",
+  content: "hero",
+  faq: "faq",
+  seo: "seo",
+  email: "email",
+  payment: "payment",
+  currency: "currency",
+  security: "security",
+  backup: "backup",
+};
+
+function AdminSettingsPageInner() {
+  const searchParams = useSearchParams();
+  const sectionParam = searchParams.get("section");
+  const initialTab = (sectionParam && TAB_FROM_SECTION[sectionParam]) || "general";
+
   const [settings, setSettings] = useState<SettingsData>(defaultSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<Tab>("general");
+  const [tab, setTab] = useState<Tab>(initialTab);
+  const [currencyRatesUpdatedAt, setCurrencyRatesUpdatedAt] = useState<string | null>(null);
+  const [syncingRates, setSyncingRates] = useState(false);
   const [backups, setBackups] = useState<Backup[]>([]);
-  const [backingUp, setBackingUp] = useState(false);
+  const [backingUpDb, setBackingUpDb] = useState(false);
+  const [backingUpMedia, setBackingUpMedia] = useState(false);
+
+  useEffect(() => {
+    if (sectionParam && TAB_FROM_SECTION[sectionParam]) {
+      setTab(TAB_FROM_SECTION[sectionParam]);
+    }
+  }, [sectionParam]);
+
+  async function loadBackupHistory() {
+    try {
+      const res = await api.get("/admin/backup/history");
+      setBackups(res.data?.items || []);
+    } catch {
+      setBackups([]);
+    }
+  }
+
+  async function downloadBackup(endpoint: string, fallbackName: string) {
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
+    const token = typeof window !== "undefined" ? localStorage.getItem("admin_token") : null;
+    const res = await fetch(`${apiBase.replace(/\/$/, "")}${endpoint}`, {
+      credentials: "include",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) throw new Error("Download failed");
+    const blob = await res.blob();
+    const disposition = res.headers.get("Content-Disposition") || "";
+    const match = disposition.match(/filename="([^"]+)"/);
+    const filename = match?.[1] || fallbackName;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   useEffect(() => {
     async function load() {
       try {
-        const [settingsRes, backupsRes] = await Promise.all([
+        const [settingsRes] = await Promise.all([
           api.get("/cms/settings").catch(() => ({ data: {} })),
-          Promise.resolve({ data: [] }),
         ]);
         if (settingsRes.data && Object.keys(settingsRes.data).length > 0) {
+          const d = settingsRes.data;
           setSettings((prev) => ({
-            general: { ...prev.general, ...settingsRes.data.general },
-            contact: { ...prev.contact, ...settingsRes.data.contact },
-            social: { ...prev.social, ...settingsRes.data.social },
-            email: { ...prev.email, ...settingsRes.data.email },
-            payment: { ...prev.payment, ...settingsRes.data.payment },
-            security: { ...prev.security, ...settingsRes.data.security },
+            general: {
+              ...prev.general,
+              siteName: d.siteName ?? d.general?.siteName ?? prev.general.siteName,
+              siteDescription: d.siteDescription ?? d.general?.siteDescription ?? prev.general.siteDescription,
+              logoUrl: d.logoUrl ?? d.general?.logoUrl ?? prev.general.logoUrl,
+              faviconUrl: d.faviconUrl ?? d.general?.faviconUrl ?? prev.general.faviconUrl,
+              charityRegNumber: d.charityRegNumber ?? prev.general.charityRegNumber,
+              donationPolicy: d.donationPolicy ?? prev.general.donationPolicy,
+              gtmId: d.gtmId ?? prev.general.gtmId,
+            },
+            contact: {
+              ...prev.contact,
+              email: d.contactEmail ?? d.contact?.email ?? prev.contact.email,
+              phone: d.contactPhone ?? d.contact?.phone ?? prev.contact.phone,
+              address: d.address ?? d.contact?.address ?? prev.contact.address,
+            },
+            social: { ...prev.social, ...(d.socialLinks ?? d.social ?? {}) },
+            email: { ...prev.email, ...d.email },
+            payment: { ...prev.payment, ...d.payment },
+            security: { ...prev.security, ...d.security },
             currency: {
-              rates: normalizeCurrencyRates(settingsRes.data.currencyRates),
+              rates: normalizeCurrencyRates(d.currencyRates),
             },
           }));
+          if (d.currencyRatesUpdatedAt) {
+            setCurrencyRatesUpdatedAt(d.currencyRatesUpdatedAt);
+          }
         }
-        setBackups(backupsRes.data?.items || backupsRes.data || []);
+        await loadBackupHistory();
       } catch {
         toast.error("Failed to load settings");
       } finally {
@@ -156,6 +240,32 @@ export default function AdminSettingsPage() {
     load();
   }, []);
 
+  async function handleSyncCurrencyRates() {
+    setSyncingRates(true);
+    try {
+      const { data } = await api.post("/admin/settings/sync-currency-rates");
+      if (data?.currencyRates) {
+        setSettings((s) => ({
+          ...s,
+          currency: { rates: normalizeCurrencyRates(data.currencyRates) },
+        }));
+        applyCurrencyRates(normalizeCurrencyRates(data.currencyRates));
+      }
+      if (data?.currencyRatesUpdatedAt) {
+        setCurrencyRatesUpdatedAt(data.currencyRatesUpdatedAt);
+      }
+      toast.success(
+        data?.fetched?.length
+          ? `Rates updated for ${data.fetched.join(", ")}`
+          : "Currency rates refreshed"
+      );
+    } catch {
+      toast.error("Failed to sync currency rates");
+    } finally {
+      setSyncingRates(false);
+    }
+  }
+
   async function handleSave() {
     setSaving(true);
     try {
@@ -164,10 +274,14 @@ export default function AdminSettingsPage() {
         siteDescription: settings.general.siteDescription,
         logoUrl: settings.general.logoUrl,
         faviconUrl: settings.general.faviconUrl,
+        charityRegNumber: settings.general.charityRegNumber,
+        donationPolicy: settings.general.donationPolicy,
+        gtmId: settings.general.gtmId,
         contactEmail: settings.contact.email,
         contactPhone: settings.contact.phone,
         address: settings.contact.address,
         socialLinks: settings.social,
+        email: settings.email,
         payment: settings.payment,
         currencyRates: settings.currency.rates,
       });
@@ -180,15 +294,29 @@ export default function AdminSettingsPage() {
     }
   }
 
-  async function handleBackup() {
-    setBackingUp(true);
+  async function handleDatabaseBackup() {
+    setBackingUpDb(true);
     try {
-      toast.error("Backup functionality is not available");
-      return;
+      await downloadBackup("/admin/backup/database", "db-backup.sql");
+      await loadBackupHistory();
+      toast.success("Database backup downloaded");
     } catch {
-      toast.error("Failed to create backup");
+      toast.error("Failed to create database backup");
     } finally {
-      setBackingUp(false);
+      setBackingUpDb(false);
+    }
+  }
+
+  async function handleMediaBackup() {
+    setBackingUpMedia(true);
+    try {
+      await downloadBackup("/admin/backup/media", "media-backup.zip");
+      await loadBackupHistory();
+      toast.success("Media backup downloaded");
+    } catch {
+      toast.error("Failed to create media backup");
+    } finally {
+      setBackingUpMedia(false);
     }
   }
 
@@ -241,12 +369,18 @@ export default function AdminSettingsPage() {
 
   const tabs: { key: Tab; label: string; icon: React.ElementType }[] = [
     { key: "general", label: "General", icon: Globe },
+    { key: "hero", label: "Hero", icon: ImageIcon },
+    { key: "zakat", label: "Zakat", icon: Calculator },
+    { key: "faq", label: "FAQ", icon: HelpCircle },
+    { key: "seo", label: "SEO", icon: Search },
     { key: "email", label: "Email", icon: Mail },
     { key: "payment", label: "Payment", icon: CreditCard },
     { key: "currency", label: "Currency", icon: Coins },
     { key: "security", label: "Security", icon: Shield },
     { key: "backup", label: "Backup", icon: Database },
   ];
+
+  const showSaveButton = !["backup", "hero", "zakat", "faq", "seo"].includes(tab);
 
   if (loading) {
     return (
@@ -268,7 +402,7 @@ export default function AdminSettingsPage() {
           <h1 className="text-3xl font-bold font-serif tracking-tight">Settings</h1>
           <p className="text-muted-foreground mt-1">Configure your platform settings</p>
         </div>
-        {tab !== "backup" && (
+        {showSaveButton && (
           <Button onClick={handleSave} disabled={saving}>
             {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</> : <><Save className="h-4 w-4" /> Save Changes</>}
           </Button>
@@ -291,6 +425,18 @@ export default function AdminSettingsPage() {
         ))}
       </div>
 
+      {tab === "hero" && <SettingsHeroPanel />}
+
+      {tab === "zakat" && <SettingsZakatPanel />}
+
+      {tab === "faq" && (
+        <div className="rounded-2xl border bg-card shadow-soft p-4 sm:p-6">
+          <SettingsFaqPanel />
+        </div>
+      )}
+
+      {tab === "seo" && <SettingsSeoPanel />}
+
       {tab === "general" && (
         <div className="space-y-6">
           <div className="rounded-2xl border bg-card shadow-soft p-6 space-y-4">
@@ -312,6 +458,20 @@ export default function AdminSettingsPage() {
             <div className="space-y-2">
               <Label>Favicon URL</Label>
               <Input value={settings.general.faviconUrl} onChange={(e) => updateGeneral("faviconUrl", e.target.value)} />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Charity registration number</Label>
+                <Input value={settings.general.charityRegNumber} onChange={(e) => updateGeneral("charityRegNumber", e.target.value)} placeholder="1192710" />
+              </div>
+              <div className="space-y-2">
+                <Label>Donation policy</Label>
+                <Input value={settings.general.donationPolicy} onChange={(e) => updateGeneral("donationPolicy", e.target.value)} placeholder="100% Donation Policy on Zakat" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Google Tag Manager ID</Label>
+              <Input value={settings.general.gtmId} onChange={(e) => updateGeneral("gtmId", e.target.value)} placeholder="GTM-XXXXXXX" />
             </div>
           </div>
 
@@ -444,12 +604,27 @@ export default function AdminSettingsPage() {
 
       {tab === "currency" && (
         <div className="rounded-2xl border bg-card shadow-soft p-6 space-y-6">
-          <div>
-            <h2 className="text-lg font-serif font-bold">Currency Conversion</h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              Set exchange rates relative to GBP (1 GBP = rate in target currency). Amounts shown across
-              the site are converted using these rates and always rounded up to whole numbers.
-            </p>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 className="text-lg font-serif font-bold">Currency Conversion</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Set exchange rates relative to GBP (1 GBP = rate in target currency). Rates can be
+                refreshed weekly from the ECB via Frankfurter, or edited manually below.
+              </p>
+              {currencyRatesUpdatedAt && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Last updated: {new Date(currencyRatesUpdatedAt).toLocaleString()}
+                </p>
+              )}
+            </div>
+            <Button variant="outline" onClick={handleSyncCurrencyRates} disabled={syncingRates}>
+              {syncingRates ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              Refresh rates now
+            </Button>
           </div>
           <div className="overflow-x-auto rounded-xl border">
             <table className="w-full text-sm">
@@ -550,13 +725,26 @@ export default function AdminSettingsPage() {
       {tab === "backup" && (
         <div className="space-y-6">
           <div className="rounded-2xl border bg-card shadow-soft p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-serif font-bold">Backup &amp; Recovery</h2>
-              <Button onClick={handleBackup} disabled={backingUp}>
-                {backingUp ? <><Loader2 className="h-4 w-4 animate-spin" /> Creating...</> : <><Database className="h-4 w-4" /> Create Backup</>}
+            <h2 className="text-lg font-serif font-bold">Backup &amp; Recovery</h2>
+            <p className="text-sm text-muted-foreground">
+              Download a backup straight to your browser. Nothing is stored on the server.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Button onClick={handleDatabaseBackup} disabled={backingUpDb || backingUpMedia}>
+                {backingUpDb ? (
+                  <><Loader2 className="h-4 w-4 animate-spin" /> Downloading database...</>
+                ) : (
+                  <><Database className="h-4 w-4" /> Download database backup</>
+                )}
+              </Button>
+              <Button variant="outline" onClick={handleMediaBackup} disabled={backingUpDb || backingUpMedia}>
+                {backingUpMedia ? (
+                  <><Loader2 className="h-4 w-4 animate-spin" /> Downloading media...</>
+                ) : (
+                  <><Download className="h-4 w-4" /> Download media backup</>
+                )}
               </Button>
             </div>
-            <p className="text-sm text-muted-foreground">Create a manual backup of your database and media files.</p>
           </div>
 
           <div className="rounded-2xl border bg-card shadow-soft overflow-hidden">
@@ -571,7 +759,6 @@ export default function AdminSettingsPage() {
                     <th className="px-5 py-3 text-left font-medium text-muted-foreground">Filename</th>
                     <th className="px-5 py-3 text-left font-medium text-muted-foreground">Size</th>
                     <th className="px-5 py-3 text-left font-medium text-muted-foreground">Created</th>
-                    <th className="px-5 py-3 text-right font-medium text-muted-foreground">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -584,14 +771,9 @@ export default function AdminSettingsPage() {
                       <td className="px-5 py-3 text-muted-foreground">
                         {b.createdAt ? new Date(b.createdAt).toLocaleString() : "—"}
                       </td>
-                      <td className="px-5 py-3 text-right">
-                        <Button variant="ghost" size="sm">
-                          <Download className="h-3.5 w-3.5" /> Download
-                        </Button>
-                      </td>
                     </tr>
                   )) : (
-                    <tr><td colSpan={4} className="px-5 py-10 text-center text-muted-foreground">No backups yet</td></tr>
+                    <tr><td colSpan={3} className="px-5 py-10 text-center text-muted-foreground">No backups yet</td></tr>
                   )}
                 </tbody>
               </table>
@@ -600,5 +782,19 @@ export default function AdminSettingsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function AdminSettingsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-20 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading settings...
+        </div>
+      }
+    >
+      <AdminSettingsPageInner />
+    </Suspense>
   );
 }

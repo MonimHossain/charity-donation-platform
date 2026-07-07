@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getDonationStatus } from "@/lib/api";
-import { trackEvent } from "@/components/analytics/GTMScript";
+import { buildThankYouSearchParams } from "@/lib/analytics/thank-you-params";
 
 function CompleteContent() {
   const params = useSearchParams();
@@ -31,21 +31,23 @@ function CompleteContent() {
         if (cancelled) return;
         if (data.status === "completed") {
           setStatus("completed");
-          trackEvent("donation_complete", {
-            donation_id: donationId,
-            provider,
-            value: data.totalAmount,
+          const summaryParams = buildThankYouSearchParams({
+            amount: data.amount ?? data.totalAmount,
             currency: data.currency || "GBP",
-          });
-          const summaryParams = new URLSearchParams({
+            frequency: data.frequency || "single",
+            giftAid: Boolean(data.giftAid),
             donationId,
-            provider,
+            receiptNumber: data.receiptNumber,
+            campaignSlug: data.campaignSlug,
+            campaignTitle: data.campaignTitle,
+            category: data.category,
+            donationType: data.donationType,
+            campaignMode: data.campaignMode,
+            paymentMethod: data.paymentMethod || provider,
+            donorName: data.donorName,
+            donorEmail: data.donorEmail,
+            donorPhone: data.donorPhone,
           });
-          if (data.totalAmount != null) {
-            summaryParams.set("amount", String(data.totalAmount));
-          }
-          if (data.currency) summaryParams.set("currency", data.currency);
-          if (data.receiptNumber) summaryParams.set("receiptNumber", data.receiptNumber);
           router.replace(`/thank-you?${summaryParams.toString()}`);
           return;
         }

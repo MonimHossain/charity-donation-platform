@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { routeParam } from "../../helper/requestParams.js";
 import { AppDataSource } from "../../helper/connectDB.js";
 import { RecurringDonation } from "../../components/recurringDonation/recurringDonation.entity.js";
-import { ensureDonorUserForDonation } from "../user-auth/userAuth.service.js";
+import { ensureDonorUserForDonation, normalizeEmail } from "../user-auth/userAuth.service.js";
 import { resolveCampaignId } from "../campaigns/resolveCampaignId.js";
 import {
   pauseStripeSubscription,
@@ -10,6 +10,10 @@ import {
   cancelStripeSubscription,
   createStripeBillingPortalSession,
 } from "../payments/stripeRecurring.js";
+import {
+  getSegmentDonorEmails,
+  parseSegmentParams,
+} from "../donors/donorSegment.service.js";
 
 const repo = () => AppDataSource.getRepository(RecurringDonation);
 
@@ -34,19 +38,65 @@ async function syncStripeCancel(recurring: RecurringDonation): Promise<void> {
 
 export async function getRecurringDonations(req: Request, res: Response) {
   try {
-    const { status, page = "1", limit = "20" } = req.query;
-    const where: any = {};
-    if (status) where.status = status;
+    const { page = "1", limit = "50", search, failedOnly } = req.query;
+    const segmentParams = parseSegmentParams(req.query as Record<string, unknown>);
 
-    const [items, total] = await repo().findAndCount({
-      where,
-      order: { createdAt: "DESC" },
-      skip: (Number(page) - 1) * Number(limit),
-      take: Number(limit),
-      relations: ["campaign"],
+    if (segmentParams?.segment === "campaign" && !segmentParams.campaignId) {
+      return res.status(400).json({ message: "campaignId is required for campaign segment" });
+    }
+
+    const qb = repo()
+      .createQueryBuilder("r")
+      .leftJoinAndSelect("r.campaign", "campaign")
+      .orderBy("r.createdAt", "DESC")
+      .skip((Number(page) - 1) * Number(limit))
+      .take(Number(limit));
+
+    if (segmentParams) {
+      const emails = await getSegmentDonorEmails(segmentParams);
+      if (emails.length === 0) {
+        return res.json({
+          items: [],
+          total: 0,
+          page: Number(page),
+          limit: Number(limit),
+          totalPages: 0,
+        });
+      }
+      qb.andWhere("LOWER(r.donorEmail) IN (:...segmentEmails)", { segmentEmails: emails });
+    } else if (failedOnly === "true" || failedOnly === "1") {
+      qb.andWhere("r.status IN (:...badStatuses)", {
+        badStatuses: ["failed", "paused", "cancelled"],
+      });
+    }
+
+    if (search) {
+      qb.andWhere("(r.donorName ILIKE :search OR r.donorEmail ILIKE :search)", {
+        search: `%${search}%`,
+      });
+    }
+
+    const [items, total] = await qb.getManyAndCount();
+
+    return res.json({
+      items: items.map((item) => ({
+        id: item.id,
+        donorName: item.donorName,
+        donorEmail: item.donorEmail,
+        amount: Number(item.amount),
+        currency: item.currency,
+        frequency: item.frequency,
+        status: item.status,
+        campaignTitle: item.campaign?.title,
+        nextPaymentDate: item.nextPaymentDate,
+        totalPaid: Number(item.totalPaid || 0),
+        createdAt: item.createdAt,
+      })),
+      total,
+      page: Number(page),
+      limit: Number(limit),
+      totalPages: Math.ceil(total / Number(limit)),
     });
-
-    return res.json({ items, total, page: Number(page), limit: Number(limit) });
   } catch (error) {
     console.error("Get recurring donations error:", error);
     return res.status(500).json({ message: "Internal server error" });
@@ -55,16 +105,21 @@ export async function getRecurringDonations(req: Request, res: Response) {
 
 export async function getUserRecurringDonations(req: Request, res: Response) {
   try {
-    const userId = (req as any).user?.id;
-    if (!userId) {
+    const user = (req as { user?: { id?: string; email?: string } }).user;
+    if (!user?.id) {
       return res.status(401).json({ message: "Authentication required" });
     }
 
-    const items = await repo().find({
-      where: { userId },
-      order: { createdAt: "DESC" },
-      relations: ["campaign"],
-    });
+    const email = normalizeEmail(user.email || "");
+    const items = await repo()
+      .createQueryBuilder("recurring")
+      .leftJoinAndSelect("recurring.campaign", "campaign")
+      .where("(recurring.userId = :userId OR LOWER(recurring.donorEmail) = :email)", {
+        userId: user.id,
+        email,
+      })
+      .orderBy("recurring.createdAt", "DESC")
+      .getMany();
 
     return res.json({
       items: items.map((item) => ({
@@ -107,6 +162,13 @@ export async function createRecurringDonation(req: Request, res: Response) {
     }
 
     const authUserId = (req as any).user?.id as string | undefined;
+    const authUserEmail = (req as any).user?.email as string | undefined;
+    if (authUserId && authUserEmail) {
+      if (normalizeEmail(donorEmail) !== normalizeEmail(authUserEmail)) {
+        return res.status(403).json({ message: "Donor email must match your account email" });
+      }
+    }
+
     const donorUser = await ensureDonorUserForDonation({
       donorEmail,
       donorName,

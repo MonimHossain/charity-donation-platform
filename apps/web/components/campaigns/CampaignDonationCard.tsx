@@ -60,38 +60,47 @@ function PresetAmountButtons({
   presets,
   selectedAmount,
   customAmount,
+  customAmountActive,
+  showOtherAmount,
   selectedDescription,
   onSelect,
+  onOpenCustom,
 }: {
   sourceCurrency: string;
   presets: PresetAmount[];
   selectedAmount: number;
   customAmount: string;
+  customAmountActive: boolean;
+  showOtherAmount: boolean;
   selectedDescription: string;
   onSelect: (amount: number, description?: string) => void;
+  onOpenCustom: () => void;
 }) {
   const { formatFromSource } = useCurrency();
   const showDescription = Boolean(
-    selectedDescription.trim() && selectedAmount > 0 && !customAmount
+    selectedDescription.trim() && selectedAmount > 0 && !customAmountActive
   );
+
+  const chipClass = (active: boolean) =>
+    cn(
+      "min-w-[88px] px-4 py-2.5 rounded-xl border-2 text-sm font-bold transition-all text-center",
+      active
+        ? "bg-accent text-accent-foreground border-accent shadow-sm"
+        : "bg-background border-accent/40 text-foreground hover:border-accent hover:bg-accent/5"
+    );
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2.5">
         {presets.map((preset) => {
-          const selected = selectedAmount === preset.amount && !customAmount;
+          const selected = selectedAmount === preset.amount && !customAmountActive;
           const description = preset.description?.trim();
           return (
             <button
               key={`${preset.amount}-${description ?? ""}`}
               type="button"
               onClick={() => onSelect(preset.amount, preset.description)}
-              className={cn(
-                "min-w-[88px] px-4 py-2.5 rounded-xl border-2 text-sm font-bold transition-all text-center",
-                selected
-                  ? "bg-accent text-accent-foreground border-accent shadow-sm"
-                  : "bg-background border-accent/40 text-foreground hover:border-accent hover:bg-accent/5"
-              )}
+              className={chipClass(selected)}
             >
               <span className="block text-base leading-none">
                 {formatFromSource(preset.amount, sourceCurrency)}
@@ -99,6 +108,15 @@ function PresetAmountButtons({
             </button>
           );
         })}
+        {showOtherAmount && (
+          <button
+            type="button"
+            onClick={onOpenCustom}
+            className={chipClass(customAmountActive)}
+          >
+            Other amount
+          </button>
+        )}
       </div>
       {showDescription && (
         <div className="rounded-2xl border border-border bg-secondary/40 px-4 py-3">
@@ -203,6 +221,9 @@ export function CampaignDonationCard({
   );
   const [customIntervalUnit, setCustomIntervalUnit] = useState<RecurrenceIntervalUnit>(
     adminRecurrence?.intervalUnit ?? "month"
+  );
+  const [customAmountActive, setCustomAmountActive] = useState(
+    showOtherAmount && !showPresets
   );
 
   return (
@@ -364,53 +385,45 @@ export function CampaignDonationCard({
 
       {selectedAttr && paymentConfig && (
         <div className="space-y-3">
-          {showPresets && (
+          {(showPresets || showOtherAmount) && (
             <PresetAmountButtons
               sourceCurrency={sourceCurrency}
               presets={presetAmounts}
               selectedAmount={selectedAmount}
               customAmount={customAmount}
+              customAmountActive={customAmountActive}
+              showOtherAmount={Boolean(showOtherAmount)}
               selectedDescription={selectedPresetDescription}
               onSelect={(amount, description) => {
+                setCustomAmountActive(false);
                 onSetSelectedAmount(amount, description);
+                onSetCustomAmount("");
+              }}
+              onOpenCustom={() => {
+                setCustomAmountActive(true);
+                onSetSelectedAmount(0);
                 onSetCustomAmount("");
               }}
             />
           )}
-          {showOtherAmount && (
-            <>
-              {showPresets && (
-                <button
-                  type="button"
-                  onClick={() => onSetSelectedAmount(0)}
-                  className={cn(
-                    "px-5 py-2.5 rounded-full border-2 text-sm font-bold transition-all",
-                    Boolean(customAmount)
-                      ? "bg-accent text-accent-foreground border-accent shadow-sm"
-                      : "bg-background border-accent/40 text-foreground hover:border-accent hover:bg-accent/5"
-                  )}
-                >
-                  Other amount
-                </button>
-              )}
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">
-                  {symbol}
-                </span>
-                <Input
-                  type="number"
-                  placeholder="Enter amount"
-                  value={customAmount}
-                  onChange={(e) => {
-                    onSetCustomAmount(e.target.value);
-                    onSetSelectedAmount(0);
-                  }}
-                  className="pl-7 h-10 rounded-xl"
-                  min={paymentConfig.minAmount}
-                  max={paymentConfig.maxAmount}
-                />
-              </div>
-            </>
+          {showOtherAmount && customAmountActive && (
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">
+                {symbol}
+              </span>
+              <Input
+                type="number"
+                placeholder="Enter amount"
+                value={customAmount}
+                onChange={(e) => {
+                  onSetCustomAmount(e.target.value);
+                  onSetSelectedAmount(0);
+                }}
+                className="pl-7 h-10 rounded-xl"
+                min={paymentConfig.minAmount}
+                max={paymentConfig.maxAmount}
+              />
+            </div>
           )}
         </div>
       )}

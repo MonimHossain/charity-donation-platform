@@ -41,6 +41,10 @@ import {
   isRamadanSplitCartLine,
   summarizeRamadanCheckout,
 } from "@/lib/ramadan-split";
+import { buildThankYouSearchParams } from "@/lib/analytics/thank-you-params";
+import { pushBeginCheckoutFromCart } from "@/lib/analytics/cart-gtm";
+import { useLocale } from "@/lib/i18n";
+import { isUserAuthenticated } from "@/lib/user-session";
 import {
   DEFAULT_CAMPAIGN_CONFIG,
   isGiftAidCheckoutEnabled,
@@ -73,6 +77,7 @@ function formatCartLineDescription(line: DonationCartItem, displayCurrency: Curr
 
 function DonationCheckoutContent() {
   const router = useRouter();
+  const { t } = useLocale();
   const { items, subtotal, currency, removeItem, clear } = useDonationCart();
   const { prefill, stripeCustomer, loading: donorPrefillLoading } = useCheckoutDonorPrefill();
   const prefillApplied = useRef(false);
@@ -101,8 +106,11 @@ function DonationCheckoutContent() {
   const [pendingDonationId, setPendingDonationId] = useState<string | null>(null);
   const [pendingRecurringDonationId, setPendingRecurringDonationId] = useState<string | null>(null);
   const [pendingAutomatedScheduleIds, setPendingAutomatedScheduleIds] = useState<string[]>([]);
-  const [monthlyGift, setMonthlyGift] = useState(false);
+  const [pushRecurring, setPushRecurring] = useState(false);
+  const [pushRecurringDays, setPushRecurringDays] = useState("30");
   const [stripeReady, setStripeReady] = useState(false);
+  const authenticated = isUserAuthenticated();
+  const beginCheckoutTracked = useRef(false);
 
   useEffect(() => {
     if (!prefill || prefillApplied.current) return;
@@ -308,6 +316,10 @@ function DonationCheckoutContent() {
 
   function goToPayment() {
     if (!donorName.trim() || !donorEmail.trim()) return;
+    if (pushRecurring && checkoutSettings.enablePushRecurringDonation) {
+      const days = Number(pushRecurringDays);
+      if (!Number.isFinite(days) || days < 1 || days > 365) return;
+    }
     setFlowStep("payment");
   }
 
@@ -322,9 +334,23 @@ function DonationCheckoutContent() {
     setPendingAutomatedScheduleIds([]);
     setPaymentError("");
     paymentPrepareAttempted.current = false;
+    beginCheckoutTracked.current = false;
   }
 
   const checkoutRecurringParams = useMemo(() => {
+    const cartHasRecurring = items.some((i) => i.recurringFrequency || i.recurringInterval);
+    const pushDays = Math.max(1, Math.min(365, Number(pushRecurringDays) || 0));
+    const pushActive =
+      checkoutSettings.enablePushRecurringDonation &&
+      pushRecurring &&
+      pushDays >= 1 &&
+      !cartHasRecurring &&
+      !ramadanSummary.hasRamadanSplit;
+
+    if (pushActive) {
+      return { interval: "day" as const, intervalCount: pushDays };
+    }
+
     const line = items.find((i) => i.recurringFrequency || i.recurringInterval);
     if (!line) return parseStripeRecurringParams("single");
 
@@ -341,9 +367,22 @@ function DonationCheckoutContent() {
       params.cancelAt = line.recurringCancelAt;
     }
     return params;
-  }, [items]);
+  }, [items, checkoutSettings.enablePushRecurringDonation, pushRecurring, pushRecurringDays, ramadanSummary.hasRamadanSplit]);
 
   const checkoutFrequency = useMemo(() => {
+    const cartHasRecurring = items.some((i) => i.recurringFrequency || i.recurringInterval);
+    const pushDays = Math.max(1, Math.min(365, Number(pushRecurringDays) || 0));
+    const pushActive =
+      checkoutSettings.enablePushRecurringDonation &&
+      pushRecurring &&
+      pushDays >= 1 &&
+      !cartHasRecurring &&
+      !ramadanSummary.hasRamadanSplit;
+
+    if (pushActive) {
+      return pushDays === 1 ? "daily" : `custom:${pushDays}:day`;
+    }
+
     const line = items.find((i) => i.recurringFrequency || i.recurringInterval);
     if (line?.recurringFrequency) return line.recurringFrequency;
     if (line?.recurringInterval) {
@@ -356,8 +395,8 @@ function DonationCheckoutContent() {
       }
       return `custom:${count}:${line.recurringInterval}`;
     }
-    return monthlyGift ? "monthly" : "single";
-  }, [items, monthlyGift]);
+    return "single";
+  }, [items, checkoutSettings.enablePushRecurringDonation, pushRecurring, pushRecurringDays, ramadanSummary.hasRamadanSplit]);
 
   const checkoutRecurrenceLabel = useMemo(
     () => stripeRecurringParamsLabel(checkoutRecurringParams),
@@ -383,19 +422,26 @@ function DonationCheckoutContent() {
 
   const redirectToThankYou = (donationId?: string) => {
     clear();
-    const summaryParams = new URLSearchParams({
-      amount: chargeAmount.toString(),
+    const primary = items[0];
+    const summaryParams = buildThankYouSearchParams({
+      amount: chargeAmount,
       currency,
       frequency: ramadanSummary.hasRamadanSplit ? "ramadan_split" : checkoutFrequency,
-      giftAid: giftAid.toString(),
+      giftAid,
+      donationId,
+      campaignSlug: primary?.campaignSlug || primary?.donationPageSlug,
+      campaignTitle: primary?.title,
+      category: primary?.category,
+      donationType: primary?.donationType,
+      paymentMethod: "stripe",
+      donorName,
+      donorEmail,
+      donorPhone,
+      commitmentTotal: ramadanSummary.hasRamadanSplit ? donationAmount : undefined,
+      installmentCount: ramadanSummary.hasRamadanSplit ? ramadanSummary.installmentCount : undefined,
+      installmentAmount: ramadanSummary.hasRamadanSplit ? ramadanSummary.firstInstallmentAmount : undefined,
     });
-    if (ramadanSummary.hasRamadanSplit) {
-      summaryParams.set("commitmentTotal", donationAmount.toString());
-      summaryParams.set("installmentCount", String(ramadanSummary.installmentCount));
-      summaryParams.set("installmentAmount", ramadanSummary.firstInstallmentAmount.toString());
-    }
-    if (donationId) summaryParams.set("donationId", donationId);
-    router.push(`/thank-you?${summaryParams.toString()}`);
+    router.push(`/thank-you?${summaryParams.toString()}${!authenticated ? "&guest=1" : ""}`);
   };
 
   const paymentPrepareAttempted = useRef(false);
@@ -585,6 +631,17 @@ function DonationCheckoutContent() {
     void preparePayment();
   }, [flowStep, preparePayment, stripeReady]);
 
+  useEffect(() => {
+    if (flowStep !== "payment" || beginCheckoutTracked.current || items.length === 0) return;
+    beginCheckoutTracked.current = true;
+    pushBeginCheckoutFromCart({
+      items,
+      giftAid,
+      amount: donationAmount,
+      currency: displayCurrency,
+    });
+  }, [flowStep, items, giftAid, donationAmount, displayCurrency]);
+
   const effectivePublishableKey =
     stripePublishableKey || process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "";
 
@@ -611,7 +668,7 @@ function DonationCheckoutContent() {
   }
 
   return (
-    <>
+    <div className="overflow-x-hidden">
       <section className="bg-secondary/40 border-b border-border">
         <div className="container-wide py-4 flex flex-wrap items-center justify-between gap-3">
           <Link
@@ -631,8 +688,8 @@ function DonationCheckoutContent() {
         </div>
       </section>
 
-      <section className="container-wide py-8 lg:py-12 grid lg:grid-cols-12 gap-8">
-        <div className="lg:col-span-7 space-y-6">
+      <section className="container-wide py-8 lg:py-12 grid lg:grid-cols-12 gap-8 min-w-0 max-w-full">
+        <div className="lg:col-span-7 space-y-6 min-w-0">
           {flowStep === "gift-aid" && showGiftAidStep && (
             <CheckoutGiftAidStep
               currencySymbol={currencyInfo.symbol}
@@ -652,7 +709,7 @@ function DonationCheckoutContent() {
           )}
 
           {flowStep === "details" && (
-            <div className="rounded-3xl bg-card border border-border p-6 lg:p-8 shadow-soft space-y-6 max-w-xl mx-auto lg:mx-0">
+            <div className="rounded-3xl bg-card border border-border p-6 lg:p-8 shadow-soft space-y-6 w-full max-w-xl min-w-0 mx-auto lg:mx-0">
               <div className="space-y-1">
                 <h1 className="font-serif text-2xl md:text-3xl text-primary">Your details</h1>
                 <p className="text-sm text-muted-foreground">
@@ -682,9 +739,10 @@ function DonationCheckoutContent() {
                     id="donor-email"
                     type="email"
                     required
+                    readOnly={authenticated}
                     value={donorEmail}
                     onChange={(e) => setDonorEmail(e.target.value)}
-                    className="mt-1 h-12 rounded-xl"
+                    className={cn("mt-1 h-12 rounded-xl", authenticated && "bg-muted")}
                     placeholder="you@email.com"
                   />
                 </div>
@@ -836,23 +894,41 @@ function DonationCheckoutContent() {
                 </div>
               )}
 
-              {!isCartRecurring && !ramadanSummary.hasRamadanSplit && (
-                <label className="flex items-start gap-3 rounded-2xl border border-border bg-secondary/30 px-4 py-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={monthlyGift}
-                    onChange={(e) => setMonthlyGift(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 accent-accent rounded shrink-0"
-                  />
-                  <span className="text-sm">
-                    <span className="font-semibold text-primary">Make this a monthly gift</span>
-                    <span className="block text-xs text-muted-foreground mt-0.5">
-                      Sandbox test — charges{" "}
-                      {formatMoney(chargeAmount, { code: displayCurrency })} every month until
-                      cancelled.
+              {!items.some((i) => i.recurringFrequency || i.recurringInterval) &&
+                !ramadanSummary.hasRamadanSplit &&
+                checkoutSettings.enablePushRecurringDonation && (
+                <div className="rounded-2xl border border-border bg-secondary/30 px-4 py-3 space-y-3">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={pushRecurring}
+                      onChange={(e) => setPushRecurring(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 accent-accent rounded shrink-0"
+                    />
+                    <span className="text-sm">
+                      <span className="font-semibold text-primary">{t("checkout.recurring.push")}</span>
+                      <span className="block text-xs text-muted-foreground mt-0.5">
+                        {t("checkout.recurring.help")}
+                      </span>
                     </span>
-                  </span>
-                </label>
+                  </label>
+                  {pushRecurring && (
+                    <div>
+                      <Label htmlFor="push-recurring-days" className="text-xs">
+                        {t("checkout.recurring.days")}
+                      </Label>
+                      <Input
+                        id="push-recurring-days"
+                        type="number"
+                        min={1}
+                        max={365}
+                        value={pushRecurringDays}
+                        onChange={(e) => setPushRecurringDays(e.target.value)}
+                        className="mt-1 rounded-xl h-10 max-w-[8rem]"
+                      />
+                    </div>
+                  )}
+                </div>
               )}
 
               <div className="flex flex-wrap items-center justify-center gap-3">
@@ -861,7 +937,7 @@ function DonationCheckoutContent() {
                     type="button"
                     variant="outline"
                     onClick={goBackFromDetails}
-                    className="rounded-full min-w-[120px] border-accent text-accent hover:bg-primary hover:text-primary-foreground"
+                    className="rounded-full min-w-0 sm:min-w-[100px] border-accent text-accent hover:bg-primary hover:text-primary-foreground"
                   >
                     Previous
                   </Button>
@@ -870,7 +946,7 @@ function DonationCheckoutContent() {
                   type="button"
                   onClick={goToPayment}
                   disabled={!donorName.trim() || !donorEmail.trim()}
-                  className="rounded-full min-w-[120px] bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground"
+                  className="rounded-full min-w-0 sm:min-w-[100px] bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground"
                 >
                   Next
                 </Button>
@@ -881,7 +957,7 @@ function DonationCheckoutContent() {
           )}
 
           {flowStep === "payment" && (
-            <div className="max-w-xl mx-auto lg:mx-0 space-y-6">
+            <div className="w-full max-w-xl min-w-0 mx-auto lg:mx-0 space-y-6">
               {!stripeReady && (
                 <div className="rounded-3xl bg-card border border-border p-6 lg:p-8 shadow-soft space-y-4">
                   <p className="text-sm text-destructive">
@@ -893,7 +969,7 @@ function DonationCheckoutContent() {
                       type="button"
                       variant="outline"
                       onClick={goBackFromPayment}
-                      className="rounded-full min-w-[120px] border-accent text-accent hover:bg-primary hover:text-primary-foreground"
+                      className="rounded-full min-w-0 sm:min-w-[100px] border-accent text-accent hover:bg-primary hover:text-primary-foreground"
                     >
                       Previous
                     </Button>
@@ -912,7 +988,7 @@ function DonationCheckoutContent() {
                           type="button"
                           variant="outline"
                           onClick={goBackFromPayment}
-                          className="rounded-full min-w-[120px] border-accent text-accent hover:bg-primary hover:text-primary-foreground"
+                          className="rounded-full min-w-0 sm:min-w-[100px] border-accent text-accent hover:bg-primary hover:text-primary-foreground"
                         >
                           Previous
                         </Button>
@@ -923,7 +999,7 @@ function DonationCheckoutContent() {
                             void preparePayment();
                           }}
                           disabled={submitting}
-                          className="rounded-full min-w-[120px] bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground"
+                          className="rounded-full min-w-0 sm:min-w-[100px] bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground"
                         >
                           {submitting ? (
                             <>
@@ -995,7 +1071,7 @@ function DonationCheckoutContent() {
                       variant="outline"
                       onClick={goBackFromPayment}
                       disabled={submitting}
-                      className="rounded-full min-w-[120px] border-accent text-accent hover:bg-primary hover:text-primary-foreground"
+                      className="rounded-full min-w-0 sm:min-w-[100px] border-accent text-accent hover:bg-primary hover:text-primary-foreground"
                     >
                       Previous
                     </Button>
@@ -1007,7 +1083,7 @@ function DonationCheckoutContent() {
           )}
         </div>
 
-        <aside className="lg:col-span-5 lg:sticky lg:top-28 self-start space-y-4">
+        <aside className="lg:col-span-5 lg:sticky lg:top-28 self-start space-y-4 min-w-0">
           <div className="rounded-3xl bg-card border border-border p-6 shadow-soft space-y-4">
             <p className="text-xs uppercase tracking-widest text-accent-deep font-bold">Your cart</p>
             <ul className="space-y-3">
@@ -1165,7 +1241,7 @@ function DonationCheckoutContent() {
           </div>
         </aside>
       </section>
-    </>
+    </div>
   );
 }
 

@@ -6,6 +6,8 @@ function isEmailEnabled(): boolean {
   return process.env.EMAIL_ENABLED === "true" || process.env.EMAIL_ENABLED === "1";
 }
 
+export { isEmailEnabled };
+
 function getTransporter() {
   const host = process.env.SMTP_HOST;
   const user = process.env.SMTP_USER;
@@ -31,11 +33,25 @@ function appUrl(): string {
   return process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || "http://localhost:3001";
 }
 
+function authLink(path: string, token: string, returnTo?: string): string {
+  const url = new URL(`${appUrl().replace(/\/$/, "")}${path}`);
+  url.searchParams.set("token", token);
+  if (returnTo?.startsWith("/") && !returnTo.startsWith("//")) {
+    url.searchParams.set("returnTo", returnTo);
+  }
+  return url.toString();
+}
+
 export async function sendMail(options: {
   to: string;
   subject: string;
   html: string;
   text?: string;
+  attachments?: Array<{
+    filename: string;
+    content: Buffer | string;
+    contentType?: string;
+  }>;
 }): Promise<void> {
   if (!isEmailEnabled()) {
     console.info("[mailer] Skipped (EMAIL_ENABLED is not true):", options.subject, "→", options.to);
@@ -49,6 +65,7 @@ export async function sendMail(options: {
       subject: options.subject,
       html: options.html,
       text: options.text || options.html.replace(/<[^>]+>/g, " "),
+      attachments: options.attachments,
     });
   } catch (err) {
     console.error("[mailer] Send failed:", err);
@@ -96,6 +113,71 @@ export async function sendRecurringFailedPaymentEmail(recurring: RecurringDonati
       <p>Dear ${recurring.donorName},</p>
       <p>We could not process your recurring donation of ${symbol}${Number(recurring.amount).toFixed(2)}.</p>
       <p>Please <a href="${appUrl()}/account/recurring">update your payment method</a> to keep your support active.</p>
+    `,
+  });
+}
+
+export async function sendAccountActivationEmail(
+  email: string,
+  fullName: string,
+  token: string,
+  returnTo?: string
+): Promise<void> {
+  const link = authLink("/auth/activate", token, returnTo);
+  await sendMail({
+    to: email,
+    subject: "Sign in to your account",
+    html: `
+      <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto;">
+        <h1 style="color: #1a3d2e;">Set your password</h1>
+        <p>Dear ${fullName},</p>
+        <p>Click the link below to set your password and sign in. This link expires in 24 hours.</p>
+        <p><a href="${link}" style="display:inline-block;padding:12px 24px;background:#1a3d2e;color:#fff;text-decoration:none;border-radius:8px;">Set password and sign in</a></p>
+        <p style="color:#666;font-size:12px;">If you did not request this, you can ignore this email.</p>
+      </div>
+    `,
+  });
+}
+
+export async function sendPasswordResetEmail(
+  email: string,
+  fullName: string,
+  token: string,
+  returnTo?: string
+): Promise<void> {
+  const link = authLink("/auth/reset-password", token, returnTo);
+  await sendMail({
+    to: email,
+    subject: "Sign in to your account",
+    html: `
+      <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto;">
+        <h1 style="color: #1a3d2e;">Sign in to your account</h1>
+        <p>Dear ${fullName},</p>
+        <p>Click the link below to set a new password and sign in. This link expires in 24 hours.</p>
+        <p><a href="${link}" style="display:inline-block;padding:12px 24px;background:#1a3d2e;color:#fff;text-decoration:none;border-radius:8px;">Sign in</a></p>
+        <p style="color:#666;font-size:12px;">If you did not request this, you can ignore this email.</p>
+      </div>
+    `,
+  });
+}
+
+export async function sendAdminPasswordResetEmail(
+  email: string,
+  fullName: string,
+  token: string
+): Promise<void> {
+  const link = authLink("/admin/reset-password", token);
+  await sendMail({
+    to: email,
+    subject: "Reset your admin password",
+    html: `
+      <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto;">
+        <h1 style="color: #1a3d2e;">Reset your admin password</h1>
+        <p>Dear ${fullName},</p>
+        <p>Click the link below to set a new password for your admin account. This link expires in 24 hours.</p>
+        <p><a href="${link}" style="display:inline-block;padding:12px 24px;background:#1a3d2e;color:#fff;text-decoration:none;border-radius:8px;">Reset password</a></p>
+        <p style="color:#666;font-size:12px;">If you did not request this, you can ignore this email.</p>
+      </div>
     `,
   });
 }

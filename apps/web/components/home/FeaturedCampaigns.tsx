@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
-import { ArrowUpRight, Heart, Users, TrendingUp, Shield, Loader2 } from "lucide-react";
+import { ArrowUpRight, Heart, Users, Shield, Loader2 } from "lucide-react";
 import { useHomepageAppeals } from "@/lib/data/campaigns";
 import { getCampaignCardImage } from "@/lib/campaign-media";
 import { isCampaignExpired } from "@/lib/campaign-expiration";
@@ -13,13 +13,17 @@ import {
   CAMPAIGN_MODE_LABELS,
   isExperienceCampaignMode,
 } from "@/lib/campaign-experience";
-import { getCampaignGoalAmount, getCampaignRaisedAmount } from "@/lib/campaign-fundraising";
+import { getCampaignGoalAmount, getCampaignRaisedAmount, getDisplayDonorCount } from "@/lib/campaign-fundraising";
 import { useCurrency } from "@/lib/currency";
 
 type Appeal = {
   slug: string;
   title: string;
   tag: string;
+  category?: string;
+  campaignMode?: string;
+  tags?: string[];
+  currency?: string;
   excerpt: string;
   image: string;
   featured?: boolean;
@@ -80,6 +84,10 @@ function mapCampaigns(
     slug: String(c.slug),
     title: String(c.title),
     tag: appealTag(c),
+    category: c.category ? String(c.category) : undefined,
+    campaignMode: c.campaignMode ? String(c.campaignMode) : undefined,
+    tags: Array.isArray(c.tags) ? c.tags.map(String) : undefined,
+    currency: c.currency ? String(c.currency) : undefined,
     excerpt: String(c.shortDescription ?? c.summary ?? ""),
     image: getCampaignCardImage({
       thumbnail: c.thumbnail as string | undefined,
@@ -91,7 +99,7 @@ function mapCampaigns(
     featured: Boolean(c.isFeatured ?? c.featured),
     raised: getCampaignRaisedAmount(c),
     goal: Math.max(getCampaignGoalAmount(c), 1),
-    donors: Number(c.donorCount ?? c.donors ?? 0),
+    donors: getDisplayDonorCount(c),
     impact: appealImpact(c, formatFromGbp),
     expirationEnabled: Boolean(c.expirationEnabled),
     expiresAt: (c.expiresAt as string | null | undefined) ?? null,
@@ -107,7 +115,7 @@ const AppealCard = ({
   large?: boolean;
   onExpired?: () => void;
 }) => (
-  <div className={`group relative flex flex-col overflow-hidden rounded-2xl sm:rounded-3xl bg-card border border-border/60 shadow-soft hover:shadow-lift hover:-translate-y-1 transition-all duration-500 ${large ? "sm:col-span-2 lg:col-span-2" : ""}`}>
+  <div className={`group relative flex flex-col overflow-hidden rounded-2xl sm:rounded-3xl bg-card border border-border/60 shadow-soft hover:shadow-lift hover:-translate-y-1 transition-all duration-500 min-w-0 ${large ? "sm:col-span-2 2xl:col-span-2" : ""}`}>
     <Link href={`/campaigns/${a.slug}`} className="relative block overflow-hidden">
       <div className={`relative overflow-hidden ${large ? "aspect-[8/3]" : "aspect-[4/3]"}`}>
         <img
@@ -189,7 +197,7 @@ const AppealCard = ({
 
 const FeaturedCampaigns = () => {
   const { data, isLoading, refetch } = useHomepageAppeals();
-  const { formatFromSource, formatMoney } = useCurrency();
+  const { formatFromSource } = useCurrency();
   const [hiddenSlugs, setHiddenSlugs] = useState<Set<string>>(() => new Set());
 
   const handleExpired = useCallback(
@@ -222,7 +230,7 @@ const FeaturedCampaigns = () => {
   }
 
   return (
-  <section className="container-wide px-4 sm:px-6 lg:px-8 py-16 sm:py-20 lg:py-28">
+  <section className="container-wide overflow-x-hidden pt-16 pb-10 sm:pt-20 sm:pb-12 lg:pt-28 lg:pb-14">
     <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-10 sm:mb-14">
       <div className="max-w-2xl">
         <p className="text-sm uppercase tracking-[0.25em] text-accent-deep font-semibold">Our Appeals</p>
@@ -239,16 +247,12 @@ const FeaturedCampaigns = () => {
           <Shield className="w-3.5 h-3.5 text-accent-deep" /> 100% Donation Policy
         </div>
         <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-secondary text-secondary-foreground text-xs font-semibold">
-          <TrendingUp className="w-3.5 h-3.5 text-accent-deep" />{" "}
-          {formatMoney(1_400_000, { from: "GBP", compact: true })}+ raised this year
-        </div>
-        <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-secondary text-secondary-foreground text-xs font-semibold">
           <Users className="w-3.5 h-3.5 text-accent-deep" /> 28k+ donors
         </div>
       </div>
     </div>
 
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6 lg:gap-8">
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5 sm:gap-6 lg:gap-8 min-w-0">
       {appeals.map((a, i) => (
         <AppealCard
           key={a.slug}
@@ -262,7 +266,9 @@ const FeaturedCampaigns = () => {
     <div className="mt-10 sm:mt-14 flex flex-col sm:flex-row items-center justify-between gap-4 p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-secondary to-mint-soft border border-border/60">
       <div className="flex items-center gap-3 text-sm text-foreground">
         <Shield className="w-5 h-5 text-accent-deep shrink-0" />
-        <span><strong className="font-semibold">Your donation is secure.</strong> Gift Aid eligible. Zakat compliant. Reports delivered to your inbox.</span>
+        <span className="flex-1 min-w-0 text-sm text-foreground">
+          <strong className="font-semibold">Your donation is secure.</strong> Gift Aid eligible. Zakat compliant. Reports delivered to your inbox.
+        </span>
       </div>
       <Link
         href="/campaigns"

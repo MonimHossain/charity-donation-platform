@@ -42,12 +42,15 @@ import {
   initPayTabsPayment,
 } from "@/lib/api";
 import { isRecurringFrequency, normalizeRecurringFrequency } from "@/lib/stripe-recurring";
+import { sortCampaignAttributes } from "@/lib/campaign-attributes";
 import { StripeCheckoutForm } from "@/components/payments/StripeCheckoutForm";
 import { PayPalCheckoutButton } from "@/components/payments/PayPalCheckoutButton";
 import {
   addDonationCartItem,
   getDonationCartSnapshot,
 } from "@/lib/stores/donationCartStore";
+import { buildThankYouSearchParams } from "@/lib/analytics/thank-you-params";
+import { pushDonationEvent } from "@/lib/analytics/push-donation-event";
 
 type DonationFrequency = "single" | "monthly" | "quarterly" | "annually";
 type ZakatType = "zakat" | "sadaqah" | "lillah" | "general";
@@ -64,6 +67,7 @@ interface CampaignPreset { amount: number; label: string; description?: string; 
 interface CampaignAttribute {
   name: string;
   description?: string;
+  sortOrder?: number;
   options?: Array<{ label: string; priceAdjustment?: number }>;
 }
 interface CampaignUpsell { label: string; type: "fixed" | "percentage" | "round-up"; value: number; description?: string; }
@@ -72,6 +76,8 @@ interface Campaign {
   id: string;
   title: string;
   slug: string;
+  category?: string;
+  currency?: string;
   donationTypes?: string[];
   recurringInterval?: string;
   allowedIntervals?: string[];
@@ -178,6 +184,7 @@ function DonatePageApi() {
   const [attributeSelections, setAttributeSelections] = useState<Record<string, string>>({});
   const [selectedUpsells, setSelectedUpsells] = useState<Set<number>>(new Set());
   const [activeCampaign, setActiveCampaign] = useState<Campaign | null>(null);
+  const viewItemTracked = useRef(false);
   const { prefill, stripeCustomer, loading: donorPrefillLoading } = useCheckoutDonorPrefill();
   const prefillApplied = useRef(false);
 
@@ -215,6 +222,11 @@ function DonatePageApi() {
       const intervalParam = params.get("interval");
       const intervalCountParam = params.get("intervalCount");
       const parsedIntervalCount = intervalCountParam ? Number(intervalCountParam) : undefined;
+      const zakatMonthsParam = params.get("zakatMonths");
+      const zakatTotalParam = params.get("zakatTotal");
+      const parsedZakatMonths = zakatMonthsParam ? Number(zakatMonthsParam) : undefined;
+      const parsedZakatTotal = zakatTotalParam ? Number(zakatTotalParam) : undefined;
+      const isZakat = cause === "zakat";
       const selectedUpsellIds = upsellsParam
         ? upsellsParam.split(",").map((id) => id.trim()).filter(Boolean)
         : undefined;
@@ -224,12 +236,21 @@ function DonatePageApi() {
         donationPageSlug: cause,
         title: isQuickDonate
           ? quickLabel || cause.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
-          : cause.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+          : isZakat
+            ? "Zakat"
+            : cause.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
         amount: parsed,
         currency: (params.get("currency") || getCurrencyCode()).toUpperCase(),
         description: isQuickDonate
           ? `Quick donation — ${getCurrency().symbol}${parsed.toFixed(2)}`
-          : `Donation — ${getCurrency().symbol}${parsed.toFixed(2)}`,
+          : isZakat &&
+              Number.isFinite(parsedZakatMonths) &&
+              parsedZakatMonths! > 1 &&
+              Number.isFinite(parsedZakatTotal)
+            ? `Zakat — ${parsedZakatMonths} monthly payments of ${getCurrency().symbol}${parsed} (${getCurrency().symbol}${parsedZakatTotal} due)`
+            : isZakat
+              ? `Zakat — ${getCurrency().symbol}${parsed}`
+              : `Donation — ${getCurrency().symbol}${parsed.toFixed(2)}`,
         campaignId: campaignId || undefined,
         campaignSlug:
           campaignSlugParam || (!campaignId && isQuickDonate ? cause : undefined),
@@ -285,7 +306,14 @@ function DonatePageApi() {
   useEffect(() => {
     if (selectedCampaign) {
       const found = campaigns.find((c) => c.id === selectedCampaign);
-      setActiveCampaign(found || null);
+      setActiveCampaign(
+        found
+          ? {
+              ...found,
+              attributes: sortCampaignAttributes(found.attributes || []),
+            }
+          : null
+      );
       setQuantity(1);
       setAttributeSelections({});
       setSelectedUpsells(new Set());
@@ -373,6 +401,21 @@ function DonatePageApi() {
 
   const hoveredPreset = activePresets.find((p) => p.amount === amount && !customAmount);
 
+  useEffect(() => {
+    if (!activeCampaign || viewItemTracked.current) return;
+    viewItemTracked.current = true;
+    void pushDonationEvent("view_item", {
+      appealId: activeCampaign.slug,
+      appealName: activeCampaign.title,
+      category: activeCampaign.category,
+      donationType: zakatType,
+      amount: finalAmount,
+      currency: presetSourceCurrency,
+      frequency,
+      giftAid,
+    });
+  }, [activeCampaign, finalAmount, presetSourceCurrency, frequency, giftAid, zakatType]);
+
   function buildDonationPayload(): Record<string, unknown> {
     return {
       amount: finalAmount,
@@ -423,14 +466,19 @@ function DonatePageApi() {
       const donationId = donation.id as string;
       const chargeAmount = giftAid ? totalWithGiftAid : finalAmount;
 
-      const { trackEvent } = await import("@/components/analytics/GTMScript");
-      trackEvent("donate_begin", {
-        donation_id: donationId,
-        value: chargeAmount,
+      void pushDonationEvent("begin_checkout", {
+        appealId: activeCampaign?.slug,
+        appealName: activeCampaign?.title,
+        category: activeCampaign?.category,
+        donationType: zakatType,
+        amount: finalAmount,
         currency,
         frequency,
-        campaign_id: selectedCampaign || undefined,
-        gift_aid: giftAid,
+        giftAid,
+        paymentType: selectedGateway,
+        donorName,
+        email: donorEmail,
+        phone: donorPhone,
       });
 
       if (selectedGateway === "telr") {
@@ -487,14 +535,21 @@ function DonatePageApi() {
   };
 
   const redirectToThankYou = (donationId?: string) => {
-    const summaryParams = new URLSearchParams({
-      amount: finalAmount.toString(),
+    const summaryParams = buildThankYouSearchParams({
+      amount: finalAmount,
       currency,
       frequency,
-      giftAid: giftAid.toString(),
-      campaign: selectedCampaign || "",
+      giftAid,
+      donationId,
+      campaignSlug: activeCampaign?.slug,
+      campaignTitle: activeCampaign?.title,
+      category: activeCampaign?.category,
+      donationType: zakatType,
+      paymentMethod: selectedGateway,
+      donorName,
+      donorEmail,
+      donorPhone,
     });
-    if (donationId) summaryParams.set("donationId", donationId);
     router.push(`/thank-you?${summaryParams.toString()}`);
   };
 

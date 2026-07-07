@@ -6,6 +6,9 @@ import { Heart, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQuickDonateForm } from "@/lib/hooks/useQuickDonateForm";
 import { useCurrency } from "@/lib/currency";
+import { QuickDonateAttributePills } from "@/components/home/QuickDonateAttributePills";
+import { QuickDonatePricePicker } from "@/components/home/QuickDonatePricePicker";
+import { QuickDonateRamadanSection } from "@/components/home/QuickDonateRamadanSection";
 
 const HIDE_ON = ["/donate", "/donation/checkout"];
 const HIDE_PREFIXES = ["/donation/"];
@@ -28,19 +31,32 @@ const StickyDonationBar = () => {
   const {
     options,
     categories,
-    showSingle,
-    showRegular,
     selectedOptionId,
     category,
     freq,
     amount,
+    custom,
+    customAmountActive,
+    selectedPresetDescription,
+    showPresets,
+    showCustomAmount,
     displayPrices,
-    displayAmount,
     finalAmount,
+    sourceCurrency,
+    attributes,
+    selectedAttrIdx,
+    selectedCampaign,
+    showRamadanSection,
+    ramadanGivingOption,
+    ramadanSelectedDates,
+    setRamadanGivingOption,
+    setRamadanSelectedDates,
     setCategory,
-    setFreq,
     selectOption,
+    selectAttribute,
     selectAmount,
+    openCustomInput,
+    updateCustomAmount,
     goToDonate,
   } = useQuickDonateForm();
 
@@ -55,20 +71,28 @@ const StickyDonationBar = () => {
   if (HIDE_PREFIXES.some((p) => pathname.startsWith(p))) return null;
   if (!visible) return null;
 
-  const frequencies = (
-    [
-      showSingle ? ("single" as const) : null,
-      showRegular ? ("monthly" as const) : null,
-    ].filter(Boolean) as Array<"single" | "monthly">
-  );
-
-  const currentImpact = IMPACT[amount] ?? "Your gift makes an immediate difference";
+  const showAttributePills = attributes.length >= 1;
+  const showPricePicker = showPresets || showCustomAmount;
+  const impactText =
+    selectedPresetDescription.trim() ||
+    IMPACT[finalAmount] ||
+    "Your gift makes an immediate difference";
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 pointer-events-none">
       <div className="pointer-events-auto mx-auto max-w-3xl sm:max-w-xl m-2 sm:m-3 rounded-2xl bg-primary text-primary-foreground shadow-lift border border-primary-foreground/10 backdrop-blur">
         {open && (
           <div className="px-4 pt-4 pb-2 animate-fade-up space-y-3">
+            {showAttributePills && (
+              <QuickDonateAttributePills
+                attributes={attributes}
+                selectedIndex={selectedAttrIdx}
+                onSelect={selectAttribute}
+                dark
+                showWhenSingle
+              />
+            )}
+
             <select
               value={selectedOptionId}
               onChange={(e) => selectOption(e.target.value)}
@@ -82,54 +106,50 @@ const StickyDonationBar = () => {
               ))}
             </select>
 
-            <div className="grid grid-cols-2 gap-2">
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="bg-primary-foreground/10 hover:bg-primary-foreground/20 text-primary-foreground text-xs font-semibold rounded-xl px-3 py-2.5 border border-primary-foreground/15 focus:outline-none focus:ring-2 focus:ring-accent cursor-pointer"
-                aria-label="Donation category"
-              >
-                {categories.map((c) => (
-                  <option key={c.value} value={c.value} className="text-foreground">
-                    {c.label}
-                  </option>
-                ))}
-              </select>
-              {frequencies.length > 0 && (
-                <div className="flex p-0.5 rounded-xl bg-primary-foreground/10">
-                  {frequencies.map((f) => (
-                    <button
-                      key={f}
-                      onClick={() => setFreq(f)}
-                      className={`flex-1 text-xs font-semibold rounded-lg py-2 transition-colors ${
-                        freq === f
-                          ? "bg-accent text-accent-foreground"
-                          : "text-primary-foreground/70 hover:text-primary-foreground"
-                      }`}
-                    >
-                      {f === "single" ? "Single" : "Monthly"}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className={`grid gap-2 ${displayPrices.length <= 4 ? "grid-cols-4" : "grid-cols-5"}`}>
-              {displayPrices.map((p) => (
-                <button
-                  key={p.gbpAmount}
-                  onClick={() => selectAmount(p.gbpAmount)}
-                  className={`py-2.5 rounded-xl text-sm font-bold transition-all ${
-                    amount === p.gbpAmount
-                      ? "bg-accent text-accent-foreground"
-                      : "bg-primary-foreground/10 hover:bg-primary-foreground/20"
-                  }`}
-                >
-                  {symbol}{p.displayAmount}
-                </button>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full bg-primary-foreground/10 hover:bg-primary-foreground/20 text-primary-foreground text-xs font-semibold rounded-xl px-3 py-2.5 border border-primary-foreground/15 focus:outline-none focus:ring-2 focus:ring-accent cursor-pointer"
+              aria-label="Donation category"
+            >
+              {categories.map((c) => (
+                <option key={c.value} value={c.value} className="text-foreground">
+                  {c.label}
+                </option>
               ))}
-            </div>
-            <p className="text-[11px] text-center text-primary-foreground/75">{currentImpact}</p>
+            </select>
+
+            {showPricePicker && (
+              <QuickDonatePricePicker
+                sourceCurrency={sourceCurrency}
+                displayPrices={displayPrices}
+                showPresets={showPresets}
+                showCustomAmount={showCustomAmount}
+                amount={amount}
+                custom={custom}
+                customAmountActive={customAmountActive}
+                selectedPresetDescription={selectedPresetDescription}
+                onSelectAmount={selectAmount}
+                onOpenCustom={openCustomInput}
+                onUpdateCustom={updateCustomAmount}
+                dark
+                compact
+              />
+            )}
+
+            {showRamadanSection && selectedCampaign && (
+              <QuickDonateRamadanSection
+                campaign={selectedCampaign}
+                givingOption={ramadanGivingOption}
+                selectedDates={ramadanSelectedDates}
+                onGivingOptionChange={setRamadanGivingOption}
+                onSelectedDatesChange={setRamadanSelectedDates}
+                compact
+                dark
+              />
+            )}
+
+            <p className="text-[11px] text-center text-primary-foreground/75">{impactText}</p>
           </div>
         )}
 
@@ -140,6 +160,7 @@ const StickyDonationBar = () => {
             aria-label="Choose amount"
           >
             <span className="font-bold">{symbol}{finalAmount}</span>
+            {freq === "monthly" && <span className="text-[10px] opacity-80">/mo</span>}
             {open ? <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <ChevronUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
           </button>
           <Button
