@@ -120,7 +120,7 @@ function BlogDetailPageApi({ slug }: { slug: string }) {
           <div className="absolute inset-0" style={{ backgroundImage: "radial-gradient(circle at 25% 25%, white 1px, transparent 1px)", backgroundSize: "40px 40px" }} />
         </div>
 
-        <div className="container mx-auto max-w-5xl px-4 relative">
+        <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative">
           {/* Breadcrumbs */}
           <nav className="flex items-center gap-2 text-sm text-purple-300">
             <Link href="/" className="hover:text-white transition-colors">Home</Link>
@@ -133,11 +133,11 @@ function BlogDetailPageApi({ slug }: { slug: string }) {
           <div className="mt-6">
             <p className="text-sm font-medium uppercase tracking-[0.3em] text-purple-300">Blog</p>
             <div className="mt-3 h-0.5 w-12 rounded-full bg-lime-400" />
-            <h1 className="mt-4 text-3xl font-bold leading-tight tracking-tight text-white md:text-4xl lg:text-5xl max-w-4xl">
+            <h1 className="mt-4 text-3xl font-bold leading-tight tracking-tight text-white md:text-4xl lg:text-5xl max-w-5xl">
               {post.title}
             </h1>
             {post.excerpt && (
-              <p className="mt-4 max-w-3xl text-lg leading-relaxed text-purple-200">{post.excerpt}</p>
+              <p className="mt-4 max-w-4xl text-lg leading-relaxed text-purple-200">{post.excerpt}</p>
             )}
 
             <div className="mt-6 flex flex-wrap items-center gap-4">
@@ -173,8 +173,8 @@ function BlogDetailPageApi({ slug }: { slug: string }) {
       </section>
 
       {/* Content Area */}
-      <section className="container mx-auto max-w-5xl px-4 py-10">
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
+      <section className="container mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px] xl:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
           {/* Main Content */}
           <article className="min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-white p-6 shadow-sm md:p-8">
             {post.featuredImage && (
