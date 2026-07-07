@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { prepareEmailHtmlForSend } from "./emailHtml.js";
 import type { Donation } from "../components/donation/donation.entity.js";
 import type { RecurringDonation } from "../components/recurringDonation/recurringDonation.entity.js";
 
@@ -63,7 +64,7 @@ export async function sendMail(options: {
       from: fromAddress(),
       to: options.to,
       subject: options.subject,
-      html: options.html,
+      html: prepareEmailHtmlForSend(options.html),
       text: options.text || options.html.replace(/<[^>]+>/g, " "),
       attachments: options.attachments,
     });

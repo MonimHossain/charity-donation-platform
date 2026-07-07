@@ -5,6 +5,7 @@ import { EmailCampaign } from "../../components/email/emailCampaign.entity.js";
 import { EmailLog } from "../../components/email/emailLog.entity.js";
 import { EmailTemplate } from "../../components/email/emailTemplate.entity.js";
 import { SiteSettings } from "../../components/cms/siteSettings.entity.js";
+import { prepareEmailHtmlForSend } from "../../helper/emailHtml.js";
 import { sendMail } from "../../helper/mailer.js";
 import { getEmailSettings } from "../notifications/emailSettings.service.js";
 import {
@@ -189,9 +190,10 @@ export async function previewEmailTemplate(req: Request, res: Response) {
     ...(mergeData || {}),
   };
 
+  const renderedHtml = renderTemplateHtml(tpl.htmlBody, sample);
   return res.json({
     subject: renderTemplateSubject(tpl.subject, sample),
-    html: renderTemplateHtml(tpl.htmlBody, sample),
+    html: prepareEmailHtmlForSend(renderedHtml),
   });
 }
 
