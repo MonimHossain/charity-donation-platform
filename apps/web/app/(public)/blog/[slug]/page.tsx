@@ -8,6 +8,7 @@ import Link from "next/link";
 import { Loader2, Calendar, Clock, User, ChevronRight, Share2, Copy, Check } from "lucide-react";
 import BlogContentRenderer from "@/components/blog/BlogContentRenderer";
 import { BlogPostFaqs } from "@/components/blog/BlogPostFaqs";
+import { BlogPostSidebar } from "@/components/blog/BlogPostSidebar";
 import type { EntityFaqItem } from "@repo/shared-types";
 import { fetchBlogPostBySlug, subscribeNewsletter } from "@/lib/api";
 import { resolveMediaUrl } from "@/lib/campaign-media";
@@ -117,7 +118,7 @@ function BlogDetailPageApi({ slug }: { slug: string }) {
   const breadcrumbTitle = post.title.length > 38 ? `${post.title.slice(0, 38).trimEnd()}...` : post.title;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-purple-50/30 to-white">
+    <div className="min-h-screen bg-gradient-to-b from-purple-50/30 to-white overflow-visible">
       {/* Hero Header */}
       <section className="relative overflow-hidden bg-gradient-to-br from-purple-900 via-purple-800 to-purple-700 py-12 lg:py-16">
         <div className="absolute inset-0 opacity-10">
@@ -176,9 +177,9 @@ function BlogDetailPageApi({ slug }: { slug: string }) {
         </div>
       </section>
 
-      {/* Content Area */}
-      <section className="container mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px] xl:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
+      {/* Content Area — overflow visible so position:sticky works on the sidebar */}
+      <section className="container mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 overflow-visible">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px] xl:grid-cols-[minmax(0,1fr)_300px] items-start overflow-visible">
           {/* Main Content */}
           <article className="min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-white p-6 shadow-sm md:p-8">
             {post.featuredImage && (
@@ -192,9 +193,8 @@ function BlogDetailPageApi({ slug }: { slug: string }) {
             <BlogPostFaqs faqs={post.faqs || []} />
           </article>
 
-          {/* Sidebar — sticks below site nav while reading the article */}
-          <aside className="w-full lg:self-start">
-            <div className="space-y-6 lg:sticky lg:top-20 lg:z-10 lg:max-h-[calc(100dvh-5.5rem)] lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
+          {/* Sidebar — stays visible while scrolling the article (desktop) */}
+          <BlogPostSidebar>
             {/* Share Card */}
             <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
               <p className="text-xs font-medium uppercase tracking-wider text-purple-600">Share</p>
@@ -286,8 +286,7 @@ function BlogDetailPageApi({ slug }: { slug: string }) {
               </svg>
               Back to all articles
             </Link>
-            </div>
-          </aside>
+          </BlogPostSidebar>
         </div>
       </section>
     </div>
