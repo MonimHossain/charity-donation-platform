@@ -6,7 +6,7 @@ import { BlogCategory } from "../../components/blog/blogCategory.entity.js";
 import { In } from "typeorm";
 import { logAudit } from "../../helper/auditLog.js";
 import { normalizeOptionalMediaUrl, normalizeStoredMediaUrl } from "../../helper/storage.js";
-import { mapBlogPostForClient, normalizeEntityFaqs, normalizeSeoSettingsPayload } from "./blogSeo.js";
+import { mapBlogPostForClient, normalizeEntityFaqs, normalizeSeoSettingsPayload, optionalMetaField, seoSettingsToRecord } from "./blogSeo.js";
 
 const repo = () => AppDataSource.getRepository(BlogPost);
 const categoryRepo = () => AppDataSource.getRepository(BlogCategory);
@@ -237,11 +237,11 @@ export async function createBlogPost(req: Request, res: Response) {
       featuredImage: featuredImage ? normalizeStoredMediaUrl(featuredImage) : undefined,
       author: author || "Editorial Team",
       tags: tags || [],
-      categoryId: categoryId || null,
+      categoryId: categoryId || undefined,
       status: resolvedStatus,
-      metaTitle: resolvedSeo.metaTitle || null,
-      metaDescription: resolvedSeo.metaDescription || null,
-      seoSettings: resolvedSeo,
+      metaTitle: optionalMetaField(resolvedSeo.metaTitle),
+      metaDescription: optionalMetaField(resolvedSeo.metaDescription),
+      seoSettings: seoSettingsToRecord(resolvedSeo),
       faqs: normalizeEntityFaqs(faqs),
       isFeatured: isFeatured || false,
       publishedAt: publishedAt
@@ -311,19 +311,21 @@ export async function updateBlogPost(req: Request, res: Response) {
       const resolvedSeo = normalizeSeoSettingsPayload(seoSettings);
       if (metaTitle !== undefined) resolvedSeo.metaTitle = metaTitle;
       if (metaDescription !== undefined) resolvedSeo.metaDescription = metaDescription;
-      post.seoSettings = resolvedSeo;
-      post.metaTitle = resolvedSeo.metaTitle || null;
-      post.metaDescription = resolvedSeo.metaDescription || null;
+      post.seoSettings = seoSettingsToRecord(resolvedSeo);
+      post.metaTitle = optionalMetaField(resolvedSeo.metaTitle);
+      post.metaDescription = optionalMetaField(resolvedSeo.metaDescription);
     } else if (metaTitle !== undefined || metaDescription !== undefined) {
-      post.seoSettings = normalizeSeoSettingsPayload({
-        ...(post.seoSettings || {}),
-        metaTitle: post.metaTitle,
-        metaDescription: post.metaDescription,
-      });
+      post.seoSettings = seoSettingsToRecord(
+        normalizeSeoSettingsPayload({
+          ...(post.seoSettings || {}),
+          metaTitle: post.metaTitle,
+          metaDescription: post.metaDescription,
+        })
+      );
     }
     if (faqs !== undefined) post.faqs = normalizeEntityFaqs(faqs);
     if (isFeatured !== undefined) post.isFeatured = isFeatured;
-    if (categoryId !== undefined) post.categoryId = categoryId || null;
+    if (categoryId !== undefined) post.categoryId = categoryId || undefined;
 
     if (publishedAt !== undefined) {
       post.publishedAt = publishedAt ? new Date(publishedAt) : undefined;

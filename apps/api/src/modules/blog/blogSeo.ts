@@ -19,6 +19,16 @@ export function normalizeSeoSettingsPayload(raw: unknown): EntitySeoSettings {
   return out;
 }
 
+/** Persist SEO JSON on blog_posts (entity column is Record<string, unknown>). */
+export function seoSettingsToRecord(seo: EntitySeoSettings): Record<string, unknown> {
+  return { ...seo } as Record<string, unknown>;
+}
+
+export function optionalMetaField(value?: string | null): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed || undefined;
+}
+
 export function normalizeEntityFaqs(raw: unknown): Array<{
   id: string;
   question: string;
