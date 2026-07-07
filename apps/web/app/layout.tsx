@@ -2,7 +2,7 @@ import { AppProviders } from "@/components/providers/AppProviders";
 import { Toaster } from "@/components/ui/sonner";
 import GTMScript from "@/components/analytics/GTMScript";
 import GTMPageView from "@/components/analytics/GTMPageView";
-import { getServerGtmId } from "@/lib/server/cms";
+import { getServerGtmId, getServerSiteMetadata } from "@/lib/server/cms";
 import type { Metadata } from "next";
 import { Inter, Fraunces } from "next/font/google";
 import { Suspense } from "react";
@@ -22,35 +22,46 @@ const fraunces = Fraunces({
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://yourimpactdev.com";
 
-export const metadata: Metadata = {
-  metadataBase: new URL(appUrl),
-  title: {
-    default: "Charity Donation Platform — Making a Difference Together",
-    template: "%s | Charity Donation Platform",
-  },
-  description:
-    "A trusted charity platform delivering food, water, education and emergency aid to communities worldwide. 100% donation policy on Zakat.",
-  icons: {
-    icon: "/images/favicon.png",
-    shortcut: "/images/favicon.png",
-    apple: "/images/favicon.png",
-  },
-  openGraph: {
-    type: "website",
-    siteName: "Charity Donation Platform",
-    title: "Charity Donation Platform — Making a Difference Together",
-    description:
-      "A trusted charity platform delivering food, water, education and emergency aid to communities worldwide. 100% donation policy on Zakat.",
-    images: [{ url: "/images/hero-1.webp", width: 1200, height: 630, alt: "Charity Donation Platform" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Charity Donation Platform — Making a Difference Together",
-    description:
-      "A trusted charity platform delivering food, water, education and emergency aid to communities worldwide.",
-    images: ["/images/hero-1.webp"],
-  },
-};
+function siteBrandLabel(siteName: string): string {
+  const first = siteName.split("|")[0]?.trim();
+  return first || siteName;
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const site = await getServerSiteMetadata();
+  const title = site.siteName;
+  const description = site.siteDescription;
+  const brand = siteBrandLabel(title);
+  const favicon = site.faviconUrl || "/images/favicon.png";
+  const ogImage = site.logoUrl || "/images/hero-1.webp";
+
+  return {
+    metadataBase: new URL(appUrl),
+    title: {
+      default: title,
+      template: `%s | ${brand}`,
+    },
+    description,
+    icons: {
+      icon: favicon,
+      shortcut: favicon,
+      apple: favicon,
+    },
+    openGraph: {
+      type: "website",
+      siteName: brand,
+      title,
+      description,
+      images: [{ url: ogImage, width: 1200, height: 630, alt: brand }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [ogImage],
+    },
+  };
+}
 
 export default async function RootLayout({
   children,
