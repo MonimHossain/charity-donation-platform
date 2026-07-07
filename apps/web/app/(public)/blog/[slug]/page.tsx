@@ -179,7 +179,7 @@ function BlogDetailPageApi({ slug }: { slug: string }) {
 
       {/* Content Area — overflow visible so position:sticky works on the sidebar */}
       <section className="container mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 overflow-visible">
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px] xl:grid-cols-[minmax(0,1fr)_300px] items-start overflow-visible">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px] xl:grid-cols-[minmax(0,1fr)_300px] lg:items-stretch overflow-visible">
           {/* Main Content */}
           <article className="min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-white p-6 shadow-sm md:p-8">
             {post.featuredImage && (
