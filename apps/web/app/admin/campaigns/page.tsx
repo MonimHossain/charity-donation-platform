@@ -452,6 +452,18 @@ function normalizeCampaignAttributes(attributes: CampaignAttribute[]) {
   return syncAttributeSortOrders(attributes.map(normalizeAttributePayment));
 }
 
+/** Parse tags from a comma-separated field without rewriting the input on every keystroke. */
+function parseCommaSeparatedTags(value: string): string[] {
+  return value
+    .split(",")
+    .map((t) => t.trim())
+    .filter(Boolean);
+}
+
+function formatTagsInput(tags: string[]): string {
+  return tags.join(", ");
+}
+
 // ── Main Page ──
 
 export default function CampaignsPage() {
@@ -461,6 +473,7 @@ export default function CampaignsPage() {
   const [showEditor, setShowEditor] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<CampaignForm>({ ...defaultForm });
+  const [tagsInput, setTagsInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [statusUpdating, setStatusUpdating] = useState<string | null>(null);
@@ -522,6 +535,7 @@ export default function CampaignsPage() {
 
   function openCreate() {
     setForm({ ...defaultForm, attributes: [], upsellIds: [] });
+    setTagsInput("");
     setEditingId(null);
     setCurrentStepIndex(0);
     setShowEditor(true);
@@ -597,6 +611,7 @@ export default function CampaignsPage() {
 
   function openEdit(c: Campaign) {
     setForm(campaignToForm(c));
+    setTagsInput(formatTagsInput(c.tags || []));
     setEditingId(c.id);
     setCurrentStepIndex(0);
     setShowEditor(true);
@@ -619,6 +634,7 @@ export default function CampaignsPage() {
         },
       })
     );
+    setTagsInput(formatTagsInput(c.tags || []));
     setEditingId(null);
     setCurrentStepIndex(0);
     setShowEditor(true);
@@ -685,8 +701,10 @@ export default function CampaignsPage() {
           .toLowerCase()
           .replace(/[^a-z0-9]+/g, "-")
           .replace(/(^-|-$)/g, "");
+      const tags = parseCommaSeparatedTags(tagsInput);
       const payload = {
         ...form,
+        tags,
         slug,
         attributes: normalizeCampaignAttributes(form.attributes),
         expiresAt:
@@ -1188,15 +1206,18 @@ export default function CampaignsPage() {
             <div className="space-y-2">
               <Label>Tags (comma-separated)</Label>
               <Input
-                value={form.tags.join(", ")}
-                onChange={(e) =>
-                  setForm((p) => ({
-                    ...p,
-                    tags: e.target.value.split(",").map((t) => t.trim()).filter(Boolean),
-                  }))
-                }
+                value={tagsInput}
+                onChange={(e) => setTagsInput(e.target.value)}
+                onBlur={() => {
+                  const parsed = parseCommaSeparatedTags(tagsInput);
+                  setForm((p) => ({ ...p, tags: parsed }));
+                  setTagsInput(formatTagsInput(parsed));
+                }}
                 placeholder="zakat, sadaqah, education"
               />
+              <p className="text-xs text-muted-foreground">
+                Separate tags with commas. Example: zakat, sadaqah, education
+              </p>
             </div>
             <div className="flex flex-wrap gap-6">
               <div className="space-y-1">

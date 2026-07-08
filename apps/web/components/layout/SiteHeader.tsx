@@ -171,6 +171,7 @@ export default function SiteHeader() {
               <CurrencySwitcher />
             </div>
             <div className="flex md:hidden items-center gap-0.5 shrink-0">
+              <GlobalSearch variant="icon" />
               <LanguageSwitcher compact />
               <CurrencySwitcher compact />
             </div>
