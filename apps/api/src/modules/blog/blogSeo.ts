@@ -61,12 +61,27 @@ export function mapBlogPostForClient(post: {
   faqs?: unknown;
 }) {
   const seoSettings = normalizeSeoSettingsPayload(post.seoSettings);
-  if (!seoSettings.metaTitle?.trim() && post.metaTitle) seoSettings.metaTitle = post.metaTitle;
-  if (!seoSettings.metaDescription?.trim() && post.metaDescription) {
-    seoSettings.metaDescription = post.metaDescription;
+  const columnTitle = post.metaTitle?.trim() || "";
+  const columnDescription = post.metaDescription?.trim() || "";
+
+  if (!seoSettings.metaTitle?.trim() && columnTitle) {
+    seoSettings.metaTitle = columnTitle;
   }
+  if (!seoSettings.metaDescription?.trim() && columnDescription) {
+    seoSettings.metaDescription = columnDescription;
+  }
+
+  const metaTitle = optionalMetaField(seoSettings.metaTitle) ?? optionalMetaField(columnTitle);
+  const metaDescription =
+    optionalMetaField(seoSettings.metaDescription) ?? optionalMetaField(columnDescription);
+
+  if (metaTitle) seoSettings.metaTitle = metaTitle;
+  if (metaDescription) seoSettings.metaDescription = metaDescription;
+
   return {
     seoSettings,
+    metaTitle,
+    metaDescription,
     faqs: normalizeEntityFaqs(post.faqs),
     featuredImage: normalizeOptionalMediaUrl(post.featuredImage),
   };

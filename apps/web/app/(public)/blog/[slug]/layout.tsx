@@ -13,7 +13,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const post = await fetchPublicBlogPost(slug);
+  const post = await fetchPublicBlogPost(slug, { noStore: true });
   if (!post) {
     return { title: "Blog post" };
   }

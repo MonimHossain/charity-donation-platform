@@ -305,8 +305,6 @@ export async function updateBlogPost(req: Request, res: Response) {
     }
     if (author !== undefined) post.author = author;
     if (tags !== undefined) post.tags = tags;
-    if (metaTitle !== undefined) post.metaTitle = metaTitle;
-    if (metaDescription !== undefined) post.metaDescription = metaDescription;
     if (seoSettings !== undefined) {
       const resolvedSeo = normalizeSeoSettingsPayload(seoSettings);
       if (metaTitle !== undefined) resolvedSeo.metaTitle = metaTitle;
@@ -315,6 +313,10 @@ export async function updateBlogPost(req: Request, res: Response) {
       post.metaTitle = optionalMetaField(resolvedSeo.metaTitle);
       post.metaDescription = optionalMetaField(resolvedSeo.metaDescription);
     } else if (metaTitle !== undefined || metaDescription !== undefined) {
+      if (metaTitle !== undefined) post.metaTitle = optionalMetaField(metaTitle);
+      if (metaDescription !== undefined) {
+        post.metaDescription = optionalMetaField(metaDescription);
+      }
       post.seoSettings = seoSettingsToRecord(
         normalizeSeoSettingsPayload({
           ...(post.seoSettings || {}),

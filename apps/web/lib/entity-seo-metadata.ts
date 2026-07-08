@@ -18,9 +18,13 @@ export function resolveEntitySeoForDisplay(
   legacy?: { metaTitle?: string; metaDescription?: string }
 ): EntitySeoSettings {
   const normalized = normalizeEntitySeoSettings(seo, legacy);
-  const title = normalized.metaTitle?.trim() || fallbacks.title;
+  const legacyTitle = legacy?.metaTitle?.trim();
+  const legacyDescription = legacy?.metaDescription?.trim();
+  const title =
+    normalized.metaTitle?.trim() || legacyTitle || fallbacks.title;
   const description =
     normalized.metaDescription?.trim() ||
+    legacyDescription ||
     normalized.seoExcerpt?.trim() ||
     fallbacks.description ||
     fallbacks.excerpt ||
@@ -65,9 +69,12 @@ export function buildMetadataFromEntitySeo(
   const ogImage = seo.ogImage || seo.seoFeaturedImage;
   const twitterImage = seo.twitterImage || ogImage;
 
+  const pageTitle = seo.metaTitle?.trim() || fallbacks.title;
+  const pageDescription = seo.metaDescription?.trim() || fallbacks.description;
+
   return {
-    title: seo.metaTitle || fallbacks.title,
-    description: seo.metaDescription || fallbacks.description,
+    title: seo.metaTitle?.trim() ? { absolute: seo.metaTitle.trim() } : pageTitle,
+    description: pageDescription,
     alternates: canonical ? { canonical } : undefined,
     robots: {
       index: !noIndex,

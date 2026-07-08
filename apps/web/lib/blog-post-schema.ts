@@ -1,6 +1,7 @@
 import {
   buildFaqSchemaJsonLd,
   parseCustomSchemaJson,
+  resolveEntitySeoForDisplay,
 } from "@/lib/entity-seo-metadata";
 
 const apiBase = () =>
@@ -8,10 +9,10 @@ const apiBase = () =>
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://yourimpactdev.com";
 
-export async function fetchPublicBlogPost(slug: string) {
+export async function fetchPublicBlogPost(slug: string, options?: { noStore?: boolean }) {
   try {
     const res = await fetch(`${apiBase()}/blog/${encodeURIComponent(slug)}`, {
-      next: { revalidate: 300 },
+      ...(options?.noStore ? { cache: "no-store" as const } : { next: { revalidate: 60 } }),
     });
     if (!res.ok) return null;
     return res.json();
@@ -33,12 +34,24 @@ export async function buildBlogPostSchemaScripts(slug: string): Promise<object[]
   if (faqSchema) scripts.push(faqSchema);
 
   const schemaType = post.seoSettings?.schemaType?.trim() || "Article";
+  const seo = resolveEntitySeoForDisplay(
+    post.seoSettings,
+    {
+      title: post.title,
+      description: post.excerpt,
+      excerpt: post.excerpt,
+      image: post.featuredImage,
+      tags: post.tags,
+      canonicalPath: `/blog/${slug}`,
+    },
+    { metaTitle: post.metaTitle, metaDescription: post.metaDescription }
+  );
   if (!custom) {
     scripts.push({
       "@context": "https://schema.org",
       "@type": schemaType,
-      headline: post.title,
-      description: post.excerpt || post.seoSettings?.metaDescription,
+      headline: seo.metaTitle || post.title,
+      description: seo.metaDescription || post.excerpt,
       image: post.featuredImage,
       datePublished: post.publishedAt,
       author: { "@type": "Person", name: post.author || "Editorial Team" },
