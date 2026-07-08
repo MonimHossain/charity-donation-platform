@@ -49,7 +49,7 @@ export default function NamazTimesPage() {
         updateLocation({
           latitude: pos.coords.latitude,
           longitude: pos.coords.longitude,
-          label: "My location",
+          label: "Finding your location…",
         });
         setLocating(false);
       },

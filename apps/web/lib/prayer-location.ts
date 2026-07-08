@@ -27,8 +27,10 @@ export function readPrayerLocation(): PrayerLocation {
   }
 }
 
-export function savePrayerLocation(location: PrayerLocation) {
+export function savePrayerLocation(location: PrayerLocation, options?: { silent?: boolean }) {
   if (typeof window === "undefined") return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(location));
-  window.dispatchEvent(new CustomEvent("prayer-location-changed", { detail: location }));
+  if (!options?.silent) {
+    window.dispatchEvent(new CustomEvent("prayer-location-changed", { detail: location }));
+  }
 }

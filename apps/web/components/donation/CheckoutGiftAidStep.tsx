@@ -42,7 +42,7 @@ export default function CheckoutGiftAidStep({
   const withGiftAid = Math.ceil(donationAmount * 1.25);
 
   return (
-    <div className="rounded-3xl bg-card border border-border p-6 lg:p-10 shadow-soft space-y-8 max-w-xl mx-auto">
+    <div className="rounded-3xl bg-card border border-border p-6 lg:p-10 shadow-soft space-y-8 max-w-xl mx-auto w-full min-w-0">
       <div className="text-center space-y-4">
         <h2 className="text-xl md:text-2xl font-semibold text-foreground leading-snug">
           Increase your donation, at no extra cost!
@@ -99,7 +99,7 @@ export default function CheckoutGiftAidStep({
       </div>
 
       {showUpsells && upsells.length > 0 && (
-        <div className="rounded-2xl bg-secondary/50 border border-border p-5 space-y-4">
+        <div className="rounded-2xl bg-secondary/50 border border-border p-5 space-y-4 min-w-0 overflow-hidden">
           <p className="text-sm font-semibold text-foreground text-center">Please support us further</p>
           <CheckoutUpsellList
             upsells={upsells}

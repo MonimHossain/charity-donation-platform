@@ -39,7 +39,7 @@ export default function CheckoutUpsellList({
   }
 
   return (
-    <div className="grid gap-2">
+    <div className="grid gap-2 min-w-0">
       {upsells.map((upsell) => {
         const selected = selectedUpsellIds.has(upsell.id);
         const expanded = expandedIds.has(upsell.id);
@@ -51,11 +51,11 @@ export default function CheckoutUpsellList({
           <div
             key={upsell.id}
             className={cn(
-              "rounded-xl border bg-card transition-colors",
+              "min-w-0 max-w-full overflow-hidden rounded-xl border bg-card transition-colors",
               selected ? "border-accent ring-1 ring-accent/30" : "border-border hover:border-accent/40"
             )}
           >
-            <div className="flex items-center gap-2 px-3 py-2.5">
+            <div className="flex items-center gap-2 px-3 py-2.5 min-w-0 max-w-full">
               <input
                 type="checkbox"
                 checked={selected}
@@ -72,8 +72,18 @@ export default function CheckoutUpsellList({
               ) : (
                 <div className="h-10 w-10 rounded-lg bg-muted shrink-0" />
               )}
-              <span className="min-w-0 flex-1 text-sm font-medium text-foreground truncate">{title}</span>
-              <span className="shrink-0 text-sm font-bold text-accent tabular-nums">
+              <div className="min-w-0 flex-1 overflow-hidden">
+                <span
+                  className="block truncate text-sm font-medium text-foreground"
+                  title={title}
+                >
+                  {title}
+                </span>
+                <span className="mt-0.5 block text-sm font-bold text-accent tabular-nums sm:hidden">
+                  {formatMoney(displayAmount, { code: displayCode })}
+                </span>
+              </div>
+              <span className="hidden sm:inline shrink-0 text-sm font-bold text-accent tabular-nums whitespace-nowrap">
                 {formatMoney(displayAmount, { code: displayCode })}
               </span>
               {hasDescription && (

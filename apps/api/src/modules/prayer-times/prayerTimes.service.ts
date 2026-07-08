@@ -27,6 +27,74 @@ function writeCache(key: string, payload: unknown) {
   cache.set(key, { expiresAt: Date.now() + CACHE_TTL_MS, payload });
 }
 
+type NominatimReverseResponse = {
+  address?: {
+    city?: string;
+    town?: string;
+    village?: string;
+    municipality?: string;
+    county?: string;
+    state_district?: string;
+    state?: string;
+    country?: string;
+  };
+};
+
+/** Resolve coordinates to "City, Country" when Aladhan meta has no place name. */
+async function reverseGeocodeLabel(latitude: number, longitude: number): Promise<string | null> {
+  const latKey = latitude.toFixed(3);
+  const lngKey = longitude.toFixed(3);
+  const geoKey = cacheKey({ type: "geocode", lat: latKey, lng: lngKey });
+  const cached = readCache<string>(geoKey);
+  if (cached) return cached;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10_000);
+  try {
+    const url = new URL("https://nominatim.openstreetmap.org/reverse");
+    url.searchParams.set("lat", String(latitude));
+    url.searchParams.set("lon", String(longitude));
+    url.searchParams.set("format", "json");
+    url.searchParams.set("accept-language", "en");
+    url.searchParams.set("zoom", "10");
+
+    const res = await fetch(url.toString(), {
+      signal: controller.signal,
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "YourImpactFoundation/1.0 (namaz-times; +https://yourimpactdev.com/namaz-times)",
+      },
+    });
+    if (!res.ok) return null;
+
+    const json = (await res.json()) as NominatimReverseResponse;
+    const a = json.address;
+    if (!a) return null;
+
+    const place =
+      a.city ||
+      a.town ||
+      a.village ||
+      a.municipality ||
+      a.county ||
+      a.state_district ||
+      a.state;
+    const country = a.country;
+
+    let label: string | null = null;
+    if (place && country) label = `${place}, ${country}`;
+    else if (country) label = country;
+    else if (place) label = place;
+
+    if (label) writeCache(geoKey, label);
+    return label;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 function todayDdMmYyyy(): string {
   const d = new Date();
   const dd = String(d.getDate()).padStart(2, "0");
@@ -139,8 +207,11 @@ export async function getPrayerTimesByCoordinates(latitude: number, longitude: n
   }
 
   const meta = data.meta as Record<string, unknown> | undefined;
+  const fromMeta = [meta?.city, meta?.country].filter(Boolean).join(", ");
+  const fromGeocode = fromMeta ? null : await reverseGeocodeLabel(latitude, longitude);
   const label =
-    [meta?.city, meta?.country].filter(Boolean).join(", ") ||
+    fromMeta ||
+    fromGeocode ||
     `Lat ${lat}, Lng ${lng}`;
 
   const payload = normalizePayload(data, label);

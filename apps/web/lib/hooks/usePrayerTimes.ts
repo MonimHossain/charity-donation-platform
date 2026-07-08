@@ -33,6 +33,25 @@ export function usePrayerTimes() {
       }
       const result = await fetchPrayerTimes(params);
       setData(result);
+
+      if (
+        loc.latitude != null &&
+        loc.longitude != null &&
+        result.location &&
+        !/^Lat\s/i.test(result.location) &&
+        result.location !== loc.label
+      ) {
+        const parts = result.location.split(",").map((s) => s.trim());
+        const enriched: PrayerLocation = {
+          ...loc,
+          label: result.location,
+          ...(parts.length >= 2
+            ? { city: parts[0], country: parts.slice(1).join(", ") }
+            : {}),
+        };
+        savePrayerLocation(enriched, { silent: true });
+        setLocation(enriched);
+      }
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||

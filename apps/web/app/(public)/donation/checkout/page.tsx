@@ -778,7 +778,7 @@ function DonationCheckoutContent() {
               )}
 
               {!showGiftAidStep && checkoutSettings.enableUpsell && checkoutUpsellOptions.length > 0 && (
-                <div className="rounded-2xl bg-secondary/50 border border-border p-5 space-y-4">
+                <div className="rounded-2xl bg-secondary/50 border border-border p-5 space-y-4 min-w-0 overflow-hidden">
                   <p className="text-sm font-semibold text-foreground">Please support us further</p>
                   <CheckoutUpsellList
                     upsells={checkoutUpsellOptions}
