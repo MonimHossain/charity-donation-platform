@@ -30,6 +30,7 @@ const ROUTE_RULES: RouteRule[] = [
   { pattern: /^\/admin\/email-management(?:\/|$)/, view: "email.view", create: "email.create", update: "email.update", delete: "email.delete" },
   { pattern: /^\/admin\/newsletter(?:\/|$)/, view: "email.view" },
   { pattern: /^\/admin\/analytics(?:\/|$)/, view: "analytics.view" },
+  { pattern: /^\/admin\/expenditures(?:\/|$)/, view: "analytics.view", update: "analytics.view" },
   { pattern: /^\/admin\/activity-logs(?:\/|$)/, view: "activity.view" },
   { pattern: /^\/admin\/audit-logs(?:\/|$)/, view: "activity.view" },
   { pattern: /^\/admin\/charities(?:\/|$)/, view: "charities.view", create: "charities.create", update: "charities.update", delete: "charities.delete" },

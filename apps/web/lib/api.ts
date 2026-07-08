@@ -1027,6 +1027,16 @@ export async function fetchAnalyticsGiftAid(params?: Record<string, string>) {
   return data;
 }
 
+export async function fetchAdminExpenditures() {
+  const { data } = await api.get("/admin/expenditures");
+  return data;
+}
+
+export async function updateAdminExpenditures(payload: Record<string, unknown>) {
+  const { data } = await api.put("/admin/expenditures", payload);
+  return data;
+}
+
 export async function fetchAnalyticsCategories(params?: Record<string, string>) {
   const { data } = await api.get("/admin/analytics/categories", { params });
   return data;

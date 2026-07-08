@@ -10,6 +10,7 @@ import {
   Coins,
   Mail,
   BarChart3,
+  Wallet,
   Users,
   Repeat,
   Tag,
@@ -33,6 +34,7 @@ export interface AdminNavItem {
 export const adminNavItems: AdminNavItem[] = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard, permission: "dashboard.view" },
   { label: "Analytics", href: "/admin/analytics", icon: BarChart3, permission: "analytics.view" },
+  { label: "Expenditures", href: "/admin/expenditures", icon: Wallet, permission: "analytics.view" },
   { label: "Campaigns", href: "/admin/campaigns", icon: Megaphone, permission: "campaigns.view" },
   { label: "Upsells", href: "/admin/upsells", icon: Sparkles, permission: "upsells.view" },
   { label: "Quick Donate Form", href: "/admin/quick-donate", icon: Coins, permission: "quick_donate.view" },

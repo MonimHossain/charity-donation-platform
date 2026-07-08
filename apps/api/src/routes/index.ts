@@ -827,6 +827,15 @@ router.get("/admin/analytics/export/donations", requireAdmin, adminPermCheck, as
   return exportDonations(req, res);
 });
 
+router.get("/admin/expenditures", requireAdmin, adminPermCheck, async (req, res) => {
+  const { getAdminExpenditures } = await import("../modules/expenditures/expenditures.controller.js");
+  return getAdminExpenditures(req, res);
+});
+router.put("/admin/expenditures", requireAdmin, adminPermCheck, async (req, res) => {
+  const { updateAdminExpenditures } = await import("../modules/expenditures/expenditures.controller.js");
+  return updateAdminExpenditures(req, res);
+});
+
 // ═══════════════════════════════════
 // ADMIN ACTIVITY LOGS
 // ═══════════════════════════════════

@@ -44,6 +44,7 @@ import { User } from "../components/user/user.entity.js";
 import { ZakatCalculation } from "../components/zakat/zakatCalculation.entity.js";
 import { ZakatPage } from "../components/cms/zakatPage.entity.js";
 import { BackupHistory } from "../components/backup/backupHistory.entity.js";
+import { ExpenditureSettings } from "../components/admin/expenditureSettings.entity.js";
 import { applyPlatformEnhancementSchemaPatches } from "./schemaPatches.js";
 
 const dbHost = process.env.DB_HOST ?? "localhost";
@@ -109,6 +110,7 @@ const entities = [
   ZakatCalculation,
   ZakatPage,
   BackupHistory,
+  ExpenditureSettings,
 ];
 
 export const AppDataSource = new DataSource({
