@@ -83,14 +83,14 @@ function PresetAmountButtons({
 
   const chipClass = (active: boolean) =>
     cn(
-      "min-w-[88px] px-4 py-2.5 rounded-xl border-2 text-sm font-bold transition-all text-center",
+      "min-w-0 flex-1 basis-[calc(50%-0.3125rem)] sm:flex-none sm:basis-auto sm:min-w-[88px] px-3 sm:px-4 py-2.5 rounded-xl border-2 text-sm font-bold transition-all text-center",
       active
         ? "bg-accent text-accent-foreground border-accent shadow-sm"
         : "bg-background border-accent/40 text-foreground hover:border-accent hover:bg-accent/5"
     );
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 min-w-0">
       <div className="flex flex-wrap gap-2.5">
         {presets.map((preset) => {
           const selected = selectedAmount === preset.amount && !customAmountActive;
@@ -102,7 +102,7 @@ function PresetAmountButtons({
               onClick={() => onSelect(preset.amount, preset.description)}
               className={chipClass(selected)}
             >
-              <span className="block text-base leading-none">
+              <span className="block text-sm sm:text-base leading-none tabular-nums break-all">
                 {formatFromSource(preset.amount, sourceCurrency)}
               </span>
             </button>
@@ -227,12 +227,12 @@ export function CampaignDonationCard({
   );
 
   return (
-    <div className="rounded-3xl bg-card border border-border p-6 lg:p-7 shadow-lift space-y-5">
-      <div className="flex items-center justify-between">
-        <p className="text-xs uppercase tracking-widest text-accent-deep font-bold">
+    <div className="rounded-3xl bg-card border border-border p-5 sm:p-6 lg:p-7 shadow-lift space-y-5 min-w-0 max-w-full overflow-hidden">
+      <div className="flex items-center justify-between gap-2 min-w-0">
+        <p className="text-xs uppercase tracking-widest text-accent-deep font-bold truncate">
           Donate · {campaign.currency}
         </p>
-        <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+        <span className="flex items-center gap-1 text-[11px] text-muted-foreground shrink-0">
           <Lock className="w-3 h-3" /> Secure checkout
         </span>
       </div>

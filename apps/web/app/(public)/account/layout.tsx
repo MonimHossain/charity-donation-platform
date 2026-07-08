@@ -93,8 +93,8 @@ export default function AccountLayout({
   }
 
   return (
-    <section className="container-wide py-8 lg:py-12">
-      <div className="lg:grid lg:grid-cols-12 lg:gap-8">
+    <section className="container-wide py-8 lg:py-12 max-w-full overflow-x-hidden">
+      <div className="lg:grid lg:grid-cols-12 lg:gap-8 min-w-0">
         {/* Mobile nav toggle */}
         <div className="lg:hidden mb-4 flex items-center justify-between">
           <h1 className="font-serif text-xl text-primary">My Account</h1>
@@ -166,7 +166,7 @@ export default function AccountLayout({
         </aside>
 
         {/* Main content */}
-        <main className="lg:col-span-9">{children}</main>
+        <main className="lg:col-span-9 min-w-0 max-w-full">{children}</main>
       </div>
     </section>
   );

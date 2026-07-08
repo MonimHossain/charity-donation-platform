@@ -192,7 +192,7 @@ export function RamadanSplitForm({
         </div>
 
         {/* Amount */}
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {PRESET_AMOUNTS.map((a) => {
             const active = !customAmountMode && !customAmount && amount === a;
             return (
@@ -216,7 +216,7 @@ export function RamadanSplitForm({
               setCustomAmountMode(true);
               setCustomAmount(customAmount || String(convertToDisplay(amount, sourceCurrency)));
             }}
-            className={pillClass(customAmountMode)}
+            className={cn(pillClass(customAmountMode), "col-span-2 sm:col-span-1")}
           >
             Other
           </button>
@@ -297,7 +297,7 @@ export function RamadanSplitForm({
               Tap nights to include ({selectedOrdered.length} selected). Your gift is split equally
               across selected nights.
             </p>
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
               {calendarDates.map((date) => {
                 const selected = selectedDates.includes(date);
                 return (

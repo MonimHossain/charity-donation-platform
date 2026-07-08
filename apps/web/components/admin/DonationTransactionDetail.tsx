@@ -65,7 +65,7 @@ export default function DonationTransactionDetail({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0 max-w-full">
       <div className="flex flex-wrap items-center gap-3">
         <Button variant="outline" size="sm" asChild className="rounded-full">
           <Link href={backHref}>← {backLabel}</Link>
@@ -78,11 +78,11 @@ export default function DonationTransactionDetail({
       </div>
 
       {/* Amount header — Stripe-like */}
-      <div className="rounded-2xl border bg-card shadow-soft p-6 sm:p-8">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-          <div>
+      <div className="rounded-2xl border bg-card shadow-soft p-5 sm:p-8 min-w-0 overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 min-w-0">
+          <div className="min-w-0">
             <p className="text-sm text-muted-foreground">Amount</p>
-            <p className="font-serif text-4xl font-bold text-primary tabular-nums mt-1">
+            <p className="font-serif text-3xl sm:text-4xl font-bold text-primary tabular-nums mt-1 break-words">
               {formatMoney(Number(donation.totalAmount ?? donation.amount ?? 0), {
                 from: currency,
                 code: currency,
@@ -109,61 +109,63 @@ export default function DonationTransactionDetail({
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-2xl border bg-card shadow-soft p-6 space-y-4">
+      <div className="grid gap-6 lg:grid-cols-2 min-w-0">
+        <div className="rounded-2xl border bg-card shadow-soft p-5 sm:p-6 space-y-4 min-w-0 overflow-hidden">
           <h3 className="font-semibold text-primary">Customer</h3>
           <dl className="space-y-3 text-sm">
-            <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">Name</dt>
-              <dd className="font-medium text-right">{donation.donorName || "—"}</dd>
+            <div className="flex justify-between gap-4 min-w-0">
+              <dt className="text-muted-foreground shrink-0">Name</dt>
+              <dd className="font-medium text-right break-words min-w-0">{donation.donorName || "—"}</dd>
             </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">Email</dt>
-              <dd className="font-medium text-right break-all">{donation.donorEmail || "—"}</dd>
+            <div className="flex justify-between gap-4 min-w-0">
+              <dt className="text-muted-foreground shrink-0">Email</dt>
+              <dd className="font-medium text-right break-all min-w-0">{donation.donorEmail || "—"}</dd>
             </div>
             {donation.donorPhone && (
-              <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">Phone</dt>
-                <dd className="font-medium">{donation.donorPhone}</dd>
+              <div className="flex justify-between gap-4 min-w-0">
+                <dt className="text-muted-foreground shrink-0">Phone</dt>
+                <dd className="font-medium break-all text-right min-w-0">{donation.donorPhone}</dd>
               </div>
             )}
           </dl>
         </div>
 
-        <div className="rounded-2xl border bg-card shadow-soft p-6 space-y-4">
+        <div className="rounded-2xl border bg-card shadow-soft p-5 sm:p-6 space-y-4 min-w-0 overflow-hidden">
           <h3 className="font-semibold text-primary">Payment details</h3>
           <dl className="space-y-3 text-sm">
-            <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">Transaction ID</dt>
-              <dd className="flex items-center gap-1 font-mono text-xs">
-                {donation.id.slice(0, 12)}…
-                <button type="button" onClick={copyId} className="p-1 hover:bg-muted rounded">
+            <div className="flex justify-between gap-4 min-w-0">
+              <dt className="text-muted-foreground shrink-0">Transaction ID</dt>
+              <dd className="flex items-center gap-1 font-mono text-xs min-w-0">
+                <span className="truncate">{donation.id.slice(0, 12)}…</span>
+                <button type="button" onClick={copyId} className="p-1 hover:bg-muted rounded shrink-0">
                   {copied ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
                 </button>
               </dd>
             </div>
             {donation.receiptNumber && (
-              <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">Receipt #</dt>
-                <dd className="font-medium">{donation.receiptNumber}</dd>
+              <div className="flex justify-between gap-4 min-w-0">
+                <dt className="text-muted-foreground shrink-0">Receipt #</dt>
+                <dd className="font-medium break-all text-right min-w-0">{donation.receiptNumber}</dd>
               </div>
             )}
-            <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">Method</dt>
-              <dd className="font-medium capitalize">{formatPaymentProvider(donation.paymentMethod)}</dd>
+            <div className="flex justify-between gap-4 min-w-0">
+              <dt className="text-muted-foreground shrink-0">Method</dt>
+              <dd className="font-medium capitalize text-right">{formatPaymentProvider(donation.paymentMethod)}</dd>
             </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">Date</dt>
-              <dd className="font-medium">
+            <div className="flex justify-between gap-4 min-w-0">
+              <dt className="text-muted-foreground shrink-0">Date</dt>
+              <dd className="font-medium text-right break-words min-w-0">
                 {donation.createdAt
                   ? new Date(donation.createdAt).toLocaleString("en-GB")
                   : "—"}
               </dd>
             </div>
             {donation.stripePaymentIntentId && (
-              <div className="flex justify-between gap-4 items-center">
-                <dt className="text-muted-foreground">Stripe PI</dt>
-                <dd className="font-mono text-xs">{donation.stripePaymentIntentId}</dd>
+              <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:gap-4 min-w-0">
+                <dt className="text-muted-foreground shrink-0">Stripe PI</dt>
+                <dd className="font-mono text-xs break-all min-w-0 sm:text-right">
+                  {donation.stripePaymentIntentId}
+                </dd>
               </div>
             )}
           </dl>
@@ -176,12 +178,12 @@ export default function DonationTransactionDetail({
           )}
         </div>
 
-        <div className="rounded-2xl border bg-card shadow-soft p-6 space-y-4 lg:col-span-2">
+        <div className="rounded-2xl border bg-card shadow-soft p-5 sm:p-6 space-y-4 lg:col-span-2 min-w-0 overflow-hidden">
           <h3 className="font-semibold text-primary">Donation</h3>
           <dl className="grid gap-3 sm:grid-cols-2 text-sm">
-            <div className="flex justify-between gap-4 sm:flex-col sm:gap-1">
-              <dt className="text-muted-foreground">Campaign</dt>
-              <dd className="font-medium">{campaignTitle}</dd>
+            <div className="flex justify-between gap-4 sm:flex-col sm:gap-1 min-w-0">
+              <dt className="text-muted-foreground shrink-0">Campaign</dt>
+              <dd className="font-medium break-words text-right sm:text-left min-w-0">{campaignTitle}</dd>
             </div>
             <div className="flex justify-between gap-4 sm:flex-col sm:gap-1">
               <dt className="text-muted-foreground">Frequency</dt>
@@ -205,7 +207,7 @@ export default function DonationTransactionDetail({
       </div>
 
       {(donation.status === "failed" || donation.status === "pending" || failedLogs.length > 0) && (
-        <div className="rounded-2xl border border-red-200 bg-red-50/50 p-6 space-y-4">
+        <div className="rounded-2xl border border-red-200 bg-red-50/50 p-5 sm:p-6 space-y-4 min-w-0 overflow-hidden">
           <h3 className="font-semibold text-red-800">Failed / incomplete payment</h3>
           <PaymentLogsTable
             logs={failedLogs.length ? failedLogs : donation.paymentLogs || []}
@@ -214,7 +216,7 @@ export default function DonationTransactionDetail({
         </div>
       )}
 
-      <div className="space-y-3">
+      <div className="space-y-3 min-w-0">
         <h3 className="font-semibold text-primary">Payment history</h3>
         <PaymentLogsTable logs={donation.paymentLogs || []} />
       </div>

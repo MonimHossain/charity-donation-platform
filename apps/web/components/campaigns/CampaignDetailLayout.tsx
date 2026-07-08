@@ -89,12 +89,12 @@ export function CampaignDetailLayout({
     <PageShell title={pageTitle} description={pageDescription}>
       {/* Hero + overview — clean layout like yourimpactfdn.vercel.app/causes/orphans */}
       <section className="bg-background">
-        <div className="container-wide pt-8 pb-16 lg:pt-12 lg:pb-20">
-          <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+        <div className="container-wide pt-8 pb-16 lg:pt-12 lg:pb-20 max-w-full overflow-x-hidden">
+          <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-start min-w-0">
             {/* Left: banner → tags → title → short description → stats */}
             <div
               className={cn(
-                "min-w-0",
+                "min-w-0 max-w-full",
                 showSidebar ? "lg:col-span-7 xl:col-span-8" : "lg:col-span-12 max-w-3xl"
               )}
             >
@@ -141,12 +141,12 @@ export function CampaignDetailLayout({
               )}
 
               {/* Title */}
-              <h1 className="mt-3 font-serif text-4xl md:text-5xl lg:text-6xl leading-[1.05] text-primary">
+              <h1 className="mt-3 font-serif text-3xl sm:text-4xl md:text-5xl lg:text-6xl leading-[1.05] text-primary break-words text-balance">
                 {campaign.title}
               </h1>
 
               {/* 3. Short description */}
-              <p className="mt-5 text-lg max-w-xl font-medium leading-relaxed text-muted-foreground">
+              <p className="mt-5 text-base sm:text-lg max-w-xl font-medium leading-relaxed text-muted-foreground break-words">
                 {campaign.shortDescription}
               </p>
 
@@ -158,17 +158,17 @@ export function CampaignDetailLayout({
 
               {/* Fundraiser stats card */}
               {isFundraiser && fs?.targetAmount > 0 && (
-                <div className="mt-8 max-w-md rounded-2xl bg-card text-primary p-5 border border-border shadow-lift">
-                  <div className="flex items-end justify-between text-sm font-semibold">
-                    <div>
+                <div className="mt-8 max-w-md rounded-2xl bg-card text-primary p-5 border border-border shadow-lift min-w-0">
+                  <div className="flex items-end justify-between gap-3 text-sm font-semibold">
+                    <div className="min-w-0">
                       <p className="text-primary/70 text-[11px] uppercase tracking-widest">Raised</p>
-                      <p className="font-serif text-2xl mt-0.5">
+                      <p className="font-serif text-xl sm:text-2xl mt-0.5 break-words tabular-nums">
                         {formatMoney(Number(fs.raisedAmount), { from: sourceCurrency })}
                       </p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right min-w-0">
                       <p className="text-primary/70 text-[11px] uppercase tracking-widest">Goal</p>
-                      <p className="font-serif text-2xl mt-0.5">
+                      <p className="font-serif text-xl sm:text-2xl mt-0.5 break-words tabular-nums">
                         {formatMoney(Number(fs.targetAmount), { from: sourceCurrency })}
                       </p>
                     </div>
@@ -193,18 +193,18 @@ export function CampaignDetailLayout({
 
             {/* Sticky donation sidebar */}
             {showSidebar && (
-              <aside className="lg:col-span-5 xl:col-span-4">
+              <aside className="lg:col-span-5 xl:col-span-4 min-w-0 max-w-full">
                 {heroSidebar}
               </aside>
             )}
 
             {/* 4. Rich text / campaign overview — below banner block */}
-            <div className="lg:col-span-12 min-w-0">
+            <div className="lg:col-span-12 min-w-0 max-w-full">
               <p className="text-xs uppercase tracking-widest text-accent-deep font-bold">
                 Campaign overview
               </p>
-              <div className="mt-4 rounded-3xl bg-card border border-border p-6 lg:p-8 shadow-soft">
-                <div className="space-y-7 text-foreground">
+              <div className="mt-4 rounded-3xl bg-card border border-border p-4 sm:p-6 lg:p-8 shadow-soft overflow-hidden">
+                <div className="space-y-7 text-foreground min-w-0 max-w-full">
                   {campaign.fullDescription ? (
                     <MarkdownRenderer
                       content={campaign.fullDescription}
@@ -225,30 +225,30 @@ export function CampaignDetailLayout({
               <div className="mt-8 flex flex-wrap gap-3">
                 <Button
                   asChild
-                  className="h-12 px-8 text-base rounded-full bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground shadow-soft hover:shadow-glow"
+                  className="h-12 px-6 sm:px-8 text-base rounded-full bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground shadow-soft hover:shadow-glow max-w-full"
                 >
                   <Link href={checkoutLink}>
-                    Donate now <ArrowRight className="w-4 h-4" />
+                    Donate now <ArrowRight className="w-4 h-4 shrink-0" />
                   </Link>
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => onShare("copy")}
-                  className="h-12 px-8 text-base rounded-full bg-primary-foreground/95 hover:bg-primary hover:text-primary-foreground"
+                  className="h-12 px-6 sm:px-8 text-base rounded-full bg-primary-foreground/95 hover:bg-primary hover:text-primary-foreground"
                 >
-                  <Share2 className="w-4 h-4" /> Share
+                  <Share2 className="w-4 h-4 shrink-0" /> Share
                 </Button>
               </div>
 
               {/* Impact so far — fundraisers */}
               {isFundraiser && fs?.targetAmount > 0 && (
-                <div className="mt-8 rounded-3xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground p-6 lg:p-8 border border-primary-foreground/10">
+                <div className="mt-8 rounded-3xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground p-5 sm:p-6 lg:p-8 border border-primary-foreground/10 min-w-0 overflow-hidden">
                   <p className="text-xs uppercase tracking-widest text-accent font-bold">
                     Impact so far
                   </p>
                   <h3 className="font-serif text-2xl md:text-3xl mt-2">Together we have…</h3>
-                  <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
                     <ImpactStatCard
                       icon={Heart}
                       value={formatMoney(Number(fs.raisedAmount), { from: sourceCurrency })}
@@ -296,9 +296,9 @@ export function CampaignDetailLayout({
               {recentDonations.map((d, i) => (
                 <div
                   key={i}
-                  className="rounded-2xl bg-card border border-border p-5 hover:shadow-soft transition-shadow"
+                  className="rounded-2xl bg-card border border-border p-5 hover:shadow-soft transition-shadow min-w-0"
                 >
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start justify-between gap-3 min-w-0">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary/60 text-primary-foreground flex items-center justify-center text-xs font-bold shrink-0">
                         {donorInitials(d.donorName)}
@@ -310,7 +310,7 @@ export function CampaignDetailLayout({
                         </p>
                       </div>
                     </div>
-                    <p className="font-serif text-xl text-primary whitespace-nowrap">
+                    <p className="font-serif text-lg sm:text-xl text-primary shrink-0 tabular-nums text-right">
                       {formatMoney(Number(d.amount), { from: d.currency })}
                     </p>
                   </div>
@@ -322,10 +322,10 @@ export function CampaignDetailLayout({
       )}
 
       {/* Bottom CTA */}
-      <section className="container-wide py-16">
-        <div className="rounded-3xl bg-gradient-to-br from-primary via-primary to-primary/80 text-primary-foreground p-10 lg:p-14 text-center">
+      <section className="container-wide py-16 max-w-full overflow-x-hidden">
+        <div className="rounded-3xl bg-gradient-to-br from-primary via-primary to-primary/80 text-primary-foreground p-6 sm:p-10 lg:p-14 text-center min-w-0">
           <Heart className="w-10 h-10 text-accent mx-auto" />
-          <h2 className="mt-4 font-serif text-3xl md:text-4xl">
+          <h2 className="mt-4 font-serif text-2xl sm:text-3xl md:text-4xl break-words text-balance">
             Your gift makes a real difference today.
           </h2>
           <p className="mt-3 text-primary-foreground/80 max-w-xl mx-auto">
@@ -334,10 +334,11 @@ export function CampaignDetailLayout({
           </p>
           <Button
             asChild
-            className="mt-6 h-12 px-8 text-base rounded-full bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground shadow-soft hover:shadow-glow"
+            className="mt-6 h-auto min-h-12 py-3 px-6 sm:px-8 text-base rounded-full bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground shadow-soft hover:shadow-glow max-w-full whitespace-normal"
           >
-            <Link href={checkoutLink}>
-              Donate to {campaign.title} <ArrowRight className="w-4 h-4" />
+            <Link href={checkoutLink} className="inline-flex items-center justify-center gap-2 max-w-full text-center break-words">
+              <span className="min-w-0">Donate to {campaign.title}</span>
+              <ArrowRight className="w-4 h-4 shrink-0" />
             </Link>
           </Button>
         </div>
@@ -392,10 +393,12 @@ function ImpactStatCard({
   label: string;
 }) {
   return (
-    <div className="rounded-2xl bg-primary-foreground/10 backdrop-blur p-4 border border-primary-foreground/15">
+    <div className="rounded-2xl bg-primary-foreground/10 backdrop-blur p-3 sm:p-4 border border-primary-foreground/15 min-w-0 overflow-hidden">
       <Icon className="w-4 h-4 text-accent" />
-      <p className={`${statValueSmClass} mt-2`}>{value}</p>
-      <p className="text-[11px] text-primary-foreground/75 mt-0.5">{label}</p>
+      <p className={`${statValueSmClass} mt-2 break-words tabular-nums text-[1.35rem] sm:text-3xl`}>
+        {value}
+      </p>
+      <p className="text-[11px] text-primary-foreground/75 mt-0.5 break-words">{label}</p>
     </div>
   );
 }
