@@ -2,7 +2,31 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { fetchAdminProfile } from "@/lib/api";
-import { isMockAdminSession, DEFAULT_DEMO_ADMIN_PROFILE } from "@/lib/admin-auth";
+import { isMockAdminSession, DEFAULT_DEMO_ADMIN_PROFILE, isValidAdminToken } from "@/lib/admin-auth";
+
+function readAdminSessionFromStorage(): AdminSession | null {
+  if (typeof window === "undefined") return null;
+  const token = localStorage.getItem("admin_token");
+  if (!isValidAdminToken(token)) return null;
+
+  if (isMockAdminSession(token)) {
+    try {
+      const cached = localStorage.getItem("admin_profile");
+      const profile = cached ? JSON.parse(cached) : DEFAULT_DEMO_ADMIN_PROFILE;
+      return buildSession(profile);
+    } catch {
+      return buildSession(DEFAULT_DEMO_ADMIN_PROFILE);
+    }
+  }
+
+  const cached = localStorage.getItem("admin_profile");
+  if (!cached) return null;
+  try {
+    return buildSession(JSON.parse(cached));
+  } catch {
+    return null;
+  }
+}
 import { permissionsForSuperAdmin } from "@repo/shared-types";
 
 export interface AdminSession {
@@ -52,11 +76,14 @@ function buildSession(profile: Record<string, unknown>): AdminSession {
 }
 
 export function AdminSessionProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<AdminSession | null>(null);
+  const [session, setSession] = useState<AdminSession | null>(() => readAdminSessionFromStorage());
 
   useEffect(() => {
     const token = localStorage.getItem("admin_token");
-    if (!token) return;
+    if (!token) {
+      setSession(null);
+      return;
+    }
 
     if (isMockAdminSession(token)) {
       const cached = localStorage.getItem("admin_profile");

@@ -165,12 +165,14 @@ function AdminLayoutShell({ children }: { children: React.ReactNode }) {
 
     const justLoggedIn = sessionStorage.getItem("admin_just_logged_in") === "1";
 
-    fetchAdminProfile()
+    // Show the panel immediately when we already have a valid token (login just wrote profile).
+    setAuthChecked(true);
+
+    void fetchAdminProfile()
       .then((profile) => {
         sessionStorage.removeItem("admin_just_logged_in");
         setAdmin(profile);
         localStorage.setItem("admin_profile", JSON.stringify(profile));
-        setAuthChecked(true);
       })
       .catch((err: { response?: { status?: number; data?: { message?: string } } }) => {
         const status = err?.response?.status;
@@ -179,6 +181,7 @@ function AdminLayoutShell({ children }: { children: React.ReactNode }) {
           sessionStorage.removeItem("admin_just_logged_in");
           localStorage.removeItem("admin_token");
           localStorage.removeItem("admin_profile");
+          setAuthChecked(false);
           toast.error(
             err?.response?.data?.message ||
               "Sign-in failed: the API rejected your session. Try again or restart the API."
@@ -190,21 +193,20 @@ function AdminLayoutShell({ children }: { children: React.ReactNode }) {
         if (status === 401 || status === 403) {
           localStorage.removeItem("admin_token");
           localStorage.removeItem("admin_profile");
+          setAuthChecked(false);
           toast.error("Session expired. Please sign in again.");
           router.replace("/admin/login");
           return;
         }
 
         sessionStorage.removeItem("admin_just_logged_in");
-        if (cached) {
-          setAuthChecked(true);
-          return;
+        if (!cached) {
+          toast.error(
+            err?.response?.data?.message ||
+              "Cannot reach admin API. Is the database running?"
+          );
+          router.replace("/admin/login");
         }
-        toast.error(
-          err?.response?.data?.message ||
-            "Cannot reach admin API. Is the database running?"
-        );
-        router.replace("/admin/login");
       });
   }, [pathname, router]);
 

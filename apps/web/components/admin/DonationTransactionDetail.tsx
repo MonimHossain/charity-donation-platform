@@ -12,6 +12,7 @@ import {
   formatPaymentProvider,
 } from "@/lib/payment-utils";
 import { resolveDonationCampaignName } from "@/lib/quick-donate";
+import PaymentLogsTable from "@/components/admin/PaymentLogsTable";
 
 export type DonationDetail = {
   id: string;

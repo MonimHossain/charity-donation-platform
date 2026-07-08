@@ -19,14 +19,18 @@ export default function CurrencySwitcher({ variant = "header", compact = false, 
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
+    const handler = (e: MouseEvent | TouchEvent) => {
       const target = e.target as Node;
       if (ref.current?.contains(target)) return;
       if ((target as Element).closest?.("[data-dropdown-portal]")) return;
       setOpen(false);
     };
     document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("touchstart", handler, { passive: true });
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("touchstart", handler);
+    };
   }, []);
 
   const styles =

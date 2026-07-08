@@ -48,7 +48,7 @@ export function DropdownPortal({
     position: "fixed",
     top: position.top,
     ...(align === "right" ? { right: position.right } : { left: position.left }),
-    zIndex: 200,
+    zIndex: 300,
   };
 
   return createPortal(

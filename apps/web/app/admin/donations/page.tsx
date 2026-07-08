@@ -240,8 +240,9 @@ export default function DonationsPage() {
               <tbody>
                 {donations.map((d) => {
                   const currency = normalizeCurrencyCode(d.currency);
+                  const donationId = d.id;
                   return (
-                    <tr key={d.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                    <tr key={donationId || `${d.donorEmail}-${d.createdAt}`} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                       <td className="px-5 py-3">
                         <p className="font-medium">{d.donorName || d.donor || "Anonymous"}</p>
                         <p className="text-xs text-muted-foreground">{d.donorEmail || d.email || "—"}</p>
@@ -296,19 +297,25 @@ export default function DonationsPage() {
                       </td>
                       <td className="px-5 py-3">
                         <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="sm" asChild className="h-8 gap-1">
-                            <Link href={`/admin/donations/${d.id}`}>
-                              <Eye className="h-3.5 w-3.5" />
-                              View
-                            </Link>
-                          </Button>
-                          {d.status === "completed" && (
-                            <Button variant="ghost" size="sm" asChild className="h-8 gap-1">
-                              <Link href={`/admin/donations/${d.id}?tab=receipt`}>
-                                <FileText className="h-3.5 w-3.5" />
-                                Receipt
-                              </Link>
-                            </Button>
+                          {donationId ? (
+                            <>
+                              <Button variant="ghost" size="sm" asChild className="h-8 gap-1">
+                                <Link href={`/admin/donations/${donationId}`}>
+                                  <Eye className="h-3.5 w-3.5" />
+                                  View
+                                </Link>
+                              </Button>
+                              {d.status === "completed" && (
+                                <Button variant="ghost" size="sm" asChild className="h-8 gap-1">
+                                  <Link href={`/admin/donations/${donationId}?tab=receipt`}>
+                                    <FileText className="h-3.5 w-3.5" />
+                                    Receipt
+                                  </Link>
+                                </Button>
+                              )}
+                            </>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
                           )}
                         </div>
                       </td>
