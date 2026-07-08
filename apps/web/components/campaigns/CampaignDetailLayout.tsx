@@ -334,10 +334,14 @@ export function CampaignDetailLayout({
           </p>
           <Button
             asChild
-            className="mt-6 h-auto min-h-12 py-3 px-6 sm:px-8 text-base rounded-full bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground shadow-soft hover:shadow-glow max-w-full whitespace-normal"
+            className="mt-6 h-12 max-w-full px-6 sm:px-8 text-base rounded-full bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground shadow-soft hover:shadow-glow"
           >
-            <Link href={checkoutLink} className="inline-flex items-center justify-center gap-2 max-w-full text-center break-words">
-              <span className="min-w-0">Donate to {campaign.title}</span>
+            <Link
+              href={checkoutLink}
+              title={`Donate to ${campaign.title}`}
+              className="inline-flex max-w-full items-center gap-2 overflow-hidden"
+            >
+              <span className="min-w-0 truncate">Donate to {campaign.title}</span>
               <ArrowRight className="w-4 h-4 shrink-0" />
             </Link>
           </Button>

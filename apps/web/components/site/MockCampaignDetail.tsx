@@ -156,8 +156,17 @@ export default function MockCampaignDetail({ slug }: { slug: string }) {
           <h2 className="mt-4 font-serif text-3xl md:text-4xl">
             Your gift makes a real difference today.
           </h2>
-          <Button asChild className="mt-6 h-12 px-8 text-base rounded-full bg-accent text-accent-foreground hover:bg-accent-deep shadow-soft">
-            <Link href={`/donate?cause=${slug}`}>Donate to {c.title}</Link>
+          <Button
+            asChild
+            className="mt-6 h-12 max-w-full px-6 sm:px-8 text-base rounded-full bg-accent text-accent-foreground hover:bg-accent-deep shadow-soft"
+          >
+            <Link
+              href={`/donate?cause=${slug}`}
+              title={`Donate to ${c.title}`}
+              className="inline-flex max-w-full items-center gap-2 overflow-hidden"
+            >
+              <span className="min-w-0 truncate">Donate to {c.title}</span>
+            </Link>
           </Button>
         </div>
       </section>
