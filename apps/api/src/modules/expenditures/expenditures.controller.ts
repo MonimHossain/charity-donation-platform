@@ -5,6 +5,7 @@ import { logAudit } from "../../helper/auditLog.js";
 import {
   computeExpenditureSummary,
   inputsFromEntity,
+  normalizeMarketingDailyLog,
 } from "./expenditureCalculations.js";
 
 const SINGLETON_ID = "default";
@@ -21,10 +22,14 @@ async function getOrCreateSettings(): Promise<ExpenditureSettings> {
       operationsMonthly: "0",
       miscellaneousMonthly: "0",
       dailyMarketing: "0",
+      marketingDailyLog: [],
       currency: "GBP",
       trackingStartDate: new Date().toISOString().slice(0, 10),
     });
     await repo().save(row);
+  }
+  if (!Array.isArray(row.marketingDailyLog)) {
+    row.marketingDailyLog = [];
   }
   return row;
 }
@@ -38,7 +43,7 @@ function serializeSettings(row: ExpenditureSettings) {
       infrastructureMonthly: inputs.infrastructureMonthly,
       operationsMonthly: inputs.operationsMonthly,
       miscellaneousMonthly: inputs.miscellaneousMonthly,
-      dailyMarketing: inputs.dailyMarketing,
+      marketingDailyLog: inputs.marketingDailyLog,
       trackingStartDate: row.trackingStartDate ?? null,
       currency: row.currency || "GBP",
       updatedAt: row.updatedAt,
@@ -51,6 +56,10 @@ function parseMoney(value: unknown): string {
   const n = typeof value === "string" ? parseFloat(value) : Number(value);
   if (!Number.isFinite(n) || n < 0) return "0";
   return n.toFixed(2);
+}
+
+function marketingLogToStorage(log: ReturnType<typeof normalizeMarketingDailyLog>) {
+  return log.map((e) => ({ date: e.date, amount: e.amount.toFixed(2) }));
 }
 
 export async function getAdminExpenditures(_req: Request, res: Response) {
@@ -80,8 +89,10 @@ export async function updateAdminExpenditures(req: Request, res: Response) {
     if (body.miscellaneousMonthly !== undefined) {
       row.miscellaneousMonthly = parseMoney(body.miscellaneousMonthly);
     }
-    if (body.dailyMarketing !== undefined) {
-      row.dailyMarketing = parseMoney(body.dailyMarketing);
+    if (body.marketingDailyLog !== undefined) {
+      const normalized = normalizeMarketingDailyLog(body.marketingDailyLog);
+      row.marketingDailyLog = marketingLogToStorage(normalized);
+      row.dailyMarketing = "0";
     }
     if (body.trackingStartDate !== undefined) {
       const d = body.trackingStartDate;

@@ -6,6 +6,11 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 
+export type MarketingDailyLogRow = {
+  date: string;
+  amount: string;
+};
+
 /** Singleton row (`id = default`) for admin expenditure inputs. */
 @Entity("expenditure_settings")
 export class ExpenditureSettings {
@@ -24,8 +29,13 @@ export class ExpenditureSettings {
   @Column({ type: "decimal", precision: 14, scale: 2, default: 0 })
   miscellaneousMonthly!: string;
 
+  /** @deprecated Legacy single daily rate — use marketingDailyLog */
   @Column({ type: "decimal", precision: 14, scale: 2, default: 0 })
   dailyMarketing!: string;
+
+  /** One row per calendar day: `{ date: "YYYY-MM-DD", amount: "300.00" }` */
+  @Column({ type: "json", default: [] })
+  marketingDailyLog!: MarketingDailyLogRow[];
 
   @Column({ type: "date", nullable: true })
   trackingStartDate?: string | null;

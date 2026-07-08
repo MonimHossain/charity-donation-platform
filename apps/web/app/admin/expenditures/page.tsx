@@ -7,7 +7,9 @@ import {
   CalendarRange,
   Loader2,
   PiggyBank,
+  Plus,
   Save,
+  Trash2,
   TrendingDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,13 +19,15 @@ import { cn } from "@/lib/utils";
 import { fetchAdminExpenditures, updateAdminExpenditures } from "@/lib/api";
 import {
   computeExpenditureSummary,
+  normalizeMarketingDailyLog,
   type ExpenditureInputs,
   type ExpenditureSummary,
+  type MarketingDailyEntry,
 } from "@/lib/expenditure-calculations";
 
-type PeriodView = "weekly" | "monthly" | "yearly";
-
 type ConfigForm = ExpenditureInputs & { currency: string };
+
+type PeriodView = "weekly" | "monthly" | "yearly";
 
 function parseInputMoney(value: string): number {
   const n = parseFloat(value.replace(/,/g, ""));
@@ -87,12 +91,16 @@ export default function AdminExpendituresPage() {
   const [saving, setSaving] = useState(false);
   const [period, setPeriod] = useState<PeriodView>("monthly");
   const [currency, setCurrency] = useState("GBP");
+  const [marketingLog, setMarketingLog] = useState<MarketingDailyEntry[]>([]);
+  const [newMarketingDate, setNewMarketingDate] = useState(
+    () => new Date().toISOString().slice(0, 10)
+  );
+  const [newMarketingAmount, setNewMarketingAmount] = useState("");
   const [fields, setFields] = useState({
     employeeSalaryMonthly: "0",
     infrastructureMonthly: "0",
     operationsMonthly: "0",
     miscellaneousMonthly: "0",
-    dailyMarketing: "0",
     trackingStartDate: new Date().toISOString().slice(0, 10),
   });
 
@@ -102,10 +110,10 @@ export default function AdminExpendituresPage() {
       infrastructureMonthly: parseInputMoney(fields.infrastructureMonthly),
       operationsMonthly: parseInputMoney(fields.operationsMonthly),
       miscellaneousMonthly: parseInputMoney(fields.miscellaneousMonthly),
-      dailyMarketing: parseInputMoney(fields.dailyMarketing),
+      marketingDailyLog: marketingLog,
       trackingStartDate: fields.trackingStartDate || null,
     }),
-    [fields]
+    [fields, marketingLog]
   );
 
   const summary = useMemo(
@@ -124,9 +132,9 @@ export default function AdminExpendituresPage() {
         infrastructureMonthly: String(c.infrastructureMonthly ?? 0),
         operationsMonthly: String(c.operationsMonthly ?? 0),
         miscellaneousMonthly: String(c.miscellaneousMonthly ?? 0),
-        dailyMarketing: String(c.dailyMarketing ?? 0),
         trackingStartDate: c.trackingStartDate ?? new Date().toISOString().slice(0, 10),
       });
+      setMarketingLog(normalizeMarketingDailyLog(c.marketingDailyLog));
     } catch {
       toast.error("Failed to load expenditure settings");
     } finally {
@@ -138,22 +146,47 @@ export default function AdminExpendituresPage() {
     void load();
   }, [load]);
 
+  function upsertMarketingDay() {
+    const amount = parseInputMoney(newMarketingAmount);
+    if (!newMarketingDate) {
+      toast.error("Choose a date");
+      return;
+    }
+    if (amount <= 0) {
+      toast.error("Enter an amount greater than zero");
+      return;
+    }
+    setMarketingLog((prev) =>
+      normalizeMarketingDailyLog([
+        ...prev.filter((e) => e.date !== newMarketingDate),
+        { date: newMarketingDate, amount },
+      ])
+    );
+    setNewMarketingAmount("");
+    toast.success("Day added — click Save settings to persist");
+  }
+
+  function removeMarketingDay(date: string) {
+    setMarketingLog((prev) => prev.filter((e) => e.date !== date));
+  }
+
   async function handleSave() {
     setSaving(true);
     try {
       const payload = {
         ...inputs,
+        marketingDailyLog: marketingLog,
         currency,
       };
       const data = await updateAdminExpenditures(payload);
       toast.success("Expenditure settings saved");
       const c = data.config as ConfigForm;
+      setMarketingLog(normalizeMarketingDailyLog(c.marketingDailyLog));
       setFields({
         employeeSalaryMonthly: String(c.employeeSalaryMonthly ?? 0),
         infrastructureMonthly: String(c.infrastructureMonthly ?? 0),
         operationsMonthly: String(c.operationsMonthly ?? 0),
         miscellaneousMonthly: String(c.miscellaneousMonthly ?? 0),
-        dailyMarketing: String(c.dailyMarketing ?? 0),
         trackingStartDate: c.trackingStartDate ?? fields.trackingStartDate,
       });
     } catch {
@@ -180,8 +213,8 @@ export default function AdminExpendituresPage() {
             Expenditures
           </h1>
           <p className="text-sm text-muted-foreground mt-1 max-w-xl">
-            Model fixed monthly costs and daily marketing spend. Totals update live for weekly,
-            monthly, and yearly views, plus spend from your tracking start date through today.
+            Store monthly fixed costs and log digital marketing spend per calendar day. Reports sum
+            actual logged days only — no averaged daily rate.
           </p>
         </div>
         <Button onClick={() => void handleSave()} disabled={saving}>
@@ -249,16 +282,69 @@ export default function AdminExpendituresPage() {
           <section className="rounded-2xl border border-amber-200/80 bg-amber-50/50 dark:bg-amber-950/20 p-5 shadow-soft space-y-4">
             <div className="flex items-center gap-2 text-sm font-semibold">
               <TrendingDown className="h-4 w-4 text-amber-700 dark:text-amber-400" />
-              Variable cost
+              Digital marketing
               <span className="text-xs font-normal text-muted-foreground">(per day)</span>
             </div>
-            <MoneyField
-              id="marketing"
-              label="Digital marketing"
-              hint="Multiplied by 7 / ~30.4 / 365 for week, month, and year."
-              value={fields.dailyMarketing}
-              onChange={(v) => setFields((f) => ({ ...f, dailyMarketing: v }))}
-            />
+            <p className="text-xs text-muted-foreground">
+              Log spend for each day (e.g. £300 on Monday, £700 on Tuesday). Reports add only the
+              days you enter.
+            </p>
+            <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+              <div className="space-y-1.5">
+                <Label htmlFor="mkt-date">Date</Label>
+                <Input
+                  id="mkt-date"
+                  type="date"
+                  value={newMarketingDate}
+                  onChange={(e) => setNewMarketingDate(e.target.value)}
+                />
+              </div>
+              <MoneyField
+                id="mkt-amount"
+                label="Amount spent"
+                value={newMarketingAmount}
+                onChange={setNewMarketingAmount}
+              />
+              <Button type="button" variant="secondary" className="h-9" onClick={upsertMarketingDay}>
+                <Plus className="h-4 w-4 mr-1" />
+                Add / update
+              </Button>
+            </div>
+            {marketingLog.length > 0 ? (
+              <div className="max-h-48 overflow-y-auto rounded-lg border bg-background/80">
+                <table className="w-full text-xs">
+                  <thead className="sticky top-0 bg-muted/80">
+                    <tr className="text-left text-muted-foreground">
+                      <th className="px-3 py-2 font-medium">Date</th>
+                      <th className="px-3 py-2 font-medium text-right">Amount</th>
+                      <th className="w-10" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {marketingLog.map((row) => (
+                      <tr key={row.date} className="border-t border-border/60">
+                        <td className="px-3 py-2 tabular-nums">{row.date}</td>
+                        <td className="px-3 py-2 text-right tabular-nums font-medium">
+                          {formatMoney(row.amount, currency)}
+                        </td>
+                        <td className="px-1 py-1">
+                          <button
+                            type="button"
+                            onClick={() => removeMarketingDay(row.date)}
+                            className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            aria-label={`Remove ${row.date}`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground italic">No daily entries yet.</p>
+            )}
           </section>
         </div>
 
@@ -297,12 +383,27 @@ export default function AdminExpendituresPage() {
             </div>
 
             <p className="text-xs text-muted-foreground">
-              {period === "weekly" &&
-                "Weekly = monthly fixed ÷ 4.33, plus marketing × 7 days."}
-              {period === "monthly" &&
-                "Monthly = sum of fixed inputs, plus marketing × ~30.4 days."}
-              {period === "yearly" &&
-                "Yearly = fixed × 12, plus marketing × 365.25 days."}
+              {period === "weekly" && (
+                <>
+                  Week {summary.periodLabels.weekly} · marketing from{" "}
+                  {summary.marketingDaysLogged.weekly} logged day
+                  {summary.marketingDaysLogged.weekly === 1 ? "" : "s"}.
+                </>
+              )}
+              {period === "monthly" && (
+                <>
+                  Month {summary.periodLabels.monthly} · marketing from{" "}
+                  {summary.marketingDaysLogged.monthly} logged day
+                  {summary.marketingDaysLogged.monthly === 1 ? "" : "s"}.
+                </>
+              )}
+              {period === "yearly" && (
+                <>
+                  Year {summary.periodLabels.yearly} (YTD) · marketing from{" "}
+                  {summary.marketingDaysLogged.yearly} logged day
+                  {summary.marketingDaysLogged.yearly === 1 ? "" : "s"}.
+                </>
+              )}
             </p>
 
             <div className="overflow-x-auto rounded-xl border">
@@ -356,7 +457,9 @@ export default function AdminExpendituresPage() {
                 {formatMoney(summary.currentMonth.total, summary.currency)}
               </span>{" "}
               (fixed {formatMoney(summary.currentMonth.fixed, summary.currency)} + marketing{" "}
-              {formatMoney(summary.currentMonth.marketing, summary.currency)}).
+              {formatMoney(summary.currentMonth.marketing, summary.currency)} from{" "}
+              {summary.marketingDaysLogged.monthly} logged day
+              {summary.marketingDaysLogged.monthly === 1 ? "" : "s"}).
             </p>
           </section>
         </div>
