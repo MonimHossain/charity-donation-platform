@@ -189,6 +189,7 @@ export function computeExpenditureSummary(
   const monthStart = startOfMonth(today);
   const monthEnd = clampEnd(monthStart, endOfMonth(today), today);
   const yearStart = startOfYear(today);
+  const yearEnd = today;
 
   const trackingDays =
     trackingStart != null ? diffCalendarDaysInclusive(trackingStart, today) : 0;
