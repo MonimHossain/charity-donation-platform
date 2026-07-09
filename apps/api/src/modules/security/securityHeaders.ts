@@ -5,12 +5,12 @@ function buildContentSecurityPolicy(): string {
   const sgtmOrigin = sgtmHost ? ` https://${sgtmHost}` : "";
   return [
     "default-src 'self'",
-    `script-src 'self' 'unsafe-inline' https://js.stripe.com https://www.paypal.com https://www.googletagmanager.com${sgtmOrigin}`,
+    `script-src 'self' 'unsafe-inline' https://js.stripe.com https://www.paypal.com https://www.googletagmanager.com https://tagassistant.google.com${sgtmOrigin}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https:",
     "font-src 'self' https://fonts.gstatic.com",
-    `frame-src https://js.stripe.com https://www.paypal.com https://secure.telr.com https://secure.paytabs.com https://secure-egypt.paytabs.com${sgtmOrigin}`,
-    `connect-src 'self' https://api.stripe.com https://www.paypal.com https://secure.telr.com https://secure.paytabs.com${sgtmOrigin}`,
+    `frame-src https://js.stripe.com https://www.paypal.com https://secure.telr.com https://secure.paytabs.com https://secure-egypt.paytabs.com https://tagassistant.google.com${sgtmOrigin}`,
+    `connect-src 'self' https://api.stripe.com https://www.paypal.com https://secure.telr.com https://secure.paytabs.com https://tagmanager.googleapis.com https://www.googletagmanager.com${sgtmOrigin}`,
   ].join("; ");
 }
 

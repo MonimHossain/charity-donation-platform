@@ -25,6 +25,9 @@ docker compose pull
 docker compose up -d
 
 echo "==> Installing Nginx site config"
+mkdir -p /etc/nginx/includes /etc/nginx/conf.d
+cp "${REPO_ROOT}/infra/nginx/conf.d/security-headers-map.conf" /etc/nginx/conf.d/security-headers-map.conf
+cp "${REPO_ROOT}/infra/nginx/includes/security-headers.conf" /etc/nginx/includes/security-headers.conf
 cp "${REPO_ROOT}/infra/nginx/sgtm-assets.conf" "/etc/nginx/sites-available/${NGINX_SITE}"
 sed -i "s/GTM-WJWFZW62/${WEB_GTM_ID}/g" "/etc/nginx/sites-available/${NGINX_SITE}"
 ln -sf "/etc/nginx/sites-available/${NGINX_SITE}" "/etc/nginx/sites-enabled/${NGINX_SITE}"
