@@ -88,13 +88,13 @@ export function CampaignDetailLayout({
   return (
     <PageShell title={pageTitle} description={pageDescription}>
       {/* Hero + overview — clean layout like yourimpactfdn.vercel.app/causes/orphans */}
-      <section className="bg-background">
-        <div className="container-wide pt-8 pb-16 lg:pt-12 lg:pb-20 max-w-full overflow-x-hidden">
+      <section className="bg-background overflow-x-hidden">
+        <div className="container-wide pt-8 pb-16 lg:pt-12 lg:pb-20">
           <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-start min-w-0">
             {/* Left: banner → tags → title → short description → stats */}
             <div
               className={cn(
-                "min-w-0 max-w-full",
+                "min-w-0",
                 showSidebar ? "lg:col-span-7 xl:col-span-8" : "lg:col-span-12 max-w-3xl"
               )}
             >
@@ -193,18 +193,18 @@ export function CampaignDetailLayout({
 
             {/* Sticky donation sidebar */}
             {showSidebar && (
-              <aside className="lg:col-span-5 xl:col-span-4 min-w-0 max-w-full">
+              <aside className="lg:col-span-5 xl:col-span-4 min-w-0">
                 {heroSidebar}
               </aside>
             )}
 
             {/* 4. Rich text / campaign overview — below banner block */}
-            <div className="lg:col-span-12 min-w-0 max-w-full">
+            <div className="lg:col-span-12 min-w-0">
               <p className="text-xs uppercase tracking-widest text-accent-deep font-bold">
                 Campaign overview
               </p>
               <div className="mt-4 rounded-3xl bg-card border border-border p-4 sm:p-6 lg:p-8 shadow-soft overflow-hidden">
-                <div className="space-y-7 text-foreground min-w-0 max-w-full">
+                <div className="space-y-7 text-foreground min-w-0">
                   {campaign.fullDescription ? (
                     <MarkdownRenderer
                       content={campaign.fullDescription}
@@ -322,7 +322,7 @@ export function CampaignDetailLayout({
       )}
 
       {/* Bottom CTA */}
-      <section className="container-wide py-16 max-w-full overflow-x-hidden">
+      <section className="container-wide py-16">
         <div className="rounded-3xl bg-gradient-to-br from-primary via-primary to-primary/80 text-primary-foreground p-6 sm:p-10 lg:p-14 text-center min-w-0">
           <Heart className="w-10 h-10 text-accent mx-auto" />
           <h2 className="mt-4 font-serif text-2xl sm:text-3xl md:text-4xl break-words text-balance">
