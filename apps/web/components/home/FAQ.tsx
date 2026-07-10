@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
-import MarkdownRenderer from "@/components/blog/MarkdownRenderer";
+import RichContentRenderer from "@/components/blog/RichContentRenderer";
 
 import { useFaqs } from "@/lib/data/cms";
 
@@ -20,7 +20,7 @@ const AccordionItem = ({ q, a }: { q: string; a: string }) => {
         <ChevronDown className={`w-5 h-5 shrink-0 text-muted-foreground transition-transform duration-300 ${open ? "rotate-180" : ""}`} />
       </button>
       <div className={`overflow-hidden transition-all duration-300 ${open ? "max-h-[min(70vh,800px)] pb-6" : "max-h-0"}`}>
-        <MarkdownRenderer
+        <RichContentRenderer
           content={a}
           className="text-muted-foreground text-base leading-relaxed prose prose-sm max-w-none dark:prose-invert"
         />

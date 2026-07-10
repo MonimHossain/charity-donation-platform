@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import MarkdownRenderer from "@/components/blog/MarkdownRenderer";
+import RichContentRenderer from "@/components/blog/RichContentRenderer";
 import type { EntityFaqItem } from "@repo/shared-types";
 import { cn } from "@/lib/utils";
 
@@ -30,7 +30,7 @@ export function BlogPostFaqs({ faqs, className }: { faqs: EntityFaqItem[]; class
               </button>
               {open && (
                 <div className="border-t border-gray-100 px-5 py-4">
-                  <MarkdownRenderer content={item.answer} className="!text-base" />
+                  <RichContentRenderer content={item.answer} className="!text-base" />
                 </div>
               )}
             </li>

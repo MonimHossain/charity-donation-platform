@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import PageShell from "@/components/site/PageShell";
 import TrustBadges from "@/components/home/TrustBadges";
-import MarkdownRenderer from "@/components/blog/MarkdownRenderer";
+import RichContentRenderer from "@/components/blog/RichContentRenderer";
 import { BlogPostFaqs } from "@/components/blog/BlogPostFaqs";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -206,7 +206,7 @@ export function CampaignDetailLayout({
               <div className="mt-4 rounded-3xl bg-card border border-border p-4 sm:p-6 lg:p-8 shadow-soft overflow-hidden">
                 <div className="space-y-7 text-foreground min-w-0">
                   {campaign.fullDescription ? (
-                    <MarkdownRenderer
+                    <RichContentRenderer
                       content={campaign.fullDescription}
                       className="[&_h2]:font-serif [&_h2]:text-2xl [&_h2]:md:text-3xl [&_h2]:text-primary [&_h2]:mt-4 [&_p]:text-base [&_p]:md:text-lg [&_p]:text-foreground/85 [&_li]:text-foreground/85 [&_blockquote]:border-accent [&_ul]:marker:text-accent"
                     />

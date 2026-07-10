@@ -6,7 +6,7 @@ import PageShell, { PageHero } from "@/components/site/PageShell";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import Quote from "@/components/home/Quote";
-import MarkdownRenderer from "@/components/blog/MarkdownRenderer";
+import RichContentRenderer from "@/components/blog/RichContentRenderer";
 import ZakatCalculator from "@/components/zakat/ZakatCalculator";
 import { fetchZakatPageContent } from "@/lib/api";
 import { USE_MOCK_DATA } from "@/lib/config";
@@ -93,7 +93,7 @@ export default function ZakatPage() {
 
       {page.introHtml?.trim() && (
         <section className="container-wide pt-12 pb-4 max-w-3xl">
-          <MarkdownRenderer content={page.introHtml} className="prose prose-lg max-w-none text-foreground/90" />
+          <RichContentRenderer content={page.introHtml} className="prose prose-lg max-w-none text-foreground/90" />
         </section>
       )}
 
@@ -121,7 +121,7 @@ export default function ZakatPage() {
 
       {page.contentBelowHtml?.trim() && (
         <section className="container-wide pb-20 max-w-3xl">
-          <MarkdownRenderer
+          <RichContentRenderer
             content={page.contentBelowHtml}
             className="prose prose-lg max-w-none text-foreground/90"
           />

@@ -1,7 +1,6 @@
 "use client";
 
-import MarkdownRenderer from "@/components/blog/MarkdownRenderer";
-import BlogContentRenderer from "@/components/blog/BlogContentRenderer";
+import RichContentRenderer, { hasRichTextVisualContent } from "@/components/blog/RichContentRenderer";
 import { MediaPickerDialog } from "@/components/ui/media-picker-dialog";
 import {
   MEDIA_RESIZE,
@@ -11,6 +10,8 @@ import {
 } from "@/components/admin/rich-text-media-extensions";
 import { CampaignDonationEmbedExtension } from "@/components/admin/rich-text-campaign-embed-extension";
 import { CampaignDonationEmbedDialog } from "@/components/admin/CampaignDonationEmbedDialog";
+import { ImageSliderExtension } from "@/components/admin/rich-text-image-slider-extension";
+import { ImageSliderDialog } from "@/components/admin/ImageSliderDialog";
 import { Extension } from "@tiptap/core";
 import type { Editor } from "@tiptap/core";
 import Color from "@tiptap/extension-color";
@@ -37,6 +38,7 @@ import {
   Code2,
   Heart,
   Italic,
+  GalleryHorizontal,
   ImageIcon,
   Link2,
   List,
@@ -129,10 +131,6 @@ function resizeSelectedMedia(editor: Editor, widthPercent: number) {
   });
 }
 
-function isHtmlEmpty(html: string) {
-  return !html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, "").trim();
-}
-
 const selectClass =
   "h-8 rounded border border-gray-200 bg-white px-2 text-xs text-gray-800 min-w-0 max-w-full";
 
@@ -200,6 +198,7 @@ export default function RichTextEditor({
   const [mediaPicker, setMediaPicker] = useState<"image" | "video" | null>(null);
   const [selectedMedia, setSelectedMedia] = useState<"image" | "video" | null>(null);
   const [campaignEmbedOpen, setCampaignEmbedOpen] = useState(false);
+  const [imageSliderOpen, setImageSliderOpen] = useState(false);
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -208,6 +207,7 @@ export default function RichTextEditor({
         bulletList: { keepMarks: true, keepAttributes: false },
         orderedList: { keepMarks: true, keepAttributes: false },
       }),
+      ImageSliderExtension,
       ...(enableCampaignEmbeds ? [CampaignDonationEmbedExtension] : []),
       TextStyle,
       Color.configure({ types: ["textStyle"] }),
@@ -657,6 +657,9 @@ export default function RichTextEditor({
                 <ToolbarBtn onClick={() => setMediaPicker("video")} title="Video">
                   <VideoIcon className="h-4 w-4" />
                 </ToolbarBtn>
+                <ToolbarBtn onClick={() => setImageSliderOpen(true)} title="Image slider">
+                  <GalleryHorizontal className="h-4 w-4" />
+                </ToolbarBtn>
                 <ToolbarBtn
                   onClick={() =>
                     editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
@@ -704,12 +707,12 @@ export default function RichTextEditor({
 
         {activeTab === "preview" && (
           <div className="rounded-lg border border-gray-200 bg-white p-6">
-            {!isHtmlEmpty(value) ? (
-              enableCampaignEmbeds ? (
-                <BlogContentRenderer content={value} />
-              ) : (
-                <MarkdownRenderer content={value} />
-              )
+            {hasRichTextVisualContent(value) ? (
+              <RichContentRenderer
+                content={value}
+                enableCampaignEmbeds={enableCampaignEmbeds}
+                sliderAutoplay={false}
+              />
             ) : (
               <p className="text-sm text-gray-400">{previewEmptyMessage}</p>
             )}
@@ -723,6 +726,14 @@ export default function RichTextEditor({
         accept={mediaPicker === "video" ? "video" : "image"}
         title={mediaPicker === "video" ? "Upload or select video" : "Upload or select image"}
         onSelect={handleMediaSelect}
+      />
+
+      <ImageSliderDialog
+        open={imageSliderOpen}
+        onOpenChange={setImageSliderOpen}
+        onConfirm={(images) => {
+          editor?.chain().focus().insertImageSlider({ images }).run();
+        }}
       />
 
       {enableCampaignEmbeds && (
