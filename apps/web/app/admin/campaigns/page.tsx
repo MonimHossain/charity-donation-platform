@@ -464,12 +464,17 @@ function formatTagsInput(tags: string[]): string {
   return tags.join(", ");
 }
 
+const CAMPAIGNS_PAGE_SIZE = 25;
+
 // ── Main Page ──
 
 export default function CampaignsPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
   const [showEditor, setShowEditor] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<CampaignForm>({ ...defaultForm });
@@ -496,18 +501,32 @@ export default function CampaignsPage() {
 
   const loadCampaigns = useCallback(async () => {
     try {
-      const data = await fetchAdminCampaigns();
-      setCampaigns(data.items || data || []);
+      setLoading(true);
+      const params: Record<string, string> = {
+        page: String(page),
+        limit: String(CAMPAIGNS_PAGE_SIZE),
+      };
+      if (appliedSearch.trim()) params.search = appliedSearch.trim();
+      const data = await fetchAdminCampaigns(params);
+      setCampaigns(data.items || []);
+      setTotal(typeof data.total === "number" ? data.total : (data.items || []).length);
     } catch {
       toast.error("Failed to load campaigns");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [page, appliedSearch]);
 
   useEffect(() => {
-    loadCampaigns();
+    void loadCampaigns();
   }, [loadCampaigns]);
+
+  const totalPages = Math.max(1, Math.ceil(total / CAMPAIGNS_PAGE_SIZE));
+
+  function runSearch() {
+    setAppliedSearch(search.trim());
+    if (page !== 1) setPage(1);
+  }
 
   const wizardSteps = useMemo(
     () => buildWizardSteps(form),
@@ -739,7 +758,8 @@ export default function CampaignsPage() {
     try {
       await adminDeleteCampaign(id);
       toast.success("Campaign deleted");
-      setCampaigns((prev) => prev.filter((c) => c.id !== id));
+      if (campaigns.length === 1 && page > 1) setPage(page - 1);
+      else await loadCampaigns();
     } catch {
       toast.error("Failed to delete campaign");
     } finally {
@@ -770,12 +790,6 @@ export default function CampaignsPage() {
       .replace(/(^-|-$)/g, "");
   }
 
-  const filtered = campaigns.filter(
-    (c) =>
-      c.title.toLowerCase().includes(search.toLowerCase()) ||
-      c.category?.toLowerCase().includes(search.toLowerCase())
-  );
-
   // ── List View ──
 
   if (!showEditor) {
@@ -793,14 +807,22 @@ export default function CampaignsPage() {
           </Button>
         </div>
 
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search campaigns..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center max-w-md">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by title…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") runSearch();
+              }}
+              className="pl-10"
+            />
+          </div>
+          <Button type="button" variant="outline" onClick={runSearch}>
+            Search
+          </Button>
         </div>
 
         {loading ? (
@@ -825,7 +847,7 @@ export default function CampaignsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((c) => (
+                  {campaigns.map((c) => (
                     <tr key={c.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                       <td className="px-5 py-3">
                         <div>
@@ -923,7 +945,7 @@ export default function CampaignsPage() {
                       </td>
                     </tr>
                   ))}
-                  {filtered.length === 0 && (
+                  {campaigns.length === 0 && (
                     <tr>
                       <td colSpan={7} className="px-5 py-10 text-center text-muted-foreground">No campaigns found</td>
                     </tr>
@@ -931,6 +953,34 @@ export default function CampaignsPage() {
                 </tbody>
               </table>
             </div>
+            {!loading && total > 0 && (
+              <div className="flex flex-col gap-3 border-t px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-muted-foreground">
+                  {total} campaign{total !== 1 ? "s" : ""}
+                  {totalPages > 1 && (
+                    <>
+                      {" "}
+                      · Page {page} of {totalPages}
+                    </>
+                  )}
+                </p>
+                {totalPages > 1 && (
+                  <div className="flex gap-1">
+                    <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+                      Prev
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={page >= totalPages}
+                      onClick={() => setPage(page + 1)}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
