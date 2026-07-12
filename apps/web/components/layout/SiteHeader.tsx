@@ -76,20 +76,7 @@ export default function SiteHeader() {
   }, [pathname]);
 
   useEffect(() => {
-    let ticking = false;
-    const onScroll = () => {
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(() => {
-        setScrolled((prev) => {
-          const y = window.scrollY;
-          if (!prev && y > 72) return true;
-          if (prev && y < 24) return false;
-          return prev;
-        });
-        ticking = false;
-      });
-    };
+    const onScroll = () => setScrolled(window.scrollY > 40);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -125,8 +112,16 @@ export default function SiteHeader() {
   );
 
   return (
-    <>
-      <div className="sticky top-0 z-50 bg-background border-b border-border/40">
+    <header className="sticky top-0 z-50">
+      <div
+        aria-hidden={scrolled}
+        className={cn(
+          "bg-background border-b border-border/40 overflow-hidden transition-[height,opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[height,opacity,transform]",
+          scrolled
+            ? "h-0 opacity-0 -translate-y-1 pointer-events-none border-b-0"
+            : "h-14 md:h-16 opacity-100 translate-y-0"
+        )}
+      >
         <div className="container-wide relative grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-4 h-14 md:h-16">
           <div className="flex items-center gap-2 sm:gap-4 min-w-0 justify-self-start">
             <Link href="/" aria-label="Home" className="flex items-center shrink-0">
@@ -200,24 +195,16 @@ export default function SiteHeader() {
         </div>
       </div>
 
-      <header>
-        <div
-          className={`transition-[background-color,box-shadow,backdrop-filter,border-color] duration-300 ease-out border-b ${
-            scrolled
-              ? "bg-background/90 backdrop-blur-xl shadow-[0_1px_0_0_hsl(var(--border)/0.4)] border-border/30"
-              : "bg-background border-border/40"
-          }`}
-        >
-          <div className="container-wide flex items-center justify-between h-12 sm:h-14 gap-2">
-            <div className="flex items-center gap-2 min-w-0 flex-1 lg:flex-none">
-              {!scrolled && (
-                <img
-                  src="/images/achievements.webp"
-                  alt="100% Policy · Awards"
-                  className="lg:hidden h-7 sm:h-8 w-auto max-w-[min(100%,10rem)] object-contain object-left select-none shrink"
-                  draggable={false}
-                />
-              )}
+      <div
+        className={cn(
+          "transition-[background-color,box-shadow,backdrop-filter,border-color] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] border-b",
+          scrolled
+            ? "bg-background/85 backdrop-blur-xl shadow-[0_1px_0_0_hsl(var(--border)/0.15)] border-border/15"
+            : "bg-background border-border/15"
+        )}
+      >
+        <div className="container-wide flex items-center justify-between h-14 gap-4">
+          <div className="flex items-center gap-4 min-w-0">
               <Link
                 href="/"
                 aria-label="Home"
@@ -265,13 +252,33 @@ export default function SiteHeader() {
                   </DropdownPortal>
                 </div>
               </nav>
-            </div>
+          </div>
 
-            <div className="hidden lg:flex items-center gap-2">
+          <div className="hidden lg:flex items-center gap-2">
               {donateButton}
-            </div>
+              <div
+                className={cn(
+                  "flex items-center gap-2 overflow-hidden transition-[max-width,opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                  scrolled ? "max-w-[420px] opacity-100 translate-x-0" : "max-w-0 opacity-0 translate-x-2 pointer-events-none"
+                )}
+                aria-hidden={!scrolled}
+              >
+                <GlobalSearch variant="icon" />
+                <LanguageSwitcher />
+                <CurrencySwitcher />
+                <Link
+                  href="/donate"
+                  className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full bg-secondary text-primary text-xs font-semibold hover:bg-secondary/70"
+                  aria-label="Basket"
+                  tabIndex={scrolled ? 0 : -1}
+                >
+                  <ShoppingBasket className="w-4 h-4" />
+                  <span className="tabular-nums">{basketLabel}</span>
+                </Link>
+              </div>
+          </div>
 
-            <div className="flex lg:hidden items-center gap-1.5 shrink-0">
+          <div className="flex lg:hidden items-center gap-1.5 ml-auto shrink-0">
               {donateButton}
               <button
                 onClick={() => setOpen((v) => !v)}
@@ -286,16 +293,16 @@ export default function SiteHeader() {
                   <X className="w-5 h-5" />
                 </span>
               </button>
-            </div>
           </div>
         </div>
+      </div>
 
-        <div
-          className={`lg:hidden overflow-hidden bg-background border-b border-border/40 transition-[max-height,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-            open ? "max-h-[80vh] opacity-100" : "max-h-0 opacity-0"
-          }`}
-        >
-          <div className="container-wide py-3 flex flex-col gap-0.5">
+      <div
+        className={`lg:hidden overflow-hidden bg-background border-b border-border/40 transition-[max-height,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+          open ? "max-h-[80vh] opacity-100" : "max-h-0 opacity-0"
+        }`}
+      >
+        <div className="container-wide py-3 flex flex-col gap-0.5">
             <div className="px-1 pb-3 lg:hidden">
               <GlobalSearch variant="mobile" />
             </div>
@@ -336,7 +343,6 @@ export default function SiteHeader() {
             </div>
           </div>
         </div>
-      </header>
-    </>
+    </header>
   );
 }
