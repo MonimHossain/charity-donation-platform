@@ -128,3 +128,76 @@ export function parseCustomSchemaJson(raw?: string): Record<string, unknown> | n
     return null;
   }
 }
+
+/** Custom JSON that only declares FAQPage without questions — replaced by auto-built FAQ schema. */
+export function isStubFaqSchemaJson(custom: Record<string, unknown> | null): boolean {
+  if (!custom) return false;
+  const type = custom["@type"];
+  if (type !== "FAQPage" && type !== "FAQ") return false;
+  const main = custom.mainEntity;
+  if (main == null) return true;
+  if (Array.isArray(main) && main.length === 0) return true;
+  return false;
+}
+
+export function withSchemaOrgContext(schema: Record<string, unknown>): Record<string, unknown> {
+  if (schema["@context"]) return schema;
+  return { "@context": "https://schema.org", ...schema };
+}
+
+/** Map Settings → FAQ library rows to entity FAQ items for schema generation. */
+export function cmsLibraryFaqsToEntityItems(
+  rows: Array<{
+    id?: string;
+    question?: string;
+    answer?: string;
+    isPublished?: boolean;
+    sortOrder?: number;
+  }>
+): EntityFaqItem[] {
+  return rows
+    .filter((f) => f.isPublished !== false && (f.question?.trim() || f.answer?.trim()))
+    .map((f, index) => ({
+      id: String(f.id || `cms-faq-${index}`),
+      question: String(f.question || "").trim(),
+      answer: String(f.answer || "").trim(),
+      sortOrder: typeof f.sortOrder === "number" ? f.sortOrder : index,
+      isActive: true,
+    }));
+}
+
+export type EntitySchemaScriptOptions = {
+  seoSettings?: Partial<EntitySeoSettings> | null;
+  faqs?: EntityFaqItem[];
+  pageUrl: string;
+  /** Used when no custom schema JSON is set (e.g. Article, WebPage). */
+  defaultSchema?: Record<string, unknown> | null;
+};
+
+export function buildEntitySchemaScripts(options: EntitySchemaScriptOptions): object[] {
+  const { seoSettings, faqs = [], pageUrl, defaultSchema } = options;
+  const scripts: object[] = [];
+
+  const custom = parseCustomSchemaJson(seoSettings?.customSchemaJson);
+  const faqSchema = buildFaqSchemaJsonLd(faqs, pageUrl);
+  const skipCustomStub = isStubFaqSchemaJson(custom) && Boolean(faqSchema);
+
+  if (custom && !skipCustomStub) {
+    scripts.push(withSchemaOrgContext(custom));
+  }
+  if (faqSchema) {
+    scripts.push(faqSchema);
+  }
+
+  const schemaType = seoSettings?.schemaType?.trim() || "";
+  const faqPrimary =
+    schemaType === "FAQPage" ||
+    schemaType === "FAQ" ||
+    (skipCustomStub && Boolean(faqSchema));
+
+  if (!custom && defaultSchema && !faqPrimary) {
+    scripts.push(withSchemaOrgContext({ ...defaultSchema, url: defaultSchema.url ?? pageUrl }));
+  }
+
+  return scripts;
+}

@@ -22,7 +22,8 @@ export async function getServerCampaignBySlug(slug: string) {
         thumbnail?: string;
         banner?: string;
         image?: string;
-        seoSettings?: {
+        faqs?: import("@repo/shared-types").EntityFaqItem[];
+        seoSettings?: import("@repo/shared-types").EntitySeoSettings & {
           metaTitle?: string;
           metaDescription?: string;
           ogTitle?: string;

@@ -11,10 +11,20 @@ import Stories from "@/components/home/Stories";
 import Newsletter from "@/components/home/Newsletter";
 import FAQ from "@/components/home/FAQ";
 import CTA from "@/components/home/CTA";
+import { buildHomepageFaqSchemaScripts } from "@/lib/server/cms-faqs";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const schemaScripts = await buildHomepageFaqSchemaScripts();
+
   return (
     <>
+      {schemaScripts.map((schema, index) => (
+        <script
+          key={`home-faq-schema-${index}`}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+        />
+      ))}
       <Hero />
       <TrustBadges />
       <FeaturedCampaigns />

@@ -3,6 +3,7 @@ import CampaignDetailPageClient from "../../campaigns/[slug]/CampaignDetailPageC
 import { absoluteOgImageUrl, getServerCampaignBySlug } from "@/lib/server/campaigns";
 import { getCampaignCardImage } from "@/lib/campaign-media";
 import {
+  buildEntitySchemaScripts,
   buildMetadataFromEntitySeo,
   resolveEntitySeoForDisplay,
 } from "@/lib/entity-seo-metadata";
@@ -43,6 +44,36 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   });
 }
 
-export default function DonateCampaignDetailPage() {
-  return <CampaignDetailPageClient />;
+export default async function DonateCampaignDetailPage({
+  params,
+}: PageProps) {
+  const { slug } = await params;
+  const campaign = await getServerCampaignBySlug(slug);
+  const canonicalPath = campaignPublicPath(slug);
+  const pageUrl = `${appUrl.replace(/\/$/, "")}${canonicalPath}`;
+  const schemaScripts = campaign
+    ? buildEntitySchemaScripts({
+        seoSettings: campaign.seoSettings,
+        faqs: campaign.faqs || [],
+        pageUrl,
+        defaultSchema: {
+          "@type": campaign.seoSettings?.schemaType?.trim() || "WebPage",
+          name: campaign.title,
+          description: campaign.shortDescription || campaign.description,
+        },
+      })
+    : [];
+
+  return (
+    <>
+      {schemaScripts.map((schema, index) => (
+        <script
+          key={`campaign-schema-${index}`}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+        />
+      ))}
+      <CampaignDetailPageClient />
+    </>
+  );
 }

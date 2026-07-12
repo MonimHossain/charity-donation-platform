@@ -1,6 +1,5 @@
 import {
-  buildFaqSchemaJsonLd,
-  parseCustomSchemaJson,
+  buildEntitySchemaScripts,
   resolveEntitySeoForDisplay,
 } from "@/lib/entity-seo-metadata";
 import { blogPostPublicPath } from "@/lib/public-paths";
@@ -26,14 +25,7 @@ export async function buildBlogPostSchemaScripts(slug: string): Promise<object[]
   const post = await fetchPublicBlogPost(slug);
   if (!post) return [];
 
-  const scripts: object[] = [];
-  const custom = parseCustomSchemaJson(post.seoSettings?.customSchemaJson);
-  if (custom) scripts.push(custom);
-
   const pageUrl = `${appUrl.replace(/\/$/, "")}${blogPostPublicPath(slug)}`;
-  const faqSchema = buildFaqSchemaJsonLd(post.faqs || [], pageUrl);
-  if (faqSchema) scripts.push(faqSchema);
-
   const schemaType = post.seoSettings?.schemaType?.trim() || "Article";
   const seo = resolveEntitySeoForDisplay(
     post.seoSettings,
@@ -47,9 +39,12 @@ export async function buildBlogPostSchemaScripts(slug: string): Promise<object[]
     },
     { metaTitle: post.metaTitle, metaDescription: post.metaDescription }
   );
-  if (!custom) {
-    scripts.push({
-      "@context": "https://schema.org",
+
+  return buildEntitySchemaScripts({
+    seoSettings: post.seoSettings,
+    faqs: post.faqs || [],
+    pageUrl,
+    defaultSchema: {
       "@type": schemaType,
       headline: seo.metaTitle || post.title,
       description: seo.metaDescription || post.excerpt,
@@ -57,8 +52,6 @@ export async function buildBlogPostSchemaScripts(slug: string): Promise<object[]
       datePublished: post.publishedAt,
       author: { "@type": "Person", name: post.author || "Editorial Team" },
       mainEntityOfPage: pageUrl,
-    });
-  }
-
-  return scripts;
+    },
+  });
 }

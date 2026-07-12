@@ -202,6 +202,10 @@ export function EntitySeoSettingsForm({
             onChange={(e) => patch({ schemaType: e.target.value })}
             placeholder="Article"
           />
+          <p className="text-[11px] text-muted-foreground">
+            For FAQ rich results, use the FAQ tab for questions and answers. Choose FAQPage here if this page is
+            FAQ-focused; full FAQ schema is generated automatically from active FAQs.
+          </p>
         </div>
         <div className="space-y-2">
           <Label>Custom Schema JSON</Label>
@@ -209,9 +213,13 @@ export function EntitySeoSettingsForm({
             rows={4}
             value={value.customSchemaJson || ""}
             onChange={(e) => patch({ customSchemaJson: e.target.value })}
-            placeholder='{"@type": "Article"}'
+            placeholder='Optional extra JSON-LD (not needed for FAQs)'
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono text-xs"
           />
+          <p className="text-[11px] text-muted-foreground">
+            Leave empty for FAQs. A lone <code className="text-[10px]">{"@type": \"FAQPage\""}</code> is ignored when
+            FAQs are saved — we output complete schema with all Q&amp;A pairs.
+          </p>
         </div>
       </div>
     </div>
