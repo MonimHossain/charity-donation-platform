@@ -268,25 +268,6 @@ export default function SiteHeader() {
 
             <div className="hidden lg:flex items-center gap-2">
               {donateButton}
-              <div
-                className={`flex items-center gap-2 overflow-hidden transition-[max-width,opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-                  scrolled ? "max-w-[420px] opacity-100 translate-x-0" : "max-w-0 opacity-0 translate-x-2 pointer-events-none"
-                }`}
-                aria-hidden={!scrolled}
-              >
-                <GlobalSearch variant="icon" />
-                <LanguageSwitcher />
-                <CurrencySwitcher />
-                <Link
-                  href="/donate"
-                  className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full bg-secondary text-primary text-xs font-semibold hover:bg-secondary/70"
-                  aria-label="Basket"
-                  tabIndex={scrolled ? 0 : -1}
-                >
-                  <ShoppingBasket className="w-4 h-4" />
-                  <span className="tabular-nums">{basketLabel}</span>
-                </Link>
-              </div>
             </div>
 
             <div className="flex lg:hidden items-center gap-1.5 shrink-0">
