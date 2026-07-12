@@ -76,7 +76,23 @@ export default function SiteHeader() {
   }, [pathname]);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40);
+    const ENTER = 96;
+    const LEAVE = 12;
+    let raf = 0;
+
+    const onScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        const y = window.scrollY;
+        setScrolled((prev) => {
+          if (!prev && y > ENTER) return true;
+          if (prev && y < LEAVE) return false;
+          return prev;
+        });
+      });
+    };
+
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -112,17 +128,10 @@ export default function SiteHeader() {
   );
 
   return (
-    <header className="sticky top-0 z-50">
-      <div
-        aria-hidden={scrolled}
-        className={cn(
-          "bg-background border-b border-border/40 overflow-hidden transition-[height,opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[height,opacity,transform]",
-          scrolled
-            ? "h-0 opacity-0 -translate-y-1 pointer-events-none border-b-0"
-            : "h-14 md:h-16 opacity-100 translate-y-0"
-        )}
-      >
-        <div className="container-wide relative grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-4 h-14 md:h-16">
+    <header className="sticky top-0 z-50 [overflow-anchor:none]">
+      {!scrolled ? (
+        <div className="bg-background border-b border-border/40">
+          <div className="container-wide relative grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-4 h-14 md:h-16">
           <div className="flex items-center gap-2 sm:gap-4 min-w-0 justify-self-start">
             <Link href="/" aria-label="Home" className="flex items-center shrink-0">
               <SiteLogo heightClass="h-8 sm:h-9 md:h-10" />
@@ -193,11 +202,11 @@ export default function SiteHeader() {
             </Link>
           </div>
         </div>
-      </div>
+      ) : null}
 
       <div
         className={cn(
-          "transition-[background-color,box-shadow,backdrop-filter,border-color] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] border-b",
+          "transition-[background-color,box-shadow,backdrop-filter,border-color] duration-300 ease-out border-b",
           scrolled
             ? "bg-background/85 backdrop-blur-xl shadow-[0_1px_0_0_hsl(var(--border)/0.15)] border-border/15"
             : "bg-background border-border/15"
