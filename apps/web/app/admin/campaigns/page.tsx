@@ -74,6 +74,7 @@ import {
   normalizeRegularPaymentConfig,
   normalizeSinglePaymentConfig,
 } from "@/lib/campaign-payment-config";
+import { isValidCampaignSlug, normalizeCampaignSlug } from "@/lib/campaign-slug";
 
 // ── Types ──
 
@@ -714,12 +715,18 @@ export default function CampaignsPage() {
     }
     setSaving(true);
     try {
-      const slug =
-        form.slug ||
-        form.title
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/(^-|-$)/g, "");
+      const rawSlug = form.slug || form.title;
+      const slug = normalizeCampaignSlug(rawSlug, form.title);
+      if (!isValidCampaignSlug(slug)) {
+        toast.error("Slug must be a single URL segment (letters, numbers, and hyphens only).");
+        setSaving(false);
+        return;
+      }
+      if (form.slug.trim() && slug !== form.slug.trim()) {
+        toast.message("Slug was adjusted for a valid campaign URL", {
+          description: `Using “${slug}” (no slashes or special characters).`,
+        });
+      }
       const tags = parseCommaSeparatedTags(tagsInput);
       const payload = {
         ...form,
@@ -1107,6 +1114,10 @@ export default function CampaignsPage() {
                   onChange={(e) => setForm((p) => ({ ...p, slug: e.target.value }))}
                   placeholder="auto-generated-from-title"
                 />
+                <p className="text-xs text-muted-foreground">
+                  Used in <span className="font-mono">/campaigns/your-slug</span> — one segment only (no{" "}
+                  <span className="font-mono">/</span>).
+                </p>
               </div>
             </div>
             <div className="space-y-2">

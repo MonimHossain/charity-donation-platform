@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug } = await params;
   const campaign = await getServerCampaignBySlug(slug);
   if (!campaign) {
-    return { title: "Campaign" };
+    return { title: "Campaign Not Found" };
   }
 
   const imagePath =

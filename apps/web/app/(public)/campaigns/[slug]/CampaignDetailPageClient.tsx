@@ -3,7 +3,7 @@
 import { USE_MOCK_DATA } from "@/lib/config";
 import MockCampaignDetail from "@/components/site/MockCampaignDetail";
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { useParams } from "next/navigation";
+import { useParams, notFound } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { fetchCampaignBySlug, fetchCampaigns, fetchRecentDonations } from "@/lib/api";
@@ -192,6 +192,11 @@ function CampaignDetailApi({ slug: slugProp }: { slug: string }) {
     [campaign]
   );
 
+  useEffect(() => {
+    if (loading || campaign) return;
+    notFound();
+  }, [loading, campaign]);
+
   if (loading) {
     return (
       <section className="py-32 text-center">
@@ -201,19 +206,7 @@ function CampaignDetailApi({ slug: slugProp }: { slug: string }) {
   }
 
   if (!campaign) {
-    return (
-      <section className="py-32 text-center">
-        <div className="container-wide">
-          <h1 className="font-serif text-3xl font-bold">Campaign Not Found</h1>
-          <p className="mt-3 text-muted-foreground">
-            The campaign you&apos;re looking for doesn&apos;t exist or has ended.
-          </p>
-          <Button asChild className="mt-6">
-            <Link href="/campaigns">Browse Campaigns</Link>
-          </Button>
-        </div>
-      </section>
-    );
+    return null;
   }
 
   const sym = CURRENCY_SYMBOLS[campaign.currency] || "\u00a3";

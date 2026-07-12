@@ -7,6 +7,7 @@ import { createEntity } from "../../helper/typeorm.js";
 import { logAudit } from "../../helper/auditLog.js";
 import { archiveExpiredCampaigns } from "./archiveExpiredCampaigns.js";
 import { withResolvedUpsells } from "../upsells/resolveCampaignUpsells.js";
+import { normalizeCampaignSlug } from "./normalizeCampaignSlug.js";
 import { normalizeOptionalMediaUrl, normalizeStoredMediaUrl } from "../../helper/storage.js";
 
 const repo = () => AppDataSource.getRepository(Campaign);
@@ -99,7 +100,14 @@ export async function getCampaignBySlug(req: Request, res: Response) {
   try {
     await archiveExpiredCampaigns(repo());
 
-    const campaign = await repo().findOne({ where: { slug: routeParam(req, 'slug') } });
+    const rawSlug = routeParam(req, "slug");
+    let campaign = await repo().findOne({ where: { slug: rawSlug } });
+    if (!campaign) {
+      const normalized = normalizeCampaignSlug(rawSlug);
+      if (normalized && normalized !== rawSlug) {
+        campaign = await repo().findOne({ where: { slug: normalized } });
+      }
+    }
     if (!campaign || campaign.status !== "published") {
       return res.status(404).json({ message: "Campaign not found" });
     }
@@ -121,12 +129,13 @@ export async function getCampaignById(req: Request, res: Response) {
 
 export async function createCampaign(req: Request, res: Response) {
   try {
-    let slug =
-      req.body.slug ||
-      req.body.title
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/(^-|-$)/g, "");
+    let slug = normalizeCampaignSlug(
+      String(req.body.slug ?? ""),
+      typeof req.body.title === "string" ? req.body.title : undefined
+    );
+    if (!slug) {
+      return res.status(400).json({ message: "A valid URL slug is required" });
+    }
 
     const existing = await repo().findOne({ where: { slug } });
     if (existing) {
@@ -158,8 +167,20 @@ export async function updateCampaign(req: Request, res: Response) {
     const campaign = await repo().findOne({ where: { id: routeParam(req, 'id') } });
     if (!campaign) return res.status(404).json({ message: "Campaign not found" });
 
+    const body = { ...req.body };
+    if (body.slug !== undefined) {
+      const nextSlug = normalizeCampaignSlug(
+        String(body.slug ?? ""),
+        typeof body.title === "string" ? body.title : campaign.title
+      );
+      if (!nextSlug) {
+        return res.status(400).json({ message: "A valid URL slug is required" });
+      }
+      body.slug = nextSlug;
+    }
+
     Object.assign(campaign, {
-      ...req.body,
+      ...body,
       ...(req.body.thumbnail !== undefined
         ? { thumbnail: req.body.thumbnail ? normalizeStoredMediaUrl(req.body.thumbnail) : null }
         : {}),

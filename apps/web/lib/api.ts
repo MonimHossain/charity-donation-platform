@@ -106,7 +106,8 @@ export async function fetchCampaigns(params?: Record<string, string>) {
 }
 
 export async function fetchCampaignBySlug(slug: string) {
-  const { data } = await api.get(`/campaigns/${slug}`);
+  const segment = slug.trim();
+  const { data } = await api.get(`/campaigns/${encodeURIComponent(segment)}`);
   return data;
 }
 

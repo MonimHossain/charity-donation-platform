@@ -1,29 +1,41 @@
 /** Server-only campaign fetch for metadata generation. */
+import { normalizeCampaignSlug } from "@/lib/campaign-slug";
+
 export async function getServerCampaignBySlug(slug: string) {
   const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
-  try {
-    const res = await fetch(`${base}/campaigns/${encodeURIComponent(slug)}`, {
-      next: { revalidate: 60 },
-    });
-    if (!res.ok) return null;
-    return (await res.json()) as {
-      title?: string;
-      shortDescription?: string;
-      description?: string;
-      thumbnail?: string;
-      banner?: string;
-      image?: string;
-      seoSettings?: {
-        metaTitle?: string;
-        metaDescription?: string;
-        ogTitle?: string;
-        ogDescription?: string;
-        ogImage?: string;
-      };
-    };
-  } catch {
-    return null;
+  const candidates = [slug.trim()];
+  const normalized = normalizeCampaignSlug(slug);
+  if (normalized && !candidates.includes(normalized)) {
+    candidates.push(normalized);
   }
+
+  for (const candidate of candidates) {
+    try {
+      const res = await fetch(`${base}/campaigns/${encodeURIComponent(candidate)}`, {
+        next: { revalidate: 60 },
+      });
+      if (!res.ok) continue;
+      return (await res.json()) as {
+        title?: string;
+        shortDescription?: string;
+        description?: string;
+        thumbnail?: string;
+        banner?: string;
+        image?: string;
+        seoSettings?: {
+          metaTitle?: string;
+          metaDescription?: string;
+          ogTitle?: string;
+          ogDescription?: string;
+          ogImage?: string;
+        };
+      };
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
 }
 
 export function absoluteOgImageUrl(imagePath?: string | null): string | undefined {
