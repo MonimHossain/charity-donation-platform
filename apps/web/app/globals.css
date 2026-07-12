@@ -118,7 +118,7 @@
   }
 
   * { @apply border-border; }
-  html { scroll-behavior: smooth; scroll-padding-top: 7.5rem; }
+  html { scroll-behavior: smooth; scroll-padding-top: 4.5rem; }
   body {
     @apply bg-background text-foreground antialiased;
     font-family: var(--font-sans);

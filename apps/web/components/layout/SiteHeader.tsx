@@ -124,8 +124,8 @@ export default function SiteHeader() {
   );
 
   return (
-    <div className="sticky top-0 z-50">
-      <div className="bg-background border-b border-border/40">
+    <>
+      <div className="sticky top-0 z-50 bg-background border-b border-border/40">
         <div className="container-wide relative grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-4 h-14 md:h-16">
           <div className="flex items-center gap-2 sm:gap-4 min-w-0 justify-self-start">
             <Link href="/" aria-label="Home" className="flex items-center shrink-0">
@@ -355,6 +355,6 @@ export default function SiteHeader() {
           </div>
         </div>
       </header>
-    </div>
+    </>
   );
 }
