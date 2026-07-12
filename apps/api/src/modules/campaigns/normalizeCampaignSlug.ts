@@ -1,4 +1,4 @@
-/** Single URL segment for public /campaigns/:slug routes. */
+/** Single URL segment for public /donate/:slug routes. */
 export function normalizeCampaignSlug(raw: string, fallbackTitle?: string): string {
   let s = raw.trim();
   if (!s && fallbackTitle?.trim()) {

@@ -84,13 +84,13 @@ export const stories = [
     title: "A well that changed a village",
     excerpt: "300 families in rural Pakistan now have clean water within walking distance.",
     image: "/images/appeal-water-new.webp",
-    href: "/blog/one-well-changes-lives",
+    href: "/one-well-changes-lives",
   },
   {
     title: "Gaza kitchens feed thousands daily",
     excerpt: "Community kitchens funded by your donations serve hot meals every day.",
     image: "/images/appeal-gaza-new.jpg",
-    href: "/blog/inside-gaza-kitchens",
+    href: "/inside-gaza-kitchens",
   },
 ];
 

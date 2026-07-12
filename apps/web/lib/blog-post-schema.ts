@@ -3,6 +3,7 @@ import {
   parseCustomSchemaJson,
   resolveEntitySeoForDisplay,
 } from "@/lib/entity-seo-metadata";
+import { blogPostPublicPath } from "@/lib/public-paths";
 
 const apiBase = () =>
   (process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1").replace(/\/$/, "");
@@ -29,7 +30,7 @@ export async function buildBlogPostSchemaScripts(slug: string): Promise<object[]
   const custom = parseCustomSchemaJson(post.seoSettings?.customSchemaJson);
   if (custom) scripts.push(custom);
 
-  const pageUrl = `${appUrl.replace(/\/$/, "")}/blog/${slug}`;
+  const pageUrl = `${appUrl.replace(/\/$/, "")}${blogPostPublicPath(slug)}`;
   const faqSchema = buildFaqSchemaJsonLd(post.faqs || [], pageUrl);
   if (faqSchema) scripts.push(faqSchema);
 
@@ -42,7 +43,7 @@ export async function buildBlogPostSchemaScripts(slug: string): Promise<object[]
       excerpt: post.excerpt,
       image: post.featuredImage,
       tags: post.tags,
-      canonicalPath: `/blog/${slug}`,
+      canonicalPath: blogPostPublicPath(slug),
     },
     { metaTitle: post.metaTitle, metaDescription: post.metaDescription }
   );

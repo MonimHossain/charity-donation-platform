@@ -1115,7 +1115,7 @@ export default function CampaignsPage() {
                   placeholder="auto-generated-from-title"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Used in <span className="font-mono">/campaigns/your-slug</span> — one segment only (no{" "}
+                  Used in <span className="font-mono">/donate/your-slug</span> — one segment only (no{" "}
                   <span className="font-mono">/</span>).
                 </p>
               </div>

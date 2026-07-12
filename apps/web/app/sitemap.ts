@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { campaignPublicPath, blogPostPublicPath } from "@/lib/public-paths";
 
 const siteUrl = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(/\/$/, "");
 const apiBase = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1").replace(
@@ -39,7 +40,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       for (const c of list) {
         if (!c?.slug) continue;
         entries.push({
-          url: `${siteUrl}/campaigns/${c.slug}`,
+          url: `${siteUrl}${campaignPublicPath(c.slug)}`,
           lastModified: c.updatedAt ? new Date(c.updatedAt) : now,
           changeFrequency: "weekly",
           priority: 0.7,
@@ -53,7 +54,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       for (const p of posts) {
         if (!p?.slug) continue;
         entries.push({
-          url: `${siteUrl}/blog/${p.slug}`,
+          url: `${siteUrl}${blogPostPublicPath(p.slug)}`,
           lastModified: p.updatedAt || p.publishedAt ? new Date(p.updatedAt || p.publishedAt) : now,
           changeFrequency: "monthly",
           priority: 0.6,

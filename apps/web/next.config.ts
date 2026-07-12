@@ -50,9 +50,12 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@repo/shared-types", "@repo/ui"],
   async redirects() {
     return [
-      { source: "/campaigns/gaza", destination: "/campaigns/gaza-emergency-relief", permanent: true },
-      { source: "/campaigns/water", destination: "/campaigns/clean-water-wells", permanent: true },
-      { source: "/campaigns/orphans", destination: "/campaigns/orphan-sponsorship", permanent: true },
+      { source: "/campaigns/gaza", destination: "/donate/gaza-emergency-relief", permanent: true },
+      { source: "/campaigns/water", destination: "/donate/clean-water-wells", permanent: true },
+      { source: "/campaigns/orphans", destination: "/donate/orphan-sponsorship", permanent: true },
+      { source: "/campaigns/:slug", destination: "/donate/:slug", permanent: true },
+      { source: "/causes/:slug", destination: "/donate/:slug", permanent: true },
+      { source: "/blog/:slug", destination: "/:slug", permanent: true },
       { source: "/admin/cms", destination: "/admin/settings?section=hero", permanent: false },
       { source: "/admin/cms/hero", destination: "/admin/settings?section=hero", permanent: false },
       { source: "/admin/cms/zakat", destination: "/admin/settings?section=zakat", permanent: false },

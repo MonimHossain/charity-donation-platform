@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { fetchCampaignBySlug } from "@/lib/api";
 import { sortCampaignAttributes } from "@/lib/campaign-attributes";
 import { isExperienceCampaignMode } from "@/lib/campaign-experience";
+import { campaignPublicPath } from "@/lib/public-paths";
 import { CampaignDonationExperience } from "@/components/campaigns/CampaignDonationExperience";
 import { CampaignDonationCard } from "@/components/campaigns/CampaignDonationCard";
 import {
@@ -165,7 +166,7 @@ export function CampaignDonationEmbedWidget({
           ) : null}
         </div>
         <Button asChild variant="ghost" size="sm" className="rounded-full text-purple-700">
-          <Link href={`/campaigns/${campaign.slug}`}>View campaign</Link>
+          <Link href={campaignPublicPath(campaign.slug)}>View campaign</Link>
         </Button>
       </div>
 

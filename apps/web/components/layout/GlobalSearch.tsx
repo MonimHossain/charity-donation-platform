@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { USE_MOCK_DATA } from "@/lib/config";
 import { useCampaignsList } from "@/lib/data/campaigns";
 import { demoCampaigns } from "@/lib/mock";
+import { campaignPublicPath } from "@/lib/public-paths";
 
 type SearchItem = {
   id: string;
@@ -29,10 +30,10 @@ const STATIC_PAGES: SearchItem[] = [
 ];
 
 const MOCK_APPEALS: SearchItem[] = [
-  { id: "appeal-gaza", group: "Appeals", label: "Gaza Emergency Appeal", to: "/causes/gaza", keywords: ["gaza", "emergency"] },
-  { id: "appeal-orphans", group: "Appeals", label: "Orphan Sponsorship", to: "/causes/orphans", keywords: ["orphan"] },
-  { id: "appeal-water", group: "Appeals", label: "Clean Water Wells", to: "/causes/water", keywords: ["water"] },
-  { id: "appeal-food", group: "Appeals", label: "Food Aid", to: "/causes/food", keywords: ["food"] },
+  { id: "appeal-gaza", group: "Appeals", label: "Gaza Emergency Appeal", to: "/donate/gaza", keywords: ["gaza", "emergency"] },
+  { id: "appeal-orphans", group: "Appeals", label: "Orphan Sponsorship", to: "/donate/orphans", keywords: ["orphan"] },
+  { id: "appeal-water", group: "Appeals", label: "Clean Water Wells", to: "/donate/water", keywords: ["water"] },
+  { id: "appeal-food", group: "Appeals", label: "Food Aid", to: "/donate/food", keywords: ["food"] },
 ];
 
 const STATIC_ACTIONS: SearchItem[] = [
@@ -51,7 +52,7 @@ function campaignToSearchItem(c: Record<string, unknown>): SearchItem | null {
     id: `campaign-${String(c.id ?? slug)}`,
     group: "Appeals",
     label: title,
-    to: `/causes/${slug}`,
+    to: campaignPublicPath(slug),
     keywords: [slug, category, ...tags].filter(Boolean),
   };
 }

@@ -14,6 +14,7 @@ import {
   isExperienceCampaignMode,
 } from "@/lib/campaign-experience";
 import { getCampaignGoalAmount, getCampaignRaisedAmount, getDisplayDonorCount } from "@/lib/campaign-fundraising";
+import { campaignPublicPath } from "@/lib/public-paths";
 import { useCurrency } from "@/lib/currency";
 
 type Appeal = {
@@ -116,7 +117,7 @@ const AppealCard = ({
   onExpired?: () => void;
 }) => (
   <div className={`group relative flex flex-col overflow-hidden rounded-2xl sm:rounded-3xl bg-card border border-border/60 shadow-soft hover:shadow-lift hover:-translate-y-1 transition-all duration-500 min-w-0 ${large ? "sm:col-span-2 2xl:col-span-2" : ""}`}>
-    <Link href={`/campaigns/${a.slug}`} className="relative block overflow-hidden">
+    <Link href={campaignPublicPath(a.slug)} className="relative block overflow-hidden">
       <div className={`relative overflow-hidden ${large ? "aspect-[8/3]" : "aspect-[4/3]"}`}>
         <img
           src={a.image}
@@ -178,7 +179,7 @@ const AppealCard = ({
 
       <div className="mt-auto pt-2">
         <Link
-          href={`/campaigns/${a.slug}`}
+          href={campaignPublicPath(a.slug)}
           className={`w-full px-4 py-2.5 text-sm ${homeDonateButtonClass}`}
         >
           Donate now

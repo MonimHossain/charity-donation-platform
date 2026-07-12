@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useHomepageFundraisers } from "@/lib/data/campaigns";
 import { getCampaignCardImage } from "@/lib/campaign-media";
 import { getDisplayDonorCount } from "@/lib/campaign-fundraising";
+import { campaignPublicPath } from "@/lib/public-paths";
 import { useCurrency } from "@/lib/currency";
 
 type Fundraiser = {
@@ -171,7 +172,7 @@ const FundraiserCard = ({ f }: { f: Fundraiser }) => {
         </div>
 
         <Button asChild size="lg" className="mt-5 rounded-full w-full bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground">
-          <Link href={`/campaigns/${f.slug}`}>
+          <Link href={campaignPublicPath(f.slug)}>
             Donate now <ArrowRight className="w-4 h-4" />
           </Link>
         </Button>

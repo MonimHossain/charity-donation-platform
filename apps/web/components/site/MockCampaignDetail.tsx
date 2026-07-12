@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { campaignPublicPath } from "@/lib/public-paths";
 import { useRouter } from "next/navigation";
 import QuickDonate from "@/components/home/QuickDonate";
 import TrustBadges from "@/components/home/TrustBadges";
@@ -178,7 +179,7 @@ export default function MockCampaignDetail({ slug }: { slug: string }) {
             {related.map((r) => (
               <Link
                 key={r.slug}
-                href={`/causes/${r.slug}`}
+                href={campaignPublicPath(r.slug)}
                 className="group rounded-2xl overflow-hidden border border-border bg-card hover:shadow-lift hover:-translate-y-0.5 transition-all duration-300"
               >
                 <div className="relative h-32 overflow-hidden">

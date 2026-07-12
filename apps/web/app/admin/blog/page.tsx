@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { blogPostPublicPath } from "@/lib/public-paths";
 import {
   Plus, Pencil, Trash2, Search, X, Save, Loader2, ArrowLeft, Eye, Calendar, Star,
 } from "lucide-react";
@@ -333,7 +334,7 @@ export default function AdminBlogPage() {
                       <td className="px-5 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">
                           {p.status === "published" && (
-                            <a href={`/blog/${p.slug}`} target="_blank" rel="noreferrer">
+                            <a href={blogPostPublicPath(p.slug)} target="_blank" rel="noreferrer">
                               <Button variant="ghost" size="icon" className="h-8 w-8"><Eye className="h-3.5 w-3.5" /></Button>
                             </a>
                           )}
@@ -431,7 +432,7 @@ export default function AdminBlogPage() {
                   placeholder="my-amazing-article"
                 />
                 <p className="text-[11px] text-muted-foreground">
-                  Public URL: /blog/{slug || "your-slug"}
+                  Public URL: {slug ? blogPostPublicPath(slug) : "/your-slug"}
                   {!slugLocked && title && (
                     <span className="ml-1 text-accent-deep">· auto-generated from title</span>
                   )}

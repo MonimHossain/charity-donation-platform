@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { resolveMediaUrl } from "@/lib/campaign-media";
+import { blogPostPublicPath } from "@/lib/public-paths";
 
 interface BlogPost {
   id: string;
@@ -59,7 +60,7 @@ export default function BlogCard({ post }: { post: BlogPost }) {
         )}
 
         <h2 className="text-xl font-bold leading-tight text-gray-900">
-          <Link href={`/blog/${post.slug}`} className="line-clamp-2 transition-colors duration-200 hover:text-purple-700">
+          <Link href={blogPostPublicPath(post.slug)} className="line-clamp-2 transition-colors duration-200 hover:text-purple-700">
             {title}
           </Link>
         </h2>
@@ -96,7 +97,7 @@ export default function BlogCard({ post }: { post: BlogPost }) {
         </div>
 
         <div className="mt-4 border-t border-gray-100 pt-3">
-          <Link href={`/blog/${post.slug}`} className="inline-flex items-center gap-2 text-sm font-semibold text-purple-700 transition-colors hover:text-purple-900">
+          <Link href={blogPostPublicPath(post.slug)} className="inline-flex items-center gap-2 text-sm font-semibold text-purple-700 transition-colors hover:text-purple-900">
             Read Article
             <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" stroke="currentColor" strokeWidth="2">
               <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />

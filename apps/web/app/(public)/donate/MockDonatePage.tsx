@@ -238,7 +238,7 @@ export default function MockDonatePage() {
             </p>
           </div>
           <Link
-            href="/campaigns/gaza"
+            href="/donate/gaza"
             className="mt-4 flex items-center justify-between gap-2 p-4 rounded-2xl bg-destructive/10 border border-destructive/30 text-sm"
           >
             <span className="font-semibold text-destructive">Gaza emergency</span>

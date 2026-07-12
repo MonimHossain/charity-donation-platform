@@ -3,16 +3,17 @@ import {
   buildMetadataFromEntitySeo,
   resolveEntitySeoForDisplay,
 } from "@/lib/entity-seo-metadata";
-import { fetchPublicBlogPost } from "@/lib/blog-post-schema";
+import { buildBlogPostSchemaScripts, fetchPublicBlogPost } from "@/lib/blog-post-schema";
 import { blogPostPublicPath } from "@/lib/public-paths";
+import BlogPostPage from "@/components/blog/BlogPostPage";
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://yourimpactdev.com";
 
-export async function generateMetadata({
-  params,
-}: {
+type PageProps = {
   params: Promise<{ slug: string }>;
-}): Promise<Metadata> {
+};
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const post = await fetchPublicBlogPost(slug, { noStore: true });
   if (!post) {
@@ -40,6 +41,20 @@ export async function generateMetadata({
   });
 }
 
-export default function LegacyBlogPostLayout({ children }: { children: React.ReactNode }) {
-  return children;
+export default async function RootBlogPostPage({ params }: PageProps) {
+  const { slug } = await params;
+  const scripts = await buildBlogPostSchemaScripts(slug);
+
+  return (
+    <>
+      {scripts.map((schema, index) => (
+        <script
+          key={`blog-schema-${index}`}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+        />
+      ))}
+      <BlogPostPage />
+    </>
+  );
 }

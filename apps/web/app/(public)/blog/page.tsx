@@ -5,6 +5,7 @@ import MockBlogList from "./MockBlogList";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Search, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { blogPostPublicPath } from "@/lib/public-paths";
 import BlogCard from "@/components/blog/BlogCard";
 import { fetchBlogPosts, fetchBlogCategories } from "@/lib/api";
 import { resolveMediaUrl } from "@/lib/campaign-media";
@@ -212,7 +213,7 @@ function BlogListingPageApi() {
                       <p className="text-sm font-medium uppercase tracking-[0.3em] text-purple-500">Featured Article</p>
                       <div className="mt-3 h-0.5 w-12 rounded-full bg-purple-500" />
                       <h2 className="mt-5 text-3xl font-bold leading-tight tracking-tight text-gray-900 md:text-4xl">
-                        <Link href={`/blog/${featuredPost.slug}`} className="transition-colors hover:text-purple-700">
+                        <Link href={blogPostPublicPath(featuredPost.slug)} className="transition-colors hover:text-purple-700">
                           {clampText(featuredPost.title, 95)}
                         </Link>
                       </h2>
@@ -237,7 +238,7 @@ function BlogListingPageApi() {
                         )}
                       </div>
                       <div className="mt-6">
-                        <Link href={`/blog/${featuredPost.slug}`} className="inline-flex items-center gap-3 text-sm font-semibold uppercase tracking-wider text-purple-700 transition-colors hover:text-purple-900">
+                        <Link href={blogPostPublicPath(featuredPost.slug)} className="inline-flex items-center gap-3 text-sm font-semibold uppercase tracking-wider text-purple-700 transition-colors hover:text-purple-900">
                           Read Article
                           <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="2">
                             <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />

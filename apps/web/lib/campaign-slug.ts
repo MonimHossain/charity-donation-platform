@@ -1,4 +1,4 @@
-/** Single URL segment for /campaigns/[slug] — no slashes or reserved path noise. */
+/** Single URL segment for public /donate/:slug — no slashes or reserved path noise. */
 export function normalizeCampaignSlug(raw: string, fallbackTitle?: string): string {
   let s = raw.trim();
   if (!s && fallbackTitle?.trim()) {

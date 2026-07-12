@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { blogPostPublicPath } from "@/lib/public-paths";
 import PageShell, { PageHero } from "@/components/site/PageShell";
 import { demoBlogPosts } from "@/lib/mock/blog";
 import { fmtDate } from "@/lib/mock/format";
@@ -15,7 +16,7 @@ export default function MockBlogList() {
         {posts.map((p) => (
           <Link
             key={p.id}
-            href={`/blog/${p.slug}`}
+            href={blogPostPublicPath(p.slug)}
             className="group rounded-3xl overflow-hidden bg-card border border-border shadow-soft hover:shadow-lift"
           >
             <div className="aspect-[16/10] overflow-hidden">

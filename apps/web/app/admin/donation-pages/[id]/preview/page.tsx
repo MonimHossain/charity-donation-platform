@@ -9,6 +9,7 @@ import PageShell, { PageHero } from "@/components/site/PageShell";
 import { Button } from "@/components/ui/button";
 import { fetchAdminDonationPageById } from "@/lib/api";
 import type { DonationExperience, DonationPageDto } from "@icac/shared-types";
+import { campaignPublicPath } from "@/lib/public-paths";
 
 export default function AdminDonationPagePreview() {
   const params = useParams<{ id: string }>();
@@ -57,7 +58,7 @@ export default function AdminDonationPagePreview() {
 
   // For now: reuse the public preview experience by linking to public slug when published,
   // but for drafts we still display a meaningful page-level preview shell.
-  const publicSlugUrl = `/campaigns/${page.slug}`;
+  const publicSlugUrl = campaignPublicPath(page.slug);
 
   return (
     <PageShell title={`Preview — ${page.title}`} description={page.shortDescription ?? ""}>

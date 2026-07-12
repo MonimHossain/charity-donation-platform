@@ -25,6 +25,7 @@ import { statValueSmClass } from "@/lib/home-buttons";
 import { useCurrency } from "@/lib/currency";
 import { getDisplayDonorCount } from "@/lib/campaign-fundraising";
 import { getCampaignHeroImage, getCampaignCardImage } from "@/lib/campaign-media";
+import { campaignPublicPath } from "@/lib/public-paths";
 import { CampaignExpirationCountdown } from "@/components/campaigns/CampaignExpirationCountdown";
 import { CampaignFeaturedBadge } from "@/components/campaigns/CampaignFeaturedBadge";
 import {
@@ -356,7 +357,7 @@ export function CampaignDetailLayout({
             {relatedCampaigns.map((c) => (
               <Link
                 key={c.slug}
-                href={`/campaigns/${c.slug}`}
+                href={campaignPublicPath(c.slug)}
                 className="group rounded-2xl overflow-hidden border border-border bg-card hover:shadow-lift hover:-translate-y-0.5 transition-all duration-300"
               >
                 <div className="relative h-32 overflow-hidden">

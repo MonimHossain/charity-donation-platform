@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { statTotalClass } from "@/lib/home-buttons";
+import { campaignPublicPath } from "@/lib/public-paths";
 import { CURRENCIES, type CurrencyCode } from "@/lib/currency";
 import { useEffect, useMemo, useState } from "react";
 import { pushDonationEvent } from "@/lib/analytics/push-donation-event";
@@ -41,7 +42,7 @@ export default function ThankYouPage() {
   useEffect(() => {
     const origin = window.location.origin;
     if (analytics.campaignSlug) {
-      setShareUrl(`${origin}/campaigns/${analytics.campaignSlug}`);
+      setShareUrl(`${origin}${campaignPublicPath(analytics.campaignSlug)}`);
     } else {
       setShareUrl(`${origin}/donate`);
     }

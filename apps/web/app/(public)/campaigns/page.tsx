@@ -20,6 +20,7 @@ import {
 } from "@/lib/campaign-fundraising";
 import { CampaignFeaturedBadge } from "@/components/campaigns/CampaignFeaturedBadge";
 import { useCurrency } from "@/lib/currency";
+import { campaignPublicPath } from "@/lib/public-paths";
 const CATEGORIES = [
   "All",
   "Emergency",
@@ -198,7 +199,7 @@ function CampaignsPageApi() {
                 return (
                   <Link
                     key={campaign.id}
-                    href={`/campaigns/${campaign.slug}`}
+                    href={campaignPublicPath(campaign.slug)}
                     className="group flex flex-col overflow-hidden rounded-2xl border bg-card shadow-soft transition-all hover:shadow-lift hover:-translate-y-1"
                   >
                     <div className="relative aspect-[3/2] overflow-hidden bg-muted">

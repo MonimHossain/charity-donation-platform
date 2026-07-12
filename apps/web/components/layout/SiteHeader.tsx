@@ -11,6 +11,7 @@ import LanguageSwitcher from "./LanguageSwitcher";
 import { SiteLogo } from "./SiteLogo";
 import { USE_MOCK_DATA } from "@/lib/config";
 import { useHeaderNavCampaigns, headerNavLabel } from "@/lib/data/campaigns";
+import { campaignPublicPath } from "@/lib/public-paths";
 import { usePrayerTimes } from "@/lib/hooks/usePrayerTimes";
 import { useDonationCart } from "@/lib/stores/donationCartStore";
 import { useCurrency } from "@/lib/currency";
@@ -21,10 +22,10 @@ import { UserNotificationBell } from "@/components/notifications/UserNotificatio
 import { cn } from "@/lib/utils";
 
 const mockNav = [
-  { href: "/causes/food", label: "Food Aid" },
-  { href: "/causes/water", label: "Water Projects" },
-  { href: "/causes/livelihood", label: "Livelihood Projects" },
-  { href: "/causes/orphans", label: "Orphan Sponsorship" },
+  { href: "/donate/food", label: "Food Aid" },
+  { href: "/donate/water", label: "Water Projects" },
+  { href: "/donate/livelihood", label: "Livelihood Projects" },
+  { href: "/donate/orphans", label: "Orphan Sponsorship" },
 ];
 
 function isNavActive(pathname: string, href: string) {
@@ -63,7 +64,7 @@ export default function SiteHeader() {
     }
 
     return (headerCampaigns?.items ?? []).map((c: Record<string, unknown>) => ({
-      href: `/causes/${String(c.slug)}`,
+      href: campaignPublicPath(String(c.slug)),
       label: headerNavLabel(c),
     }));
   }, [headerCampaigns?.items]);

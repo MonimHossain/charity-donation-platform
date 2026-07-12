@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { campaignPublicPath } from "@/lib/public-paths";
 import { useMemo, useState } from "react";
 import { Heart, Users, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -68,7 +69,7 @@ export default function MockCampaignsList() {
             return (
               <Link
                 key={c.id}
-                href={`/campaigns/${c.slug}`}
+                href={campaignPublicPath(c.slug)}
                 className="group rounded-3xl overflow-hidden bg-card border border-border shadow-soft hover:shadow-lift transition-all"
               >
                 <div className="aspect-[4/3] overflow-hidden relative">

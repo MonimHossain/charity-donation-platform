@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { fetchBlogPosts } from "@/lib/api";
+import { blogPostPublicPath } from "@/lib/public-paths";
 import { resolveMediaUrl } from "@/lib/campaign-media";
 
 interface StoryPost {
@@ -71,7 +72,7 @@ export default function Stories() {
       <div className="grid md:grid-cols-3 gap-6">
         {posts.map((post) => (
           <Link
-            href={`/blog/${post.slug}`}
+            href={blogPostPublicPath(post.slug)}
             key={post.slug}
             className="group rounded-3xl bg-card border border-border p-2 hover:shadow-lift transition-all"
           >

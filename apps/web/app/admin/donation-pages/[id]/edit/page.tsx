@@ -19,6 +19,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { DonationExperience, DonationPageDto, RamadanStartChoice } from "@icac/shared-types";
 import { getExperienceMeta } from "@/lib/donation-experience";
 import { cn } from "@/lib/utils";
+import { campaignPublicPath } from "@/lib/public-paths";
 
 type ExperienceType = DonationExperience["type"];
 
@@ -45,7 +46,7 @@ export default function AdminDonationPageEditPage() {
   }));
   const [image, setImage] = useState("");
 
-  const publicUrl = useMemo(() => `/campaigns/${page?.slug ?? ""}`, [page?.slug]);
+  const publicUrl = useMemo(() => campaignPublicPath(page?.slug ?? ""), [page?.slug]);
 
   useEffect(() => {
     if (USE_MOCK_DATA) return;
