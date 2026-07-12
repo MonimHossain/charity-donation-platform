@@ -24,7 +24,8 @@ const IMPACT: Record<number, string> = {
 
 const StickyDonationBar = () => {
   const [open, setOpen] = useState(false);
-  const [visible, setVisible] = useState(false);
+  const [scrolledPastShowPoint, setScrolledPastShowPoint] = useState(false);
+  const [footerInView, setFooterInView] = useState(false);
   const pathname = usePathname();
   const { symbol } = useCurrency();
 
@@ -61,11 +62,25 @@ const StickyDonationBar = () => {
   } = useQuickDonateForm();
 
   useEffect(() => {
-    const onScroll = () => setVisible(window.scrollY > 300);
+    const onScroll = () => setScrolledPastShowPoint(window.scrollY > 300);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  useEffect(() => {
+    const footer = document.getElementById("site-footer");
+    if (!footer) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setFooterInView(entry?.isIntersecting ?? false),
+      { root: null, threshold: 0 }
+    );
+    observer.observe(footer);
+    return () => observer.disconnect();
+  }, [pathname]);
+
+  const visible = scrolledPastShowPoint && !footerInView;
 
   if (HIDE_ON.includes(pathname)) return null;
   if (HIDE_PREFIXES.some((p) => pathname.startsWith(p))) return null;

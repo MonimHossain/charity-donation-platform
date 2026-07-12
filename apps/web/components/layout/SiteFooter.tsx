@@ -9,7 +9,7 @@ export default function SiteFooter() {
   const { t } = useLocale();
 
   return (
-    <footer className="mt-24 bg-primary text-primary-foreground">
+    <footer id="site-footer" className="mt-24 bg-primary text-primary-foreground">
       <div className="container-wide py-16 grid gap-12 lg:grid-cols-12">
         <div className="lg:col-span-4">
           <Link href="/" className="inline-flex items-center bg-white/95 rounded-xl px-3 py-2" aria-label="Home">
