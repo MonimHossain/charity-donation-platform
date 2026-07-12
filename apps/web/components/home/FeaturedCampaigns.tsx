@@ -134,19 +134,13 @@ const AppealCard = ({
         <div className="absolute top-3 left-3 right-3 flex items-start justify-between gap-2">
           <div className="flex flex-wrap items-center gap-1.5">
             {a.featured && <CampaignFeaturedBadge />}
-            {a.urgent ? (
+            {a.urgent && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-destructive text-destructive-foreground text-[10px] sm:text-xs font-bold uppercase tracking-wider shadow-lg">
                 <span className="w-1.5 h-1.5 rounded-full bg-destructive-foreground animate-pulse" />
                 Urgent
               </span>
-            ) : (
-              !a.featured && (
-                <span className="px-2.5 py-1 rounded-full bg-background/95 backdrop-blur text-primary text-[10px] sm:text-xs font-semibold uppercase tracking-wider shadow-md">
-                  {a.tag}
-                </span>
-              )
             )}
-            {a.featured && !a.urgent && (
+            {a.featured && !a.urgent && a.tag.trim() !== "" && (
               <span className="px-2.5 py-1 rounded-full bg-background/95 backdrop-blur text-primary text-[10px] sm:text-xs font-semibold uppercase tracking-wider shadow-md">
                 {a.tag}
               </span>
