@@ -217,8 +217,8 @@ export function EntitySeoSettingsForm({
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono text-xs"
           />
           <p className="text-[11px] text-muted-foreground">
-            Leave empty for FAQs. A lone <code className="text-[10px]">{"@type": \"FAQPage\""}</code> is ignored when
-            FAQs are saved — we output complete schema with all Q&amp;A pairs.
+            Leave empty for FAQs. A lone FAQPage-only JSON snippet is ignored when FAQs are saved — we output
+            complete schema with all Q&amp;A pairs.
           </p>
         </div>
       </div>

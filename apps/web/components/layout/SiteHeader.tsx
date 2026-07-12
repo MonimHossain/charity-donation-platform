@@ -201,6 +201,7 @@ export default function SiteHeader() {
               <UserIcon className="w-4 h-4" />
             </Link>
           </div>
+          </div>
         </div>
       ) : null}
 
