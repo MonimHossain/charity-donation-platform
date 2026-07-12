@@ -3,7 +3,7 @@
 import { resolveAdminPagePermission } from "@repo/shared-types";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { hasAdminPermission, isSuperAdminSession, useAdminSession } from "./AdminSessionProvider";
+import { hasAdminPermission, isSuperAdminSession, readAdminSessionFromStorage, useAdminSession } from "./AdminSessionProvider";
 
 const PUBLIC_ADMIN_PATHS = new Set([
   "/admin/login",
@@ -14,6 +14,7 @@ const PUBLIC_ADMIN_PATHS = new Set([
 export function AdminPageGuard({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const session = useAdminSession();
+  const effectiveSession = session ?? readAdminSessionFromStorage();
 
   if (PUBLIC_ADMIN_PATHS.has(pathname)) {
     return <>{children}</>;
@@ -25,15 +26,16 @@ export function AdminPageGuard({ children }: { children: ReactNode }) {
     return <>{children}</>;
   }
 
-  if (!session) {
+  if (!effectiveSession) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center">
+      <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3 text-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        <p className="text-sm text-muted-foreground">Loading your session…</p>
       </div>
     );
   }
 
-  if (!hasAdminPermission(session, required)) {
+  if (!hasAdminPermission(effectiveSession, required)) {
     return (
       <div className="flex min-h-[40vh] flex-col items-center justify-center gap-2 text-center">
         <h2 className="text-lg font-semibold text-foreground">Access denied</h2>

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { adminLogin } from "@/lib/api";
+import { notifyAdminSessionSync } from "@/components/admin/AdminSessionProvider";
 import { USE_MOCK_DATA } from "@/lib/config";
 import {
   DEMO_ADMIN_TOKEN,
@@ -45,6 +46,10 @@ export default function AdminLoginPage() {
     }
 
     setLoading(true);
+    const slowLoginTimer = window.setTimeout(() => {
+      setLoading(false);
+      toast.error("Sign-in is taking too long. Check your connection and try again.");
+    }, 25_000);
 
     try {
       if (USE_MOCK_DATA) {
@@ -56,8 +61,10 @@ export default function AdminLoginPage() {
             email: email || DEFAULT_DEMO_ADMIN_PROFILE.email,
           })
         );
+        notifyAdminSessionSync();
         toast.success("Demo admin session");
-        router.push("/admin");
+        setLoading(false);
+        router.replace("/admin");
         return;
       }
       const data = await adminLogin(email, password);
@@ -72,7 +79,9 @@ export default function AdminLoginPage() {
         JSON.stringify(data.user ?? { email, fullName: "Admin" })
       );
       sessionStorage.setItem("admin_just_logged_in", "1");
+      notifyAdminSessionSync();
       toast.success("Welcome back! Redirecting to dashboard...");
+      setLoading(false);
       router.replace("/admin");
     } catch (err: any) {
       const status = err?.response?.status;
@@ -83,6 +92,7 @@ export default function AdminLoginPage() {
           : "Invalid email or password");
       toast.error(message);
     } finally {
+      window.clearTimeout(slowLoginTimer);
       setLoading(false);
     }
   }

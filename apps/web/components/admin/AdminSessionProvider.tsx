@@ -1,10 +1,46 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
+import { permissionsForSuperAdmin } from "@repo/shared-types";
 import { fetchAdminProfile } from "@/lib/api";
 import { isMockAdminSession, DEFAULT_DEMO_ADMIN_PROFILE, isValidAdminToken } from "@/lib/admin-auth";
 
-function readAdminSessionFromStorage(): AdminSession | null {
+export const ADMIN_SESSION_SYNC_EVENT = "admin-session-sync";
+
+export function notifyAdminSessionSync() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(ADMIN_SESSION_SYNC_EVENT));
+  }
+}
+
+export interface AdminSession {
+  id: string | number;
+  email: string;
+  fullName: string;
+  permissions: string[];
+  roles: { id: number; name: string; code: string }[];
+  role?: string;
+}
+
+function buildSession(profile: Record<string, unknown>): AdminSession {
+  const roles = (profile.roles as AdminSession["roles"]) ?? [];
+  const isSuper = profile.role === "super_admin" || roles.some((r) => r.code === "SUPER_ADMIN");
+  const permissions = isSuper
+    ? permissionsForSuperAdmin()
+    : ((profile.permissions as string[]) ?? []);
+
+  return {
+    id: (profile.id as string | number) ?? "unknown",
+    email: String(profile.email ?? ""),
+    fullName: String(profile.fullName || profile.name || "Admin"),
+    permissions,
+    roles,
+    role: profile.role as string | undefined,
+  };
+}
+
+export function readAdminSessionFromStorage(): AdminSession | null {
   if (typeof window === "undefined") return null;
   const token = localStorage.getItem("admin_token");
   if (!isValidAdminToken(token)) return null;
@@ -27,16 +63,6 @@ function readAdminSessionFromStorage(): AdminSession | null {
     return null;
   }
 }
-import { permissionsForSuperAdmin } from "@repo/shared-types";
-
-export interface AdminSession {
-  id: string | number;
-  email: string;
-  fullName: string;
-  permissions: string[];
-  roles: { id: number; name: string; code: string }[];
-  role?: string;
-}
 
 const AdminSessionContext = createContext<AdminSession | null>(null);
 
@@ -58,25 +84,22 @@ export function hasAdminPermission(session: AdminSession | null, permission: str
   return session.permissions?.includes(permission) ?? false;
 }
 
-function buildSession(profile: Record<string, unknown>): AdminSession {
-  const roles = (profile.roles as AdminSession["roles"]) ?? [];
-  const isSuper = profile.role === "super_admin" || roles.some((r) => r.code === "SUPER_ADMIN");
-  const permissions = isSuper
-    ? permissionsForSuperAdmin()
-    : ((profile.permissions as string[]) ?? []);
-
-  return {
-    id: (profile.id as string | number) ?? "unknown",
-    email: String(profile.email ?? ""),
-    fullName: String(profile.fullName || profile.name || "Admin"),
-    permissions,
-    roles,
-    role: profile.role as string | undefined,
-  };
-}
-
 export function AdminSessionProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
   const [session, setSession] = useState<AdminSession | null>(() => readAdminSessionFromStorage());
+
+  const syncFromStorage = useCallback(() => {
+    setSession(readAdminSessionFromStorage());
+  }, []);
+
+  useEffect(() => {
+    syncFromStorage();
+  }, [pathname, syncFromStorage]);
+
+  useEffect(() => {
+    window.addEventListener(ADMIN_SESSION_SYNC_EVENT, syncFromStorage);
+    return () => window.removeEventListener(ADMIN_SESSION_SYNC_EVENT, syncFromStorage);
+  }, [syncFromStorage]);
 
   useEffect(() => {
     const token = localStorage.getItem("admin_token");
@@ -86,24 +109,11 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
     }
 
     if (isMockAdminSession(token)) {
-      const cached = localStorage.getItem("admin_profile");
-      try {
-        const profile = cached ? JSON.parse(cached) : DEFAULT_DEMO_ADMIN_PROFILE;
-        setSession(buildSession(profile));
-      } catch {
-        setSession(buildSession(DEFAULT_DEMO_ADMIN_PROFILE));
-      }
+      syncFromStorage();
       return;
     }
 
-    const cached = localStorage.getItem("admin_profile");
-    if (cached) {
-      try {
-        setSession(buildSession(JSON.parse(cached)));
-      } catch {
-        // ignore
-      }
-    }
+    syncFromStorage();
 
     fetchAdminProfile()
       .then((profile: Record<string, unknown>) => {
@@ -111,7 +121,7 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
         setSession(buildSession(profile));
       })
       .catch(() => {});
-  }, []);
+  }, [syncFromStorage]);
 
   return (
     <AdminSessionContext.Provider value={session}>

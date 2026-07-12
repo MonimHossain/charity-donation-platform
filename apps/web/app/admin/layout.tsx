@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { fetchAdminProfile, adminLogout } from "@/lib/api";
-import { AdminSessionProvider, useAdminSession } from "@/components/admin/AdminSessionProvider";
+import { AdminSessionProvider, notifyAdminSessionSync, useAdminSession } from "@/components/admin/AdminSessionProvider";
 import { AdminPageGuard, canAccessAdminNav } from "@/components/admin/AdminPageGuard";
 import { adminNavItems, filterAdminNavItems, type AdminNavItem } from "@/lib/adminNav";
 import { AdminAccountMenu } from "@/components/admin/AdminAccountMenu";
@@ -216,6 +216,7 @@ function AdminLayoutShell({ children }: { children: React.ReactNode }) {
     } catch {}
     localStorage.removeItem("admin_token");
     localStorage.removeItem("admin_profile");
+    notifyAdminSessionSync();
     toast.success("Logged out successfully");
     router.replace("/admin/login");
   }
