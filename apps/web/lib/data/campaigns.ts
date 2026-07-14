@@ -70,20 +70,16 @@ function compareBySortOrder(a: Record<string, unknown>, b: Record<string, unknow
   return bCreated - aCreated;
 }
 
-function compareAppeals(a: Record<string, unknown>, b: Record<string, unknown>) {
-  const aPinned = (a.visibilitySettings as { pinToTop?: boolean } | undefined)?.pinToTop ? 1 : 0;
-  const bPinned = (b.visibilitySettings as { pinToTop?: boolean } | undefined)?.pinToTop ? 1 : 0;
-  if (aPinned !== bPinned) return bPinned - aPinned;
-  return compareBySortOrder(a, b);
-}
-
 function pickHomepageAppeals(items: unknown[]) {
   return excludeFundraisers(items)
     .filter((c) => {
       const row = c as Record<string, unknown>;
       return isAppealCandidate(row) && isHomepageVisible(row);
     })
-    .sort((a, b) => compareAppeals(a as Record<string, unknown>, b as Record<string, unknown>));
+    // Same order as admin Campaigns list (sortOrder) — not pinToTop.
+    .sort((a, b) =>
+      compareBySortOrder(a as Record<string, unknown>, b as Record<string, unknown>)
+    );
 }
 
 function compareByHeaderNavOrder(

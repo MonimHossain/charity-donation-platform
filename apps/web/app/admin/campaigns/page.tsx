@@ -543,16 +543,18 @@ export default function CampaignsPage() {
 
   async function persistCampaignOrder(ordered: Campaign[]) {
     const previous = campaigns;
-    setCampaigns(ordered);
+    const pageStart = (page - 1) * CAMPAIGNS_PAGE_SIZE;
+    const withSort = ordered.map((c, i) => ({ ...c, sortOrder: pageStart + i }));
+    setCampaigns(withSort);
     setReordering(true);
     try {
       await adminReorderCampaigns({
-        orderedIds: ordered.map((c) => c.id),
+        orderedIds: withSort.map((c) => c.id),
         page,
         limit: CAMPAIGNS_PAGE_SIZE,
       });
       await queryClient.invalidateQueries({ queryKey: ["campaigns"] });
-      toast.success("Our Appeals order updated");
+      toast.success("Campaign order updated — Our Appeals will use this order");
     } catch {
       setCampaigns(previous);
       toast.error("Failed to save campaign order");
@@ -921,7 +923,8 @@ export default function CampaignsPage() {
         )}
         {!appliedSearch.trim() && (
           <p className="text-xs text-muted-foreground">
-            Drag appeal rows to set homepage &ldquo;Our Appeals&rdquo; order. Header navbar order is set in{" "}
+            The # column is the list order. Drag appeal rows to change it — homepage &ldquo;Our Appeals&rdquo; uses
+            the same order (campaigns with &ldquo;Show on Homepage&rdquo;). Header order is set in{" "}
             <a href="/admin/settings?section=header" className="underline underline-offset-2 hover:text-foreground">
               Settings → Header nav
             </a>
@@ -942,6 +945,7 @@ export default function CampaignsPage() {
                 <thead>
                   <tr className="border-b bg-muted/40">
                     <th className="w-10 px-3 py-3" aria-label="Reorder" />
+                    <th className="w-12 px-2 py-3 text-left font-medium text-muted-foreground">#</th>
                     <th className="px-5 py-3 text-left font-medium text-muted-foreground">Campaign</th>
                     <th className="px-5 py-3 text-left font-medium text-muted-foreground">Type</th>
                     <th className="px-5 py-3 text-left font-medium text-muted-foreground">Status</th>
@@ -952,8 +956,9 @@ export default function CampaignsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {campaigns.map((c) => {
+                  {campaigns.map((c, index) => {
                     const canDragRow = canDragReorder && !reordering && isAppealCampaign(c);
+                    const displayIndex = (page - 1) * CAMPAIGNS_PAGE_SIZE + index + 1;
                     return (
                     <tr
                       key={c.id}
@@ -992,6 +997,14 @@ export default function CampaignsPage() {
                         >
                           <GripVertical className="h-4 w-4" aria-hidden />
                         </button>
+                      </td>
+                      <td className="px-2 py-3">
+                        <span
+                          className="inline-flex min-w-7 items-center justify-center rounded-md bg-muted px-1.5 py-0.5 text-xs font-semibold tabular-nums text-foreground"
+                          title="Our Appeals list order"
+                        >
+                          {displayIndex}
+                        </span>
                       </td>
                       <td className="px-5 py-3">
                         <div>
@@ -1092,7 +1105,7 @@ export default function CampaignsPage() {
                   })}
                   {campaigns.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="px-5 py-10 text-center text-muted-foreground">No campaigns found</td>
+                      <td colSpan={9} className="px-5 py-10 text-center text-muted-foreground">No campaigns found</td>
                     </tr>
                   )}
                 </tbody>
@@ -1950,7 +1963,7 @@ export default function CampaignsPage() {
               />
               <SwitchRow
                 label="Pin to Top of Campaign List"
-                description="Sorts this campaign above others on the homepage and on /campaigns (does not hide other campaigns)."
+                description="On /campaigns only. Homepage Our Appeals follows the order you set by dragging on the Campaigns list."
                 checked={form.visibilitySettings.pinToTop}
                 onChange={(v) =>
                   setForm((p) => ({

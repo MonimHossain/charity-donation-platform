@@ -59,18 +59,16 @@ interface Campaign {
   isEmergency: boolean;
   endDate?: string;
   status: string;
+  sortOrder?: number;
   visibilitySettings?: { pinToTop?: boolean };
 }
 
 function sortCampaignsForDisplay(campaigns: Campaign[]) {
   return [...campaigns].sort((a, b) => {
-    if (Boolean(a.isFeatured) !== Boolean(b.isFeatured)) {
-      return a.isFeatured ? -1 : 1;
-    }
     const aPinned = a.visibilitySettings?.pinToTop ? 1 : 0;
     const bPinned = b.visibilitySettings?.pinToTop ? 1 : 0;
     if (aPinned !== bPinned) return bPinned - aPinned;
-    return 0;
+    return Number(a.sortOrder ?? 0) - Number(b.sortOrder ?? 0);
   });
 }
 
