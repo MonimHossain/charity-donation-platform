@@ -495,6 +495,10 @@ export default function CampaignsPage() {
 
   const canDragReorder = !appliedSearch.trim();
 
+  function isAppealCampaign(c: Campaign) {
+    return (c.campaignMode || "standard") !== "fundraiser";
+  }
+
   const loadCatalogUpsells = useCallback(async () => {
     try {
       const data = await fetchAdminUpsells();
@@ -548,7 +552,7 @@ export default function CampaignsPage() {
         limit: CAMPAIGNS_PAGE_SIZE,
       });
       await queryClient.invalidateQueries({ queryKey: ["campaigns"] });
-      toast.success("Campaign order updated — public navbar & listings will use this order");
+      toast.success("Our Appeals order updated");
     } catch {
       setCampaigns(previous);
       toast.error("Failed to save campaign order");
@@ -561,17 +565,28 @@ export default function CampaignsPage() {
 
   function handleCampaignDragStart(id: string) {
     if (!canDragReorder || reordering) return;
+    const campaign = campaigns.find((c) => c.id === id);
+    if (!campaign || !isAppealCampaign(campaign)) return;
     setDragId(id);
   }
 
   function handleCampaignDragOver(e: DragEvent, id: string) {
     if (!canDragReorder || !dragId || dragId === id) return;
+    const target = campaigns.find((c) => c.id === id);
+    if (!target || !isAppealCampaign(target)) return;
     e.preventDefault();
     setDragOverId(id);
   }
 
   function handleCampaignDrop(targetId: string) {
     if (!canDragReorder || !dragId || dragId === targetId || reordering) {
+      setDragId(null);
+      setDragOverId(null);
+      return;
+    }
+    const fromCamp = campaigns.find((c) => c.id === dragId);
+    const toCamp = campaigns.find((c) => c.id === targetId);
+    if (!fromCamp || !toCamp || !isAppealCampaign(fromCamp) || !isAppealCampaign(toCamp)) {
       setDragId(null);
       setDragOverId(null);
       return;
@@ -901,7 +916,16 @@ export default function CampaignsPage() {
 
         {appliedSearch.trim() && (
           <p className="text-xs text-muted-foreground">
-            Clear search to drag and reorder campaigns for the public site.
+            Clear search to drag and reorder appeals for the homepage &ldquo;Our Appeals&rdquo; section.
+          </p>
+        )}
+        {!appliedSearch.trim() && (
+          <p className="text-xs text-muted-foreground">
+            Drag appeal rows to set homepage &ldquo;Our Appeals&rdquo; order. Header navbar order is set in{" "}
+            <a href="/admin/settings?section=header" className="underline underline-offset-2 hover:text-foreground">
+              Settings → Header nav
+            </a>
+            .
           </p>
         )}
 
@@ -928,7 +952,9 @@ export default function CampaignsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {campaigns.map((c) => (
+                  {campaigns.map((c) => {
+                    const canDragRow = canDragReorder && !reordering && isAppealCampaign(c);
+                    return (
                     <tr
                       key={c.id}
                       onDragOver={(e) => handleCampaignDragOver(e, c.id)}
@@ -942,21 +968,27 @@ export default function CampaignsPage() {
                       <td className="px-3 py-3 text-muted-foreground">
                         <button
                           type="button"
-                          draggable={canDragReorder && !reordering}
+                          draggable={canDragRow}
                           onDragStart={(e) => {
                             e.dataTransfer.effectAllowed = "move";
                             handleCampaignDragStart(c.id);
                           }}
                           onDragEnd={handleCampaignDragEnd}
-                          disabled={!canDragReorder || reordering}
+                          disabled={!canDragRow}
                           className={cn(
                             "inline-flex h-8 w-8 items-center justify-center rounded-md",
-                            canDragReorder && !reordering
+                            canDragRow
                               ? "cursor-grab active:cursor-grabbing text-muted-foreground hover:bg-muted"
                               : "cursor-not-allowed text-muted-foreground/30"
                           )}
                           aria-label={`Drag to reorder ${c.title}`}
-                          title={canDragReorder ? "Drag to reorder" : "Clear search to reorder"}
+                          title={
+                            !isAppealCampaign(c)
+                              ? "Fundraisers are not reordered here — drag applies to Our Appeals only"
+                              : canDragReorder
+                                ? "Drag to reorder Our Appeals"
+                                : "Clear search to reorder"
+                          }
                         >
                           <GripVertical className="h-4 w-4" aria-hidden />
                         </button>
@@ -1056,7 +1088,8 @@ export default function CampaignsPage() {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                   {campaigns.length === 0 && (
                     <tr>
                       <td colSpan={8} className="px-5 py-10 text-center text-muted-foreground">No campaigns found</td>
@@ -1865,7 +1898,7 @@ export default function CampaignsPage() {
               <div className="space-y-3">
                 <SwitchRow
                   label="Show in Header Navigation"
-                  description="Adds this campaign to the second navbar row. Left-to-right order follows the Campaigns list drag order in admin."
+                  description="Adds this campaign to the second navbar row. Set left-to-right order in Settings → Header nav."
                   checked={form.visibilitySettings.showInHeader}
                   onChange={(v) =>
                     setForm((p) => ({
@@ -1892,7 +1925,14 @@ export default function CampaignsPage() {
                       placeholder={form.title.trim() || "Short nav label"}
                     />
                     <p className="text-xs text-muted-foreground">
-                      Shown in the header navigation instead of the campaign title.
+                      Shown in the header navigation instead of the campaign title. Reorder links in{" "}
+                      <a
+                        href="/admin/settings?section=header"
+                        className="underline underline-offset-2 hover:text-foreground"
+                      >
+                        Settings → Header nav
+                      </a>
+                      .
                     </p>
                   </div>
                 )}

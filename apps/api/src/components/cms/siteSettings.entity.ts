@@ -99,6 +99,10 @@ export class SiteSettings {
     reminderHoursMax?: number;
   };
 
+  /** Ordered campaign IDs for the public header nav (left → right). */
+  @Column({ type: "json", default: [] })
+  headerNavOrder!: string[];
+
   @CreateDateColumn()
   createdAt!: Date;
 

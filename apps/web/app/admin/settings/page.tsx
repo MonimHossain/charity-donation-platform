@@ -18,6 +18,7 @@ import {
   RefreshCw,
   ImageIcon,
   Calculator,
+  Menu,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,7 @@ import {
 import { AdminChangePasswordForm } from "@/components/admin/AdminChangePasswordForm";
 import { SettingsHeroPanel, SettingsSeoPanel, SettingsZakatPanel } from "@/components/admin/settings/SettingsContentPanel";
 import { SettingsFaqPanel } from "@/components/admin/settings/SettingsFaqPanel";
+import { SettingsHeaderNavPanel } from "@/components/admin/settings/SettingsHeaderNavPanel";
 
 interface SettingsData {
   general: {
@@ -127,13 +129,26 @@ const defaultSettings: SettingsData = {
   },
 };
 
-type Tab = "general" | "hero" | "zakat" | "faq" | "seo" | "email" | "payment" | "currency" | "security" | "backup";
+type Tab =
+  | "general"
+  | "hero"
+  | "zakat"
+  | "header"
+  | "faq"
+  | "seo"
+  | "email"
+  | "payment"
+  | "currency"
+  | "security"
+  | "backup";
 
 const TAB_FROM_SECTION: Record<string, Tab> = {
   general: "general",
   hero: "hero",
   zakat: "zakat",
   content: "hero",
+  header: "header",
+  navigation: "header",
   faq: "faq",
   seo: "seo",
   email: "email",
@@ -371,6 +386,7 @@ function AdminSettingsPageInner() {
     { key: "general", label: "General", icon: Globe },
     { key: "hero", label: "Hero", icon: ImageIcon },
     { key: "zakat", label: "Zakat", icon: Calculator },
+    { key: "header", label: "Header nav", icon: Menu },
     { key: "faq", label: "FAQ", icon: HelpCircle },
     { key: "seo", label: "SEO", icon: Search },
     { key: "email", label: "Email", icon: Mail },
@@ -380,7 +396,7 @@ function AdminSettingsPageInner() {
     { key: "backup", label: "Backup", icon: Database },
   ];
 
-  const showSaveButton = !["backup", "hero", "zakat", "faq", "seo"].includes(tab);
+  const showSaveButton = !["backup", "hero", "zakat", "header", "faq", "seo"].includes(tab);
 
   if (loading) {
     return (
@@ -428,6 +444,12 @@ function AdminSettingsPageInner() {
       {tab === "hero" && <SettingsHeroPanel />}
 
       {tab === "zakat" && <SettingsZakatPanel />}
+
+      {tab === "header" && (
+        <div className="rounded-2xl border bg-card shadow-soft p-4 sm:p-6">
+          <SettingsHeaderNavPanel />
+        </div>
+      )}
 
       {tab === "faq" && (
         <div className="rounded-2xl border bg-card shadow-soft p-4 sm:p-6">

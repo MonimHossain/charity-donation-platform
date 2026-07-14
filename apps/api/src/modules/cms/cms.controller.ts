@@ -210,6 +210,11 @@ export async function updateSiteSettings(req: Request, res: Response) {
       };
       delete body.email;
     }
+    if (body.headerNavOrder !== undefined) {
+      body.headerNavOrder = Array.isArray(body.headerNavOrder)
+        ? body.headerNavOrder.map(String).filter(Boolean)
+        : [];
+    }
     if (!settings) {
       settings = createEntity(repo, body);
     } else {

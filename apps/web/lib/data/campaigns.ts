@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { USE_MOCK_DATA } from "@/lib/config";
 import { demoCampaigns, getCampaignBySlug as mockGetBySlug } from "@/lib/mock";
-import { fetchCampaigns, fetchCampaignBySlug } from "@/lib/api";
+import { fetchCampaigns, fetchCampaignBySlug, fetchSiteSettings } from "@/lib/api";
 import { queryKeys } from "./query-keys";
 import { isCampaignExpired } from "@/lib/campaign-expiration";
 
@@ -86,7 +86,19 @@ function pickHomepageAppeals(items: unknown[]) {
     .sort((a, b) => compareAppeals(a as Record<string, unknown>, b as Record<string, unknown>));
 }
 
-function pickHeaderNavCampaigns(items: unknown[]) {
+function compareByHeaderNavOrder(
+  a: Record<string, unknown>,
+  b: Record<string, unknown>,
+  order: string[]
+) {
+  const index = new Map(order.map((id, i) => [id, i]));
+  const ai = index.has(String(a.id)) ? (index.get(String(a.id)) as number) : Number.MAX_SAFE_INTEGER;
+  const bi = index.has(String(b.id)) ? (index.get(String(b.id)) as number) : Number.MAX_SAFE_INTEGER;
+  if (ai !== bi) return ai - bi;
+  return compareBySortOrder(a, b);
+}
+
+function pickHeaderNavCampaigns(items: unknown[], headerNavOrder: string[] = []) {
   return items
     .filter((c) => {
       const row = c as Record<string, unknown>;
@@ -100,8 +112,14 @@ function pickHeaderNavCampaigns(items: unknown[]) {
         isHeaderNavVisible(row)
       );
     })
-    // Navbar order = admin campaign list order (sortOrder), left → right.
-    .sort((a, b) => compareBySortOrder(a as Record<string, unknown>, b as Record<string, unknown>));
+    // Navbar order comes from Settings → Header nav (not campaign list drag).
+    .sort((a, b) =>
+      compareByHeaderNavOrder(
+        a as Record<string, unknown>,
+        b as Record<string, unknown>,
+        headerNavOrder
+      )
+    );
 }
 
 async function fetchAllPublishedCampaigns() {
@@ -182,8 +200,14 @@ export function useHeaderNavCampaigns() {
       if (USE_MOCK_DATA) {
         return { items: [], total: 0 };
       }
-      const allItems = await fetchAllPublishedCampaigns();
-      const items = pickHeaderNavCampaigns(allItems);
+      const [allItems, settings] = await Promise.all([
+        fetchAllPublishedCampaigns(),
+        fetchSiteSettings(),
+      ]);
+      const headerNavOrder = Array.isArray(settings?.headerNavOrder)
+        ? settings.headerNavOrder.map(String)
+        : [];
+      const items = pickHeaderNavCampaigns(allItems, headerNavOrder);
       return { items, total: items.length };
     },
   });
