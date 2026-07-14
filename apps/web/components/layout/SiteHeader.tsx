@@ -119,10 +119,15 @@ export default function SiteHeader() {
           : "text-foreground/75 hover:text-primary hover:bg-secondary/60"
     );
 
+  const headerCtaHref = campaignPublicPath("donate-to-gaza-famine-appeal");
   const donateButton = (
     <DonateButtonEffect className="rounded-full">
-      <Button asChild size="sm" className="rounded-full bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground h-9 px-3">
-        <Link href="/donate">{t("nav.donate")}</Link>
+      <Button
+        asChild
+        size="sm"
+        className="rounded-full bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground h-9 px-3"
+      >
+        <Link href={headerCtaHref}>Gaza Emergency</Link>
       </Button>
     </DonateButtonEffect>
   );
