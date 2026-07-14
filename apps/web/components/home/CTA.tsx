@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { imageAltFromSrc } from "@/lib/utils";
 
 const CTA_IMG =
-  "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&w=500&q=70";
+  "/images/cta-girl-C8v8b8Jp.webp";
 
 const CTA = () => (
   <section className="container-wide py-20">
