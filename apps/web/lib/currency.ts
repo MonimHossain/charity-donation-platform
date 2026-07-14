@@ -41,6 +41,67 @@ export const DEFAULT_CURRENCY_RATES: Record<CurrencyCode, number> = Object.fromE
 const STORAGE_KEY = "yif-display-currency-v1";
 const DEFAULT_CURRENCY: CurrencyCode = "GBP";
 
+/** ISO 3166-1 alpha-2 → supported display currency. */
+const COUNTRY_CURRENCY: Record<string, CurrencyCode> = {
+  GB: "GBP",
+  UK: "GBP",
+  US: "USD",
+  CA: "CAD",
+  AU: "AUD",
+  AE: "AED",
+  SA: "SAR",
+  MY: "MYR",
+  // Eurozone (and closely tied)
+  AT: "EUR",
+  BE: "EUR",
+  CY: "EUR",
+  DE: "EUR",
+  EE: "EUR",
+  ES: "EUR",
+  FI: "EUR",
+  FR: "EUR",
+  GR: "EUR",
+  HR: "EUR",
+  IE: "EUR",
+  IT: "EUR",
+  LT: "EUR",
+  LU: "EUR",
+  LV: "EUR",
+  MT: "EUR",
+  NL: "EUR",
+  PT: "EUR",
+  SI: "EUR",
+  SK: "EUR",
+};
+
+const TIMEZONE_CURRENCY: Array<{ prefix: string; code: CurrencyCode }> = [
+  { prefix: "Europe/London", code: "GBP" },
+  { prefix: "America/Toronto", code: "CAD" },
+  { prefix: "America/Vancouver", code: "CAD" },
+  { prefix: "America/Edmonton", code: "CAD" },
+  { prefix: "America/Winnipeg", code: "CAD" },
+  { prefix: "America/Halifax", code: "CAD" },
+  { prefix: "America/", code: "USD" },
+  { prefix: "Pacific/Honolulu", code: "USD" },
+  { prefix: "Australia/", code: "AUD" },
+  { prefix: "Asia/Dubai", code: "AED" },
+  { prefix: "Asia/Riyadh", code: "SAR" },
+  { prefix: "Asia/Kuala_Lumpur", code: "MYR" },
+  { prefix: "Asia/Kuching", code: "MYR" },
+  { prefix: "Europe/Paris", code: "EUR" },
+  { prefix: "Europe/Berlin", code: "EUR" },
+  { prefix: "Europe/Madrid", code: "EUR" },
+  { prefix: "Europe/Rome", code: "EUR" },
+  { prefix: "Europe/Amsterdam", code: "EUR" },
+  { prefix: "Europe/Brussels", code: "EUR" },
+  { prefix: "Europe/Vienna", code: "EUR" },
+  { prefix: "Europe/Dublin", code: "EUR" },
+  { prefix: "Europe/Lisbon", code: "EUR" },
+  { prefix: "Europe/Athens", code: "EUR" },
+  { prefix: "Europe/Helsinki", code: "EUR" },
+  { prefix: "Europe/Luxembourg", code: "EUR" },
+];
+
 let currentCurrency: CurrencyCode = DEFAULT_CURRENCY;
 let runtimeRates: Record<CurrencyCode, number> = { ...DEFAULT_CURRENCY_RATES };
 const listeners = new Set<() => void>();
@@ -51,6 +112,16 @@ function emit() {
 
 function isCurrencyCode(value: string): value is CurrencyCode {
   return value in CURRENCIES;
+}
+
+function hasStoredCurrencyPreference(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return Boolean(raw && isCurrencyCode(raw));
+  } catch {
+    return false;
+  }
 }
 
 function readStoredCurrency(): CurrencyCode {
@@ -75,6 +146,75 @@ function persistCurrency(code: CurrencyCode) {
     window.dispatchEvent(new CustomEvent("currency-changed", { detail: code }));
   }
   emit();
+}
+
+/** Country code from navigator.language / languages (e.g. en-GB → GB). */
+function visitorCountryFromLocale(): string | null {
+  if (typeof navigator === "undefined") return null;
+  const candidates = [navigator.language, ...(navigator.languages || [])];
+  for (const lang of candidates) {
+    if (!lang) continue;
+    const parts = lang.replace("_", "-").split("-");
+    if (parts.length >= 2 && parts[1]) {
+      const region = parts[1].toUpperCase();
+      if (/^[A-Z]{2}$/.test(region)) return region;
+    }
+  }
+  return null;
+}
+
+function currencyFromTimezone(tz: string): CurrencyCode | null {
+  for (const row of TIMEZONE_CURRENCY) {
+    if (tz === row.prefix || tz.startsWith(row.prefix)) return row.code;
+  }
+  // Generic Europe/* (excluding London handled above) → EUR when no better match
+  if (tz.startsWith("Europe/") && tz !== "Europe/London") {
+    return "EUR";
+  }
+  return null;
+}
+
+/**
+ * Infer display currency from browser locale country, then timezone.
+ * Returns null when nothing maps (caller keeps GBP default).
+ */
+export function detectCurrencyFromVisitorLocation(): CurrencyCode | null {
+  if (typeof window === "undefined") return null;
+
+  const country = visitorCountryFromLocale();
+  if (country && COUNTRY_CURRENCY[country]) {
+    return COUNTRY_CURRENCY[country];
+  }
+
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+    if (tz) {
+      const fromTz = currencyFromTimezone(tz);
+      if (fromTz) return fromTz;
+    }
+  } catch {
+    /* ignore */
+  }
+
+  return null;
+}
+
+/**
+ * On first visit (no saved currency), set currency from visitor location signals.
+ * Never overrides an explicit CurrencySwitcher choice.
+ */
+export function initCurrencyFromVisitorLocation(): CurrencyCode | null {
+  if (typeof window === "undefined") return null;
+  if (hasStoredCurrencyPreference()) {
+    currentCurrency = readStoredCurrency();
+    return currentCurrency;
+  }
+  const detected = detectCurrencyFromVisitorLocation();
+  if (detected) {
+    persistCurrency(detected);
+    return detected;
+  }
+  return null;
 }
 
 function ensureLoaded() {

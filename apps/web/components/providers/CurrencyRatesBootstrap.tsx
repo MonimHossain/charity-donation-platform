@@ -2,11 +2,13 @@
 
 import { useEffect } from "react";
 import { fetchSiteSettings } from "@/lib/api";
-import { applyCurrencyRates } from "@/lib/currency";
+import { applyCurrencyRates, initCurrencyFromVisitorLocation } from "@/lib/currency";
 
-/** Loads admin-configured currency rates once on app startup. */
+/** Loads admin-configured currency rates and auto-picks currency from visitor location once. */
 export function CurrencyRatesBootstrap() {
   useEffect(() => {
+    initCurrencyFromVisitorLocation();
+
     let cancelled = false;
     fetchSiteSettings()
       .then((data) => {
