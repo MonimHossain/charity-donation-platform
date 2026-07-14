@@ -9,6 +9,7 @@ import { getCampaignCardImage } from "@/lib/campaign-media";
 import { getDisplayDonorCount } from "@/lib/campaign-fundraising";
 import { campaignPublicPath } from "@/lib/public-paths";
 import { useCurrency } from "@/lib/currency";
+import { imageAltFromSrc } from "@/lib/utils";
 
 type Fundraiser = {
   slug: string;
@@ -97,7 +98,7 @@ const FundraiserCard = ({ f }: { f: Fundraiser }) => {
       <div className="relative aspect-[16/10] overflow-hidden">
         <img
           src={f.image}
-          alt={f.title}
+          alt={imageAltFromSrc(f.image)}
           loading="lazy"
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
           onError={(e) => {

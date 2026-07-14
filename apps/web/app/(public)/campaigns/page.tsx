@@ -8,7 +8,7 @@ import { Heart, Users, Search, Filter, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { cn } from "@/lib/utils";
+import { cn, imageAltFromSrc } from "@/lib/utils";
 import { fetchCampaigns } from "@/lib/api";
 import { getCampaignCardImage } from "@/lib/campaign-media";
 import {
@@ -205,7 +205,7 @@ function CampaignsPageApi() {
                     <div className="relative aspect-[3/2] overflow-hidden bg-muted">
                       <img
                         src={getCampaignCardImage(campaign)}
-                        alt={campaign.title}
+                        alt={imageAltFromSrc(getCampaignCardImage(campaign))}
                         className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                         loading="lazy"
                         onError={(e) => {

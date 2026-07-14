@@ -7,6 +7,7 @@ import { getBlogBySlug } from "@/lib/mock/blog";
 import { fmtDate } from "@/lib/mock/format";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
+import { imageAltFromSrc } from "@/lib/utils";
 
 export default function MockBlogPost({ slug }: { slug: string }) {
   const router = useRouter();
@@ -30,7 +31,7 @@ export default function MockBlogPost({ slug }: { slug: string }) {
         </p>
         <h1 className="mt-4 font-serif text-4xl md:text-5xl text-primary">{post.title}</h1>
         <div className="mt-8 aspect-[21/9] rounded-3xl overflow-hidden">
-          <img src={post.cover} alt="" className="w-full h-full object-cover" />
+          <img src={post.cover} alt={imageAltFromSrc(post.cover)} className="w-full h-full object-cover" />
         </div>
         <div className="mt-10 prose prose-lg max-w-none text-foreground/90 whitespace-pre-wrap">
           {post.body ?? post.excerpt}

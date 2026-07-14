@@ -2,6 +2,7 @@ import Link from "next/link";
 import PageShell, { PageHero } from "@/components/site/PageShell";
 import { demoCharities } from "@/lib/mock/charities";
 import { Badge } from "@/components/ui/badge";
+import { imageAltFromSrc } from "@/lib/utils";
 
 export default function MockCharitiesList() {
   return (
@@ -19,7 +20,7 @@ export default function MockCharitiesList() {
             className="rounded-2xl border border-border bg-card p-6 hover:shadow-lift transition-shadow"
           >
             {c.logoUrl && (
-              <img src={c.logoUrl} alt="" className="h-10 w-auto mb-4" />
+              <img src={c.logoUrl} alt={imageAltFromSrc(c.logoUrl)} className="h-10 w-auto mb-4" />
             )}
             <h2 className="font-serif text-xl text-primary">{c.name}</h2>
             <p className="text-sm text-muted-foreground mt-1">{c.country}</p>

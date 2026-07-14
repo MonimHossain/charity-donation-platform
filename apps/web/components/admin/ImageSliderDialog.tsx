@@ -24,7 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
+import { cn, imageAltFromSrc } from "@/lib/utils";
 import { resolveMediaUrl } from "@/lib/campaign-media";
 import { uploadMediaFile, type UploadedMediaFile } from "@/lib/media-upload";
 
@@ -183,7 +183,7 @@ export function ImageSliderDialog({ open, onOpenChange, onConfirm }: ImageSlider
             </p>
             {selected.map((url, idx) => (
               <div key={`${url}-${idx}`} className="flex items-center gap-2">
-                <img src={url} alt="" className="h-10 w-14 rounded object-cover shrink-0" />
+                <img src={url} alt={imageAltFromSrc(url)} className="h-10 w-14 rounded object-cover shrink-0" />
                 <span className="text-xs truncate flex-1 min-w-0">{url.split("/").pop()}</span>
                 <Button
                   type="button"
@@ -283,7 +283,7 @@ export function ImageSliderDialog({ open, onOpenChange, onConfirm }: ImageSlider
                     )}
                   >
                     <div className="aspect-square bg-muted">
-                      <img src={url} alt={file.name} className="w-full h-full object-cover" loading="lazy" />
+                      <img src={url} alt={imageAltFromSrc(url) || file.name} className="w-full h-full object-cover" loading="lazy" />
                     </div>
                     {isOn && (
                       <div className="absolute top-1 right-1 h-5 w-5 rounded-full bg-primary flex items-center justify-center">

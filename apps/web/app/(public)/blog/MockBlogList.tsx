@@ -5,6 +5,7 @@ import { blogPostPublicPath } from "@/lib/public-paths";
 import PageShell, { PageHero } from "@/components/site/PageShell";
 import { demoBlogPosts } from "@/lib/mock/blog";
 import { fmtDate } from "@/lib/mock/format";
+import { imageAltFromSrc } from "@/lib/utils";
 
 export default function MockBlogList() {
   const posts = demoBlogPosts.filter((p) => p.status === "published");
@@ -22,7 +23,7 @@ export default function MockBlogList() {
             <div className="aspect-[16/10] overflow-hidden">
               <img
                 src={p.cover}
-                alt=""
+                alt={imageAltFromSrc(p.cover)}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
               />
             </div>

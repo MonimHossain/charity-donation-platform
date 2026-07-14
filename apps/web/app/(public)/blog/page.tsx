@@ -9,7 +9,7 @@ import { blogPostPublicPath } from "@/lib/public-paths";
 import BlogCard from "@/components/blog/BlogCard";
 import { fetchBlogPosts, fetchBlogCategories } from "@/lib/api";
 import { resolveMediaUrl } from "@/lib/campaign-media";
-import { cn } from "@/lib/utils";
+import { cn, imageAltFromSrc } from "@/lib/utils";
 
 interface BlogCategory {
   id: string;
@@ -203,7 +203,7 @@ function BlogListingPageApi() {
                   <div className="grid md:grid-cols-[1.1fr_1fr]">
                     <div className="relative min-h-[320px] overflow-hidden md:min-h-[400px]">
                       {featuredPost.featuredImage ? (
-                        <img src={resolveMediaUrl(featuredPost.featuredImage) ?? featuredPost.featuredImage} alt={featuredPost.title} className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
+                        <img src={resolveMediaUrl(featuredPost.featuredImage) ?? featuredPost.featuredImage} alt={imageAltFromSrc(resolveMediaUrl(featuredPost.featuredImage) ?? featuredPost.featuredImage)} className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
                       ) : (
                         <div className="absolute inset-0 bg-gradient-to-br from-purple-600 to-purple-900" />
                       )}

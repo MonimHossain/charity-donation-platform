@@ -7,7 +7,7 @@ import { Button } from "./button";
 import { MediaPickerDialog } from "./media-picker-dialog";
 import { resolveMediaUrl } from "@/lib/campaign-media";
 import { matchesMediaAccept, uploadMediaFile } from "@/lib/media-upload";
-import { cn } from "@/lib/utils";
+import { cn, imageAltFromSrc } from "@/lib/utils";
 
 interface PickedFile {
   id: string;
@@ -107,7 +107,7 @@ export function FilePicker({ value, onChange, accept = "all", label, className }
           onDrop={onDrop}
         >
           {value.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i) ? (
-            <img src={resolveMediaUrl(value) ?? value} alt="" className="w-full h-32 object-cover" />
+            <img src={resolveMediaUrl(value) ?? value} alt={imageAltFromSrc(resolveMediaUrl(value) ?? value)} className="w-full h-32 object-cover" />
           ) : (
             <div className="h-32 flex items-center justify-center">
               <FileText className="h-8 w-8 text-muted-foreground" />

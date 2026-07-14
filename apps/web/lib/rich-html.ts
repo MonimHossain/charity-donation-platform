@@ -1,4 +1,5 @@
 import { resolveMediaUrl } from "@/lib/campaign-media";
+import { imageAltFromSrc } from "@/lib/utils";
 
 const YOUTUBE_EMBED_HOSTS = new Set([
   "www.youtube.com",
@@ -29,17 +30,31 @@ export function isAllowedVideoEmbedSrc(src: string): boolean {
   }
 }
 
+function applyImgAltFromFilename(html: string): string {
+  return html.replace(/<img\b([^>]*)>/gi, (_match, attrs: string) => {
+    const srcMatch = attrs.match(/\ssrc\s*=\s*(["'])([^"']*)\1/i);
+    if (!srcMatch) return `<img${attrs}>`;
+    const alt = imageAltFromSrc(srcMatch[2]).replace(/"/g, "&quot;");
+    if (/\salt\s*=/i.test(attrs)) {
+      return `<img${attrs.replace(/\salt\s*=\s*(["'])[\s\S]*?\1/i, ` alt="${alt}"`)}>`;
+    }
+    return `<img${attrs} alt="${alt}">`;
+  });
+}
+
 /** Rewrite img/video/source src attributes to same-origin `/charity-media/...` paths. */
 export function normalizeRichHtmlMediaUrls(html: string): string {
   if (!html?.trim()) return html || "";
 
-  return html.replace(
+  const withResolvedSrc = html.replace(
     /(<(?:video|img|source)\b[^>]*\ssrc\s*=\s*)(["'])([^"']+)\2/gi,
     (_match, prefix: string, quote: string, src: string) => {
       const resolved = resolveMediaUrl(src) ?? src;
       return `${prefix}${quote}${resolved}${quote}`;
     }
   );
+
+  return applyImgAltFromFilename(withResolvedSrc);
 }
 
 /** Block-level <video> inside <p> breaks playback in many browsers. */

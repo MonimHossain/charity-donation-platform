@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { resolveMediaUrl } from "@/lib/campaign-media";
-import { cn } from "@/lib/utils";
+import { cn, imageAltFromSrc } from "@/lib/utils";
 
 export interface ImageSliderCarouselProps {
   images: string[];
@@ -60,7 +60,7 @@ export function ImageSliderCarousel({
       <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-border bg-muted">
         <img
           src={urls[index]}
-          alt=""
+          alt={imageAltFromSrc(urls[index])}
           className="h-full w-full object-cover"
           draggable={false}
         />
@@ -109,7 +109,7 @@ export function ImageSliderCarousel({
               onMouseDown={stopPm}
               onClick={() => setIndex(i)}
             >
-              <img src={url} alt="" className="h-full w-full object-cover" draggable={false} />
+              <img src={url} alt={imageAltFromSrc(url)} className="h-full w-full object-cover" draggable={false} />
             </button>
           ))}
         </div>

@@ -8,6 +8,7 @@ import TrustBadges from "@/components/home/TrustBadges";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, CheckCircle2, AlertTriangle } from "lucide-react";
 import { useCurrency } from "@/lib/currency";
+import { imageAltFromSrc } from "@/lib/utils";
 
 export interface CampaignLandingProps {
   slug: string;
@@ -44,7 +45,7 @@ export default function CampaignLanding({
     >
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 -z-10">
-          <img src={hero} alt={title} className="w-full h-full object-cover" />
+          <img src={hero} alt={imageAltFromSrc(hero)} className="w-full h-full object-cover" />
           <div className="absolute inset-0 gradient-hero" />
         </div>
         <div className="container-wide pt-16 pb-20 lg:pt-24 lg:pb-28 grid lg:grid-cols-12 gap-10 items-start">

@@ -6,6 +6,7 @@ import { ArrowRight } from "lucide-react";
 import { fetchBlogPosts } from "@/lib/api";
 import { blogPostPublicPath } from "@/lib/public-paths";
 import { resolveMediaUrl } from "@/lib/campaign-media";
+import { imageAltFromSrc } from "@/lib/utils";
 
 interface StoryPost {
   slug: string;
@@ -80,7 +81,7 @@ export default function Stories() {
               {post.featuredImage ? (
                 <img
                   src={resolveMediaUrl(post.featuredImage) ?? post.featuredImage}
-                  alt={post.title}
+                  alt={imageAltFromSrc(resolveMediaUrl(post.featuredImage) ?? post.featuredImage)}
                   loading="lazy"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />

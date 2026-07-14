@@ -6,6 +6,7 @@ import { ArrowRight } from "lucide-react";
 import CTA from "@/components/home/CTA";
 import Fundraisers from "@/components/home/Fundraisers";
 import { campaignPublicPath } from "@/lib/public-paths";
+import { imageAltFromSrc } from "@/lib/utils";
 
 export default function AppealsPage() {
   return (
@@ -32,7 +33,7 @@ export default function AppealsPage() {
             <div className="aspect-[16/9] overflow-hidden">
               <img
                 src={a.image}
-                alt={a.title}
+                alt={imageAltFromSrc(a.image)}
                 loading="lazy"
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
               />

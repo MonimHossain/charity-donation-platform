@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { FilePicker } from "@/components/ui/file-picker";
-import { cn } from "@/lib/utils";
+import { cn, imageAltFromSrc } from "@/lib/utils";
 import {
   adminCreateUpsell,
   adminDeleteUpsell,
@@ -159,7 +159,7 @@ export default function AdminUpsellsPage() {
             <div key={item.id} className="rounded-2xl border bg-card overflow-hidden shadow-soft">
               {item.image ? (
                 <div className="relative aspect-[16/9] bg-muted">
-                  <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
+                  <img src={item.image} alt={imageAltFromSrc(item.image)} className="h-full w-full object-cover" />
                 </div>
               ) : (
                 <div className="aspect-[16/9] bg-muted/40 flex items-center justify-center text-xs text-muted-foreground">

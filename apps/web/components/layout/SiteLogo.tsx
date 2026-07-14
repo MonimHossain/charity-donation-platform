@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn, imageAltFromSrc } from "@/lib/utils";
 
 type Props = {
   className?: string;
@@ -6,11 +6,13 @@ type Props = {
   heightClass?: string;
 };
 
+const LOGO_SRC = "/images/logo-transparent.png";
+
 export function SiteLogo({ className, heightClass = "h-8" }: Props) {
   return (
     <img
-      src="/images/logo-transparent.png"
-      alt="Your Impact Foundation"
+      src={LOGO_SRC}
+      alt={imageAltFromSrc(LOGO_SRC)}
       className={cn(
         heightClass,
         "w-auto max-w-[8.5rem] sm:max-w-[9.5rem] object-contain object-left shrink-0 select-none",

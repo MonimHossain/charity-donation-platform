@@ -42,7 +42,7 @@ import {
 } from "@repo/shared-types";
 import RichTextEditor from "@/components/admin/RichTextEditor";
 import RamadanStartDatesEditor from "@/components/admin/RamadanStartDatesEditor";
-import { cn } from "@/lib/utils";
+import { cn, imageAltFromSrc } from "@/lib/utils";
 import {
   fetchAdminCampaigns,
   adminCreateCampaign,
@@ -1693,7 +1693,7 @@ export default function CampaignsPage() {
                       {item.image ? (
                         <img
                           src={item.image}
-                          alt=""
+                          alt={imageAltFromSrc(item.image)}
                           className="h-14 w-14 rounded-lg object-cover shrink-0 bg-muted"
                         />
                       ) : (

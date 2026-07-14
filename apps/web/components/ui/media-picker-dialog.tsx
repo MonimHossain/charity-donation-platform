@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Upload, Image, Film, FileText, X, Search, Loader2, Check } from "lucide-react";
 import { Button } from "./button";
 import { Input } from "./input";
-import { cn } from "@/lib/utils";
+import { cn, imageAltFromSrc } from "@/lib/utils";
 import { resolveMediaUrl } from "@/lib/campaign-media";
 import {
   matchesMediaAccept,
@@ -243,7 +243,7 @@ export function MediaPickerDialog({
                       {isImage ? (
                         <img
                           src={resolveMediaUrl(file.url) ?? file.url}
-                          alt={file.name}
+                          alt={imageAltFromSrc(file.url) || file.name}
                           className="w-full h-full object-cover"
                           loading="lazy"
                         />

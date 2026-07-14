@@ -20,7 +20,7 @@ import TrustBadges from "@/components/home/TrustBadges";
 import RichContentRenderer from "@/components/blog/RichContentRenderer";
 import { BlogPostFaqs } from "@/components/blog/BlogPostFaqs";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, imageAltFromSrc } from "@/lib/utils";
 import { statValueSmClass } from "@/lib/home-buttons";
 import { useCurrency } from "@/lib/currency";
 import { getDisplayDonorCount } from "@/lib/campaign-fundraising";
@@ -103,7 +103,7 @@ export function CampaignDetailLayout({
               <div className="mb-6 rounded-3xl overflow-hidden border border-border shadow-lift bg-muted max-h-[min(70vh,520px)] flex items-center justify-center">
                 <img
                   src={heroImage}
-                  alt={campaign.title}
+                  alt={imageAltFromSrc(heroImage)}
                   className="w-full h-auto max-h-[min(70vh,520px)] object-contain"
                   onError={(e) => {
                     const img = e.currentTarget;
@@ -363,7 +363,7 @@ export function CampaignDetailLayout({
                 <div className="relative h-32 overflow-hidden">
                   <img
                     src={getCampaignCardImage(c)}
-                    alt={c.title}
+                    alt={imageAltFromSrc(getCampaignCardImage(c))}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-primary/80 to-transparent" />

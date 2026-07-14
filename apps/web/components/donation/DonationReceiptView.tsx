@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { formatMoney, normalizeCurrencyCode } from "@/lib/currency";
 import { DONATION_STATUS_STYLES, type ReceiptData } from "@/lib/payment-utils";
-import { cn } from "@/lib/utils";
+import { cn, imageAltFromSrc } from "@/lib/utils";
 
 function getTransactionId(receipt: ReceiptData): string {
   return receipt.donationId || receipt.receiptNumber || "—";
@@ -208,7 +208,7 @@ export default function DonationReceiptView({ receipt }: { receipt: ReceiptData 
           <div className="flex items-start justify-between gap-4">
             <img
               src={logoUrl.startsWith("http") ? logoUrl : logoUrl}
-              alt=""
+              alt={imageAltFromSrc(logoUrl)}
               className="h-9 w-auto max-w-[6.5rem] object-contain shrink-0"
               onError={(e) => {
                 (e.target as HTMLImageElement).src = "/images/logo-transparent.png";

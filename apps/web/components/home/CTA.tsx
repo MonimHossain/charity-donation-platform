@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { ArrowRight, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { imageAltFromSrc } from "@/lib/utils";
+
+const CTA_IMG =
+  "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&w=500&q=70";
 
 const CTA = () => (
   <section className="container-wide py-20">
@@ -24,8 +28,8 @@ const CTA = () => (
         </div>
         <div className="lg:col-span-5 flex justify-center lg:justify-end">
           <img
-            src="https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&w=500&q=70"
-            alt="Child holding an aid box"
+            src={CTA_IMG}
+            alt={imageAltFromSrc(CTA_IMG)}
             loading="lazy"
             className="w-full max-w-sm h-auto object-contain drop-shadow-2xl rounded-3xl"
           />

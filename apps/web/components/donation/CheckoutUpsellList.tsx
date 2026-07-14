@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import type { CampaignUpsell } from "@/lib/checkout-campaign-config";
 import { convertAmount, formatMoney, normalizeCurrencyCode, type CurrencyCode } from "@/lib/currency";
-import { cn } from "@/lib/utils";
+import { cn, imageAltFromSrc } from "@/lib/utils";
 
 type Props = {
   upsells: CampaignUpsell[];
@@ -66,7 +66,7 @@ export default function CheckoutUpsellList({
               {upsell.image ? (
                 <img
                   src={upsell.image}
-                  alt=""
+                  alt={imageAltFromSrc(upsell.image)}
                   className="h-10 w-10 rounded-lg object-cover shrink-0 bg-muted"
                 />
               ) : (

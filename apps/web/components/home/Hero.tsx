@@ -7,6 +7,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 import { useHeroSlides } from "@/lib/data/cms";
+import { imageAltFromSrc } from "@/lib/utils";
 
 type HeroSlideView = {
   img: string;
@@ -29,7 +30,7 @@ function normalizeSlides(raw: unknown[]): HeroSlideView[] {
 
       return {
         img,
-        alt: title || "Hero slide",
+        alt: imageAltFromSrc(img),
         quote: title || subtitle,
         cite: title && subtitle ? `— ${subtitle}` : subtitle ? `— ${subtitle}` : "",
       };

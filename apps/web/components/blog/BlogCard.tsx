@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { resolveMediaUrl } from "@/lib/campaign-media";
 import { blogPostPublicPath } from "@/lib/public-paths";
+import { imageAltFromSrc } from "@/lib/utils";
 
 interface BlogPost {
   id: string;
@@ -40,7 +41,7 @@ export default function BlogCard({ post }: { post: BlogPost }) {
         {post.featuredImage ? (
           <img
             src={resolveMediaUrl(post.featuredImage) ?? post.featuredImage}
-            alt={post.title}
+            alt={imageAltFromSrc(resolveMediaUrl(post.featuredImage) ?? post.featuredImage)}
             className="h-56 w-full object-cover transition-transform duration-500 group-hover:scale-105"
             loading="lazy"
           />

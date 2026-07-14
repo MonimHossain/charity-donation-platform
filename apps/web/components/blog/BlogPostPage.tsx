@@ -13,6 +13,7 @@ import type { EntityFaqItem } from "@repo/shared-types";
 import { fetchBlogPostBySlug, subscribeNewsletter } from "@/lib/api";
 import { resolveMediaUrl } from "@/lib/campaign-media";
 import { toast } from "sonner";
+import { imageAltFromSrc } from "@/lib/utils";
 
 interface BlogPost {
   id: string;
@@ -198,7 +199,7 @@ function BlogDetailPageApi({ slug }: { slug: string }) {
             {post.featuredImage && (
               <img
                 src={resolveMediaUrl(post.featuredImage) ?? post.featuredImage}
-                alt={post.title}
+                alt={imageAltFromSrc(resolveMediaUrl(post.featuredImage) ?? post.featuredImage)}
                 className="mb-8 w-full h-auto max-w-full rounded-xl border border-gray-100 object-contain"
               />
             )}

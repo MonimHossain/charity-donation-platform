@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { FilePicker } from "@/components/ui/file-picker";
-import { cn } from "@/lib/utils";
+import { cn, imageAltFromSrc } from "@/lib/utils";
 import {
   fetchHeroSlides,
   adminCreateHeroSlide,
@@ -240,7 +240,7 @@ export default function HeroSlidesPage() {
                 <GripVertical className="h-5 w-5 text-muted-foreground/50 shrink-0 cursor-grab" />
                 <div className="flex h-12 w-20 items-center justify-center rounded-lg bg-muted shrink-0 overflow-hidden">
                   {slide.backgroundImage ? (
-                    <img src={slide.backgroundImage} alt="" className="h-full w-full object-cover" />
+                    <img src={slide.backgroundImage} alt={imageAltFromSrc(slide.backgroundImage)} className="h-full w-full object-cover" />
                   ) : (
                     <ImageIcon className="h-5 w-5 text-muted-foreground" />
                   )}

@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import PageShell, { PageHero } from "@/components/site/PageShell";
 import { demoCampaigns } from "@/lib/mock/campaigns";
 import { fmtMoney } from "@/lib/mock/format";
+import { imageAltFromSrc } from "@/lib/utils";
 
 const CATEGORIES = ["All", "Emergency", "Long-term", "Essentials", "Sustainable", "Sadaqah Jariyah", "Rapid response"];
 
@@ -75,7 +76,7 @@ export default function MockCampaignsList() {
                 <div className="aspect-[4/3] overflow-hidden relative">
                   <img
                     src={c.image}
-                    alt={c.title}
+                    alt={imageAltFromSrc(c.image)}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                   {c.urgent && (

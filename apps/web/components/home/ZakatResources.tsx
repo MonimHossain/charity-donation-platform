@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { imageAltFromSrc } from "@/lib/utils";
 
 const cards = [
   {
@@ -55,7 +56,7 @@ const ZakatResources = () => (
             <div className="aspect-[4/3] overflow-hidden bg-secondary">
               <img
                 src={c.image}
-                alt={c.title}
+                alt={imageAltFromSrc(c.image)}
                 width={640}
                 height={480}
                 loading="lazy"

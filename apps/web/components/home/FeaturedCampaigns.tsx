@@ -16,6 +16,7 @@ import {
 import { getCampaignGoalAmount, getCampaignRaisedAmount, getDisplayDonorCount } from "@/lib/campaign-fundraising";
 import { campaignPublicPath } from "@/lib/public-paths";
 import { useCurrency } from "@/lib/currency";
+import { imageAltFromSrc } from "@/lib/utils";
 
 type Appeal = {
   slug: string;
@@ -121,7 +122,7 @@ const AppealCard = ({
       <div className={`relative overflow-hidden ${large ? "aspect-[8/3]" : "aspect-[4/3]"}`}>
         <img
           src={a.image}
-          alt={a.title}
+          alt={imageAltFromSrc(a.image)}
           loading="lazy"
           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
           onError={(e) => {

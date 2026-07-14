@@ -1,11 +1,15 @@
 import Link from "next/link";
 import { homeOutlineButtonClass } from "@/lib/home-buttons";
+import { imageAltFromSrc } from "@/lib/utils";
+
+const STORY_IMG =
+  "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&w=800&q=70";
 
 const StorySection = () => (
   <section className="container-wide py-24 grid lg:grid-cols-12 gap-12 items-center">
     <div className="lg:col-span-6 relative">
       <div className="aspect-[4/5] overflow-hidden rounded-[2rem] shadow-lift">
-        <img src="https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&w=800&q=70" alt="Aid distribution" loading="lazy" className="w-full h-full object-cover" />
+        <img src={STORY_IMG} alt={imageAltFromSrc(STORY_IMG)} loading="lazy" className="w-full h-full object-cover" />
       </div>
       <div className="hidden md:block absolute -bottom-8 -right-6 bg-accent text-accent-foreground rounded-2xl p-6 max-w-xs shadow-glow">
         <p className="font-serif text-3xl font-bold leading-tight">Sadaqah Jariyah</p>

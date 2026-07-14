@@ -5,6 +5,7 @@ import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { CampaignUpsell } from "@/lib/checkout-campaign-config";
 import { formatMoney, normalizeCurrencyCode, type CurrencyCode } from "@/lib/currency";
+import { imageAltFromSrc } from "@/lib/utils";
 import CheckoutStepIndicator, { type CheckoutFlowStep } from "./CheckoutStepIndicator";
 import CheckoutUpsellList from "./CheckoutUpsellList";
 
@@ -49,7 +50,7 @@ export default function CheckoutGiftAidStep({
         </h2>
         <Image
           src="/images/giftaid-it.png"
-          alt="Gift Aid it"
+          alt={imageAltFromSrc("/images/giftaid-it.png")}
           width={220}
           height={64}
           className="mx-auto h-12 md:h-14 w-auto"

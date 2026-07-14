@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import { DropdownPortal } from "./DropdownPortal";
-import { cn } from "@/lib/utils";
+import { cn, imageAltFromSrc } from "@/lib/utils";
 import {
   applyGoogleTranslateLanguage,
   loadGoogleTranslateScript,
@@ -101,7 +101,7 @@ export default function LanguageSwitcher({ compact = false }: { compact?: boolea
             src={flagUrl(current.flag)}
             width={16}
             height={12}
-            alt=""
+            alt={imageAltFromSrc(flagUrl(current.flag))}
             className="shrink-0 rounded-sm"
           />
         )}
@@ -132,7 +132,7 @@ export default function LanguageSwitcher({ compact = false }: { compact?: boolea
               onClick={() => selectLanguage(lang.value)}
               className="flex items-center gap-3 w-full px-3 py-2.5 text-left text-sm cursor-pointer rounded-lg hover:bg-secondary transition-colors touch-manipulation"
             >
-              <img src={flagUrl(lang.flag)} width={20} height={15} alt="" className="shrink-0 rounded-sm" />
+              <img src={flagUrl(lang.flag)} width={20} height={15} alt={imageAltFromSrc(flagUrl(lang.flag))} className="shrink-0 rounded-sm" />
               <span className="flex-1 min-w-0 truncate">{lang.label}</span>
               {active && <Check className="w-4 h-4 text-accent-deep shrink-0" />}
             </button>

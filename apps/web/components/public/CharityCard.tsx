@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { AuditStatusBadge, CertificationStatusBadge } from '@/components/common/CharityStatusBadge';
 import type { AuditStatus, CertificationStatus } from '@/lib/shared-types';
+import { imageAltFromSrc } from "@/lib/utils";
 
 export type CharityCardData = {
   name: string;
@@ -37,7 +38,7 @@ export default function CharityCard({ charity }: { charity: CharityCardData }) {
             {logoUrl && (
               <div className="hidden shrink-0 md:block">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={logoUrl} alt={`${charity.name} logo`} className="h-16 w-16 object-contain rounded-lg" />
+                <img src={logoUrl} alt={imageAltFromSrc(logoUrl)} className="h-16 w-16 object-contain rounded-lg" />
               </div>
             )}
           </div>

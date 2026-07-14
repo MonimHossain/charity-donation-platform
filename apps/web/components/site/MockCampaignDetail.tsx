@@ -12,6 +12,7 @@ import { fmtMoney } from "@/lib/mock/format";
 import { getRecentDonationsForCampaign } from "@/lib/mock/donations";
 import { getCampaignBySlug, useCampaigns } from "@/lib/stores/campaignStore";
 import { Button } from "@/components/ui/button";
+import { imageAltFromSrc } from "@/lib/utils";
 
 function donorInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -42,7 +43,7 @@ export default function MockCampaignDetail({ slug }: { slug: string }) {
           <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-start">
             <div className="lg:col-span-7 xl:col-span-8 min-w-0">
               <div className="mb-6 rounded-3xl overflow-hidden border border-border shadow-lift aspect-[16/9] bg-muted">
-                <img src={c.image} alt={c.title} className="w-full h-full object-cover" />
+                <img src={c.image} alt={imageAltFromSrc(c.image)} className="w-full h-full object-cover" />
               </div>
               {c.urgent && (
                 <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-destructive text-destructive-foreground text-xs font-bold uppercase tracking-wider">
@@ -183,7 +184,7 @@ export default function MockCampaignDetail({ slug }: { slug: string }) {
                 className="group rounded-2xl overflow-hidden border border-border bg-card hover:shadow-lift hover:-translate-y-0.5 transition-all duration-300"
               >
                 <div className="relative h-32 overflow-hidden">
-                  <img src={r.image} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <img src={r.image} alt={imageAltFromSrc(r.image)} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   <div className="absolute inset-0 bg-gradient-to-t from-primary/80 to-transparent" />
                   <h3 className="absolute bottom-3 left-4 right-4 text-primary-foreground font-serif text-lg leading-tight">
                     {r.title}

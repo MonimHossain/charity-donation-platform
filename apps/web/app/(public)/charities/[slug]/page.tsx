@@ -9,6 +9,7 @@ import RiskLevelBadge from "@/components/public/RiskLevelBadge";
 import { formatDate } from "@/lib/format";
 import { ArrowLeft, ExternalLink, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { imageAltFromSrc } from "@/lib/utils";
 
 export default function CharityProfilePage() {
   const params = useParams();
@@ -79,7 +80,7 @@ export default function CharityProfilePage() {
             {charity.logoUrl && (
               <div className="shrink-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={charity.logoUrl} alt={`${charity.name} logo`} className="h-20 w-20 rounded-xl object-contain" />
+                <img src={charity.logoUrl} alt={imageAltFromSrc(charity.logoUrl)} className="h-20 w-20 rounded-xl object-contain" />
               </div>
             )}
           </div>

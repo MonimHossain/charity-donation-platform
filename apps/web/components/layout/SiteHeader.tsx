@@ -19,7 +19,7 @@ import { useLocale } from "@/lib/i18n";
 import { DropdownPortal } from "./DropdownPortal";
 import { DonateButtonEffect } from "@/components/ui/DonateButtonEffect";
 import { UserNotificationBell } from "@/components/notifications/UserNotificationBell";
-import { cn } from "@/lib/utils";
+import { cn, imageAltFromSrc } from "@/lib/utils";
 
 const mockNav = [
   { href: "/donate/food", label: "Food Aid" },
@@ -138,7 +138,7 @@ export default function SiteHeader() {
             </Link>
             <img
               src="/images/achievements.webp"
-              alt="100% Policy · Awards"
+              alt={imageAltFromSrc("/images/achievements.webp")}
               className="hidden sm:block h-8 md:h-9 lg:h-10 w-auto select-none shrink-0"
               draggable={false}
             />
