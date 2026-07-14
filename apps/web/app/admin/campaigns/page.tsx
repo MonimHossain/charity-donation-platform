@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, type DragEvent } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Plus,
@@ -471,6 +472,7 @@ const CAMPAIGNS_PAGE_SIZE = 25;
 // ── Main Page ──
 
 export default function CampaignsPage() {
+  const queryClient = useQueryClient();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -545,7 +547,8 @@ export default function CampaignsPage() {
         page,
         limit: CAMPAIGNS_PAGE_SIZE,
       });
-      toast.success("Campaign order updated");
+      await queryClient.invalidateQueries({ queryKey: ["campaigns"] });
+      toast.success("Campaign order updated — public navbar & listings will use this order");
     } catch {
       setCampaigns(previous);
       toast.error("Failed to save campaign order");
@@ -869,10 +872,8 @@ export default function CampaignsPage() {
           <div>
             <h1 className="text-3xl font-bold font-serif tracking-tight">Campaigns</h1>
             <p className="text-muted-foreground mt-1">
-              Manage all fundraising campaigns — including Fidya/Kaffarah and Ramadan Split experiences.
-              {!appliedSearch.trim() && (
-                <> Drag rows to set the order shown on the public site.</>
-              )}
+              Manage fundraising campaigns. Drag rows to set public order (campaign pages and the site header nav for
+              campaigns with &ldquo;Show in Header Navigation&rdquo;).
             </p>
           </div>
           <Button onClick={openCreate}>
@@ -1864,7 +1865,7 @@ export default function CampaignsPage() {
               <div className="space-y-3">
                 <SwitchRow
                   label="Show in Header Navigation"
-                  description="Adds a link in the top site menu (desktop and mobile), next to Zakat."
+                  description="Adds this campaign to the second navbar row. Left-to-right order follows the Campaigns list drag order in admin."
                   checked={form.visibilitySettings.showInHeader}
                   onChange={(v) =>
                     setForm((p) => ({

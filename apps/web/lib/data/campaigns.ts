@@ -60,11 +60,7 @@ function isPublished(c: Record<string, unknown>) {
   return String(c.status ?? "") === "published";
 }
 
-function compareAppeals(a: Record<string, unknown>, b: Record<string, unknown>) {
-  const aPinned = (a.visibilitySettings as { pinToTop?: boolean } | undefined)?.pinToTop ? 1 : 0;
-  const bPinned = (b.visibilitySettings as { pinToTop?: boolean } | undefined)?.pinToTop ? 1 : 0;
-  if (aPinned !== bPinned) return bPinned - aPinned;
-
+function compareBySortOrder(a: Record<string, unknown>, b: Record<string, unknown>) {
   const aOrder = Number(a.sortOrder ?? 0);
   const bOrder = Number(b.sortOrder ?? 0);
   if (aOrder !== bOrder) return aOrder - bOrder;
@@ -72,6 +68,13 @@ function compareAppeals(a: Record<string, unknown>, b: Record<string, unknown>) 
   const aCreated = new Date(String(a.createdAt ?? 0)).getTime();
   const bCreated = new Date(String(b.createdAt ?? 0)).getTime();
   return bCreated - aCreated;
+}
+
+function compareAppeals(a: Record<string, unknown>, b: Record<string, unknown>) {
+  const aPinned = (a.visibilitySettings as { pinToTop?: boolean } | undefined)?.pinToTop ? 1 : 0;
+  const bPinned = (b.visibilitySettings as { pinToTop?: boolean } | undefined)?.pinToTop ? 1 : 0;
+  if (aPinned !== bPinned) return bPinned - aPinned;
+  return compareBySortOrder(a, b);
 }
 
 function pickHomepageAppeals(items: unknown[]) {
@@ -97,7 +100,8 @@ function pickHeaderNavCampaigns(items: unknown[]) {
         isHeaderNavVisible(row)
       );
     })
-    .sort((a, b) => compareAppeals(a as Record<string, unknown>, b as Record<string, unknown>));
+    // Navbar order = admin campaign list order (sortOrder), left → right.
+    .sort((a, b) => compareBySortOrder(a as Record<string, unknown>, b as Record<string, unknown>));
 }
 
 async function fetchAllPublishedCampaigns() {
