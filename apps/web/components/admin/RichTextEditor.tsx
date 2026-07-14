@@ -12,6 +12,8 @@ import { CampaignDonationEmbedExtension } from "@/components/admin/rich-text-cam
 import { CampaignDonationEmbedDialog } from "@/components/admin/CampaignDonationEmbedDialog";
 import { ImageSliderExtension } from "@/components/admin/rich-text-image-slider-extension";
 import { ImageSliderDialog } from "@/components/admin/ImageSliderDialog";
+import { HtmlSnippetExtension } from "@/components/admin/rich-text-html-snippet-extension";
+import { HtmlSnippetDialog } from "@/components/admin/HtmlSnippetDialog";
 import { Extension } from "@tiptap/core";
 import type { Editor } from "@tiptap/core";
 import Color from "@tiptap/extension-color";
@@ -34,6 +36,7 @@ import {
   AlignLeft,
   AlignRight,
   Bold,
+  Braces,
   Code,
   Code2,
   Heart,
@@ -150,6 +153,10 @@ function ToolbarBtn({
   return (
     <button
       type="button"
+      onMouseDown={(e) => {
+        // Keep ProseMirror selection when clicking toolbar controls.
+        e.preventDefault();
+      }}
       onClick={onClick}
       title={title}
       disabled={disabled}
@@ -199,15 +206,25 @@ export default function RichTextEditor({
   const [selectedMedia, setSelectedMedia] = useState<"image" | "video" | null>(null);
   const [campaignEmbedOpen, setCampaignEmbedOpen] = useState(false);
   const [imageSliderOpen, setImageSliderOpen] = useState(false);
+  const [htmlSnippetOpen, setHtmlSnippetOpen] = useState(false);
 
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
       StarterKit.configure({
-        bulletList: { keepMarks: true, keepAttributes: false },
-        orderedList: { keepMarks: true, keepAttributes: false },
+        bulletList: {
+          keepMarks: true,
+          keepAttributes: false,
+          HTMLAttributes: { class: "rte-bullet-list" },
+        },
+        orderedList: {
+          keepMarks: true,
+          keepAttributes: false,
+          HTMLAttributes: { class: "rte-ordered-list" },
+        },
       }),
       ImageSliderExtension,
+      HtmlSnippetExtension,
       ...(enableCampaignEmbeds ? [CampaignDonationEmbedExtension] : []),
       TextStyle,
       Color.configure({ types: ["textStyle"] }),
@@ -246,7 +263,7 @@ export default function RichTextEditor({
         id: fieldName ?? "",
         "data-error-focus": "true",
         "aria-invalid": error ? "true" : "false",
-        class: `${minHeightClass} w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20`,
+        class: `${minHeightClass} w-full border-0 bg-white px-3 py-2 text-sm focus:outline-none`,
       },
     },
     onUpdate: ({ editor: e }) => {
@@ -455,7 +472,8 @@ export default function RichTextEditor({
               </div>
             )}
 
-            <div className="rounded-lg border border-gray-200 bg-gray-50 p-2 space-y-2">
+            <div className="rte-editor-shell rounded-lg border border-gray-200 bg-white overflow-hidden">
+              <div className="rte-editor-toolbar sticky top-0 z-10 border-b border-gray-200 bg-gray-50 p-2 space-y-2">
               <div className="flex flex-wrap gap-1.5">
                 <select
                   className={selectClass}
@@ -671,6 +689,13 @@ export default function RichTextEditor({
                 <ToolbarBtn onClick={handleInsertVideoByUrl} title="Video URL">
                   <span className="text-xs">URL</span>
                 </ToolbarBtn>
+                <ToolbarBtn
+                  active={editor.isActive("htmlSnippet")}
+                  onClick={() => setHtmlSnippetOpen(true)}
+                  title="Insert HTML / code snippet"
+                >
+                  <Braces className="h-4 w-4" />
+                </ToolbarBtn>
                 {enableCampaignEmbeds && (
                   <ToolbarBtn onClick={() => setCampaignEmbedOpen(true)} title="Campaign appeal embed">
                     <Heart className="h-4 w-4" />
@@ -691,11 +716,16 @@ export default function RichTextEditor({
                   <Redo2 className="h-4 w-4" />
                 </ToolbarBtn>
               </div>
-            </div>
+              </div>
 
-            <EditorContent editor={editor} />
+              <div className="rte-editor-body overflow-y-auto">
+                <EditorContent editor={editor} />
+              </div>
+            </div>
             <p className="text-xs text-muted-foreground">
-              Images can sit inline with text — use size presets or drag the purple handles.
+              Images can sit inline with text — use size presets or drag the purple handles. Use the{" "}
+              <span className="font-medium text-foreground">{"{}"}</span> button to paste an HTML widget
+              (e.g. a calculator).
             </p>
             {error && <p className="text-xs text-red-600">{error}</p>}
           </div>
@@ -733,6 +763,14 @@ export default function RichTextEditor({
         onOpenChange={setImageSliderOpen}
         onConfirm={(images) => {
           editor?.chain().focus().insertImageSlider({ images }).run();
+        }}
+      />
+
+      <HtmlSnippetDialog
+        open={htmlSnippetOpen}
+        onOpenChange={setHtmlSnippetOpen}
+        onConfirm={({ html, label }) => {
+          editor?.chain().focus().insertHtmlSnippet({ html, label }).run();
         }}
       />
 

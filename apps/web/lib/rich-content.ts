@@ -7,13 +7,18 @@ import {
   parseImageUrlsFromSliderTag,
   richContentHasImageSliders,
 } from "@/lib/image-slider-embed";
+import {
+  parseHtmlSnippetFromTag,
+  richContentHasHtmlSnippets,
+} from "@/lib/html-snippet-embed";
 
 export type RichContentPart =
   | BlogContentPart
-  | { type: "imageSlider"; images: string[] };
+  | { type: "imageSlider"; images: string[] }
+  | { type: "htmlSnippet"; html: string; label: string };
 
 const SPECIAL_BLOCK_REGEX =
-  /<div\b[^>]*\b(?:data-campaign-donation-embed|data-image-slider)\b[^>]*>[\s\S]*?<\/div>/gi;
+  /<div\b[^>]*\b(?:data-campaign-donation-embed|data-image-slider|data-html-snippet)\b[^>]*(?:\/>|>[\s\S]*?<\/div>)/gi;
 
 function readDataAttribute(tag: string, name: string): string | undefined {
   const match = tag.match(new RegExp(`\\b${name}="([^"]*)"`));
@@ -22,19 +27,29 @@ function readDataAttribute(tag: string, name: string): string | undefined {
 
 export function hasRichTextVisualContent(html: string): boolean {
   const source = html || "";
-  if (richContentHasImageSliders(source) || blogContentHasEmbeds(source)) return true;
+  if (
+    richContentHasImageSliders(source) ||
+    blogContentHasEmbeds(source) ||
+    richContentHasHtmlSnippets(source)
+  ) {
+    return true;
+  }
   if (/<(img|video|iframe)\b/i.test(source)) return true;
   const text = source.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
   return text.length > 0;
 }
 
 export function richContentHasSpecialBlocks(html: string): boolean {
-  return blogContentHasEmbeds(html) || richContentHasImageSliders(html);
+  return (
+    blogContentHasEmbeds(html) ||
+    richContentHasImageSliders(html) ||
+    richContentHasHtmlSnippets(html)
+  );
 }
 
 export function parseRichContentParts(html: string): RichContentPart[] {
   const source = html || "";
-  if (!richContentHasImageSliders(source)) {
+  if (!richContentHasImageSliders(source) && !richContentHasHtmlSnippets(source)) {
     return parseBlogContentParts(source) as RichContentPart[];
   }
 
@@ -64,6 +79,11 @@ export function parseRichContentParts(html: string): RichContentPart[] {
           slug,
           title: readDataAttribute(tag, "data-title"),
         });
+      }
+    } else if (/data-html-snippet/i.test(tag)) {
+      const snippet = parseHtmlSnippetFromTag(tag);
+      if (snippet) {
+        parts.push({ type: "htmlSnippet", html: snippet.html, label: snippet.label });
       }
     }
 

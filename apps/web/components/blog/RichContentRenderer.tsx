@@ -3,6 +3,7 @@
 import MarkdownRenderer from "@/components/blog/MarkdownRenderer";
 import { CampaignDonationEmbedWidget } from "@/components/blog/CampaignDonationEmbedWidget";
 import { ImageSliderWidget } from "@/components/blog/ImageSliderWidget";
+import { HtmlSnippetWidget } from "@/components/blog/HtmlSnippetWidget";
 import {
   hasRichTextVisualContent,
   parseRichContentParts,
@@ -60,6 +61,16 @@ export default function RichContentRenderer({
               key={`slider-${index}`}
               images={part.images}
               autoplay={sliderAutoplay}
+            />
+          );
+        }
+
+        if (part.type === "htmlSnippet") {
+          return (
+            <HtmlSnippetWidget
+              key={`snippet-${index}`}
+              html={part.html}
+              label={part.label}
             />
           );
         }
