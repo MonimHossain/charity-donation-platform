@@ -84,7 +84,7 @@ export async function getPublishedCampaigns(req: Request, res: Response) {
 
     const [items, total] = await repo().findAndCount({
       where,
-      order: { isFeatured: "DESC", sortOrder: "ASC", createdAt: "DESC" },
+      order: { sortOrder: "ASC", createdAt: "DESC" },
       skip: (Number(page) - 1) * Number(limit),
       take: Number(limit),
     });
@@ -142,9 +142,19 @@ export async function createCampaign(req: Request, res: Response) {
       slug = `${slug}-${Date.now().toString(36)}`;
     }
 
+    const maxRow = await repo()
+      .createQueryBuilder("c")
+      .select("MAX(c.sortOrder)", "max")
+      .getRawOne<{ max: string | number | null }>();
+    const nextSortOrder =
+      req.body.sortOrder !== undefined && req.body.sortOrder !== null
+        ? Number(req.body.sortOrder)
+        : Number(maxRow?.max ?? -1) + 1;
+
     const campaign = createEntity(repo(), {
       ...req.body,
       slug,
+      sortOrder: Number.isFinite(nextSortOrder) ? nextSortOrder : 0,
       thumbnail: req.body.thumbnail ? normalizeStoredMediaUrl(req.body.thumbnail) : req.body.thumbnail,
       banner: req.body.banner ? normalizeStoredMediaUrl(req.body.banner) : req.body.banner,
     });
@@ -209,6 +219,62 @@ export async function deleteCampaign(req: Request, res: Response) {
     await logAudit(req, { action: "delete", entityType: "campaign", entityId: routeParam(req, 'id') });
     return res.json({ message: "Campaign deleted" });
   } catch (error) {
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+/** Persist list order from admin drag-and-drop. Accepts current-page ordered IDs (+ page/limit). */
+export async function reorderCampaigns(req: Request, res: Response) {
+  try {
+    const orderedIds = Array.isArray(req.body?.orderedIds)
+      ? req.body.orderedIds.map((id: unknown) => String(id)).filter(Boolean)
+      : [];
+    if (!orderedIds.length) {
+      return res.status(400).json({ message: "orderedIds array is required" });
+    }
+
+    const page = Math.max(1, Number(req.body?.page) || 1);
+    const limit = Math.max(1, Math.min(100, Number(req.body?.limit) || 25));
+    const pageStart = (page - 1) * limit;
+
+    const all = await repo().find({
+      select: ["id"],
+      order: { sortOrder: "ASC", createdAt: "DESC" },
+    });
+    const allIds = all.map((c) => c.id);
+    const pageSlice = allIds.slice(pageStart, pageStart + limit);
+
+    if (orderedIds.length !== pageSlice.length) {
+      return res.status(400).json({
+        message: "orderedIds must include every campaign on the current page",
+      });
+    }
+
+    const pageSet = new Set(pageSlice);
+    if (orderedIds.some((id: string) => !pageSet.has(id))) {
+      return res.status(400).json({ message: "orderedIds contains campaigns outside the current page" });
+    }
+
+    const before = allIds.slice(0, pageStart);
+    const after = allIds.slice(pageStart + limit);
+    const fullOrder = [...before, ...orderedIds, ...after];
+
+    await AppDataSource.transaction(async (manager) => {
+      const cRepo = manager.getRepository(Campaign);
+      for (let i = 0; i < fullOrder.length; i++) {
+        await cRepo.update(fullOrder[i], { sortOrder: i });
+      }
+    });
+
+    await logAudit(req, {
+      action: "reorder",
+      entityType: "campaign",
+      details: { count: orderedIds.length, page, limit },
+    });
+
+    return res.json({ message: "Campaigns reordered" });
+  } catch (error) {
+    console.error("reorderCampaigns error:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 }

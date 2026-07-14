@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, type DragEvent } from "react";
 import { toast } from "sonner";
 import {
   Plus,
@@ -48,6 +48,7 @@ import {
   adminCreateCampaign,
   adminUpdateCampaign,
   adminDeleteCampaign,
+  adminReorderCampaigns,
   fetchAdminUpsells,
 } from "@/lib/api";
 import {
@@ -486,6 +487,11 @@ export default function CampaignsPage() {
   const [statusMenuOpenId, setStatusMenuOpenId] = useState<string | null>(null);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [catalogUpsells, setCatalogUpsells] = useState<CatalogUpsell[]>([]);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [reordering, setReordering] = useState(false);
+
+  const canDragReorder = !appliedSearch.trim();
 
   const loadCatalogUpsells = useCallback(async () => {
     try {
@@ -527,6 +533,63 @@ export default function CampaignsPage() {
   function runSearch() {
     setAppliedSearch(search.trim());
     if (page !== 1) setPage(1);
+  }
+
+  async function persistCampaignOrder(ordered: Campaign[]) {
+    const previous = campaigns;
+    setCampaigns(ordered);
+    setReordering(true);
+    try {
+      await adminReorderCampaigns({
+        orderedIds: ordered.map((c) => c.id),
+        page,
+        limit: CAMPAIGNS_PAGE_SIZE,
+      });
+      toast.success("Campaign order updated");
+    } catch {
+      setCampaigns(previous);
+      toast.error("Failed to save campaign order");
+    } finally {
+      setReordering(false);
+      setDragId(null);
+      setDragOverId(null);
+    }
+  }
+
+  function handleCampaignDragStart(id: string) {
+    if (!canDragReorder || reordering) return;
+    setDragId(id);
+  }
+
+  function handleCampaignDragOver(e: DragEvent, id: string) {
+    if (!canDragReorder || !dragId || dragId === id) return;
+    e.preventDefault();
+    setDragOverId(id);
+  }
+
+  function handleCampaignDrop(targetId: string) {
+    if (!canDragReorder || !dragId || dragId === targetId || reordering) {
+      setDragId(null);
+      setDragOverId(null);
+      return;
+    }
+    const from = campaigns.findIndex((c) => c.id === dragId);
+    const to = campaigns.findIndex((c) => c.id === targetId);
+    if (from < 0 || to < 0) {
+      setDragId(null);
+      setDragOverId(null);
+      return;
+    }
+    const next = [...campaigns];
+    const [moved] = next.splice(from, 1);
+    if (!moved) return;
+    next.splice(to, 0, moved);
+    void persistCampaignOrder(next);
+  }
+
+  function handleCampaignDragEnd() {
+    setDragId(null);
+    setDragOverId(null);
   }
 
   const wizardSteps = useMemo(
@@ -807,6 +870,9 @@ export default function CampaignsPage() {
             <h1 className="text-3xl font-bold font-serif tracking-tight">Campaigns</h1>
             <p className="text-muted-foreground mt-1">
               Manage all fundraising campaigns — including Fidya/Kaffarah and Ramadan Split experiences.
+              {!appliedSearch.trim() && (
+                <> Drag rows to set the order shown on the public site.</>
+              )}
             </p>
           </div>
           <Button onClick={openCreate}>
@@ -832,6 +898,12 @@ export default function CampaignsPage() {
           </Button>
         </div>
 
+        {appliedSearch.trim() && (
+          <p className="text-xs text-muted-foreground">
+            Clear search to drag and reorder campaigns for the public site.
+          </p>
+        )}
+
         {loading ? (
           <div className="rounded-2xl border bg-card shadow-soft p-8">
             <div className="flex items-center justify-center gap-2 text-muted-foreground">
@@ -844,6 +916,7 @@ export default function CampaignsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/40">
+                    <th className="w-10 px-3 py-3" aria-label="Reorder" />
                     <th className="px-5 py-3 text-left font-medium text-muted-foreground">Campaign</th>
                     <th className="px-5 py-3 text-left font-medium text-muted-foreground">Type</th>
                     <th className="px-5 py-3 text-left font-medium text-muted-foreground">Status</th>
@@ -855,7 +928,38 @@ export default function CampaignsPage() {
                 </thead>
                 <tbody>
                   {campaigns.map((c) => (
-                    <tr key={c.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                    <tr
+                      key={c.id}
+                      onDragOver={(e) => handleCampaignDragOver(e, c.id)}
+                      onDrop={() => handleCampaignDrop(c.id)}
+                      className={cn(
+                        "border-b last:border-0 transition-colors hover:bg-muted/30",
+                        dragId === c.id && "opacity-50",
+                        dragOverId === c.id && dragId !== c.id && "bg-primary/5 ring-1 ring-inset ring-primary/30"
+                      )}
+                    >
+                      <td className="px-3 py-3 text-muted-foreground">
+                        <button
+                          type="button"
+                          draggable={canDragReorder && !reordering}
+                          onDragStart={(e) => {
+                            e.dataTransfer.effectAllowed = "move";
+                            handleCampaignDragStart(c.id);
+                          }}
+                          onDragEnd={handleCampaignDragEnd}
+                          disabled={!canDragReorder || reordering}
+                          className={cn(
+                            "inline-flex h-8 w-8 items-center justify-center rounded-md",
+                            canDragReorder && !reordering
+                              ? "cursor-grab active:cursor-grabbing text-muted-foreground hover:bg-muted"
+                              : "cursor-not-allowed text-muted-foreground/30"
+                          )}
+                          aria-label={`Drag to reorder ${c.title}`}
+                          title={canDragReorder ? "Drag to reorder" : "Clear search to reorder"}
+                        >
+                          <GripVertical className="h-4 w-4" aria-hidden />
+                        </button>
+                      </td>
                       <td className="px-5 py-3">
                         <div>
                           <p className="font-medium truncate max-w-[250px]">{c.title}</p>
@@ -954,7 +1058,7 @@ export default function CampaignsPage() {
                   ))}
                   {campaigns.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="px-5 py-10 text-center text-muted-foreground">No campaigns found</td>
+                      <td colSpan={8} className="px-5 py-10 text-center text-muted-foreground">No campaigns found</td>
                     </tr>
                   )}
                 </tbody>

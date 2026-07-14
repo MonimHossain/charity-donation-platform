@@ -752,6 +752,15 @@ export async function adminDeleteCampaign(id: string) {
   return data;
 }
 
+export async function adminReorderCampaigns(payload: {
+  orderedIds: string[];
+  page: number;
+  limit: number;
+}) {
+  const { data } = await api.post("/admin/campaigns/reorder", payload);
+  return data;
+}
+
 // ═══════════════════════════════════
 // ADMIN UPSELLS
 // ═══════════════════════════════════

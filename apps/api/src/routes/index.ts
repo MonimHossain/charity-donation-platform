@@ -24,6 +24,7 @@ import {
   createCampaign,
   updateCampaign,
   deleteCampaign,
+  reorderCampaigns,
 } from "../modules/campaigns/campaigns.controller.js";
 import {
   createDonation,
@@ -440,6 +441,7 @@ router.put("/admin/profile/password", requireAdmin, changeAdminPassword);
 // ADMIN CAMPAIGNS
 // ═══════════════════════════════════
 router.get("/admin/campaigns", requireAdmin, adminPermCheck, getCampaigns);
+router.post("/admin/campaigns/reorder", requireAdmin, adminPermCheck, reorderCampaigns);
 router.get("/admin/campaigns/:id", requireAdmin, adminPermCheck, getCampaignById);
 router.post("/admin/campaigns", requireAdmin, adminPermCheck, createCampaign);
 router.put("/admin/campaigns/:id", requireAdmin, adminPermCheck, updateCampaign);
