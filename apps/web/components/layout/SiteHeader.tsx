@@ -219,7 +219,7 @@ export default function SiteHeader() {
                 href="/"
                 aria-label="Home"
                 className={cn(
-                  "flex items-center shrink-0 overflow-hidden transition-[width,opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:hidden",
+                  "flex items-center shrink-0 overflow-hidden transition-[width,opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
                   scrolled ? "w-auto opacity-100 translate-x-0" : "w-0 opacity-0 -translate-x-2 pointer-events-none"
                 )}
                 aria-hidden={!scrolled}
