@@ -43,7 +43,7 @@ export default function CheckoutGiftAidStep({
   const withGiftAid = Math.ceil(donationAmount * 1.25);
 
   return (
-    <div className="rounded-3xl bg-card border border-border p-6 lg:p-10 shadow-soft space-y-8 max-w-xl mx-auto w-full min-w-0">
+    <div className="rounded-3xl bg-card border border-border p-6 lg:p-10 shadow-soft space-y-8 w-full min-w-0 max-w-full">
       <div className="text-center space-y-4">
         <h2 className="text-xl md:text-2xl font-semibold text-foreground leading-snug">
           Increase your donation, at no extra cost!
@@ -64,14 +64,14 @@ export default function CheckoutGiftAidStep({
       <div className="flex flex-wrap items-center justify-center gap-3 md:gap-6 text-center">
         <div>
           <p className="text-sm text-muted-foreground mb-1">Your Donation</p>
-          <p className="text-2xl font-semibold tabular-nums text-foreground">
+          <p className="money-ltr text-2xl font-semibold tabular-nums text-foreground">
             {formatMoney(donationAmount, { code: normalizeCurrencyCode(displayCurrency) })}
           </p>
         </div>
         <ArrowRight className="w-6 h-6 text-muted-foreground shrink-0" />
         <div>
           <p className="text-sm text-muted-foreground mb-1">With Gift Aid becomes</p>
-          <p className="text-2xl font-bold tabular-nums text-accent">
+          <p className="money-ltr text-2xl font-bold tabular-nums text-accent">
             {formatMoney(withGiftAid, { code: normalizeCurrencyCode(displayCurrency) })}
           </p>
         </div>

@@ -41,16 +41,6 @@ const CURRENCY_COUNTRY: Record<string, string> = {
   AUD: "AU",
 };
 
-function OrPayByCardDivider() {
-  return (
-    <div className="relative flex items-center py-1">
-      <div className="flex-1 border-t border-border" />
-      <span className="px-3 text-xs text-muted-foreground">or pay by card</span>
-      <div className="flex-1 border-t border-border" />
-    </div>
-  );
-}
-
 function WalletSetupHint({ showHttpsHelp }: { showHttpsHelp: boolean }) {
   return (
     <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[11px] leading-relaxed text-amber-950 space-y-2">
@@ -584,8 +574,6 @@ function CheckoutForm({
           their scheduled dates.
         </p>
       )}
-
-      <OrPayByCardDivider />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 min-w-0">
         <div className="space-y-1.5">

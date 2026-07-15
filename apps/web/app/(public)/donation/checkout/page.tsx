@@ -688,8 +688,8 @@ function DonationCheckoutContent() {
         </div>
       </section>
 
-      <section className="container-wide py-8 lg:py-12 grid lg:grid-cols-12 gap-8 min-w-0 max-w-full">
-        <div className="lg:col-span-7 space-y-6 min-w-0">
+      <section className="container-wide py-8 lg:py-12 grid lg:grid-cols-12 gap-6 lg:gap-8 min-w-0 w-full max-w-full items-start">
+        <div className="lg:col-span-7 space-y-6 min-w-0 w-full max-w-full">
           {flowStep === "gift-aid" && showGiftAidStep && (
             <CheckoutGiftAidStep
               currencySymbol={currencyInfo.symbol}
@@ -709,7 +709,7 @@ function DonationCheckoutContent() {
           )}
 
           {flowStep === "details" && (
-            <div className="rounded-3xl bg-card border border-border p-6 lg:p-8 shadow-soft space-y-6 w-full max-w-xl min-w-0 mx-auto lg:mx-0">
+            <div className="rounded-3xl bg-card border border-border p-6 lg:p-8 shadow-soft space-y-6 w-full min-w-0 max-w-full">
               <div className="space-y-1">
                 <h1 className="font-serif text-2xl md:text-3xl text-primary">Your details</h1>
                 <p className="text-sm text-muted-foreground">
@@ -792,25 +792,27 @@ function DonationCheckoutContent() {
               )}
 
               {showAdminSavesLife && (
-                <label className="flex items-start gap-3 rounded-2xl border border-border bg-secondary/30 px-4 py-3 cursor-pointer">
+                <label className="flex items-start gap-3 rounded-2xl border border-border bg-secondary/30 px-4 py-3 cursor-pointer min-w-0">
                   <input
                     type="checkbox"
                     checked={adminSavesLife}
                     onChange={(e) => setAdminSavesLife(e.target.checked)}
                     className="mt-0.5 h-4 w-4 accent-accent rounded shrink-0"
                   />
-                  <span className="text-sm flex-1">
+                  <span className="text-sm flex-1 min-w-0">
                     <span className="font-semibold text-primary">Admin Saves Life</span>
                     <span className="block text-xs text-muted-foreground mt-0.5">
                       Add{" "}
-                      {formatMoney(
-                        convertAmount(adminSavesLifeAmount, campaignCurrency, displayCurrency),
-                        { code: displayCurrency }
-                      )}{" "}
+                      <span className="money-ltr">
+                        {formatMoney(
+                          convertAmount(adminSavesLifeAmount, campaignCurrency, displayCurrency),
+                          { code: displayCurrency }
+                        )}
+                      </span>{" "}
                       to your donation.
                     </span>
                   </span>
-                  <span className="shrink-0 text-sm font-bold text-accent tabular-nums">
+                  <span className="money-ltr shrink-0 text-sm font-bold text-accent tabular-nums whitespace-nowrap pl-2">
                     {formatMoney(
                       convertAmount(adminSavesLifeAmount, campaignCurrency, displayCurrency),
                       { code: displayCurrency }
@@ -957,7 +959,7 @@ function DonationCheckoutContent() {
           )}
 
           {flowStep === "payment" && (
-            <div className="w-full max-w-xl min-w-0 mx-auto lg:mx-0 space-y-6">
+            <div className="w-full min-w-0 max-w-full space-y-6">
               {!stripeReady && (
                 <div className="rounded-3xl bg-card border border-border p-6 lg:p-8 shadow-soft space-y-4">
                   <p className="text-sm text-destructive">
@@ -1083,21 +1085,21 @@ function DonationCheckoutContent() {
           )}
         </div>
 
-        <aside className="lg:col-span-5 lg:sticky lg:top-28 self-start space-y-4 min-w-0">
-          <div className="rounded-3xl bg-card border border-border p-6 shadow-soft space-y-4">
+        <aside className="lg:col-span-5 lg:sticky lg:top-28 self-start space-y-4 min-w-0 w-full max-w-full">
+          <div className="rounded-3xl bg-card border border-border p-6 shadow-soft space-y-4 w-full max-w-full min-w-0">
             <p className="text-xs uppercase tracking-widest text-accent-deep font-bold">Your cart</p>
             <ul className="space-y-3">
               {items.map((line) => (
                 <li
                   key={line.id}
-                  className="flex items-start justify-between gap-3 rounded-2xl border border-border p-4"
+                  className="flex items-start justify-between gap-3 rounded-2xl border border-border p-4 min-w-0"
                 >
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1 overflow-hidden">
                     <p className="font-semibold text-primary truncate">{line.title}</p>
-                    <p className="text-sm text-muted-foreground mt-0.5">
+                    <p className="text-sm text-muted-foreground mt-0.5 break-words">
                       {formatCartLineDescription(line, displayCurrency)}
                     </p>
-                    <p className="text-sm font-bold text-accent-deep mt-1 tabular-nums">
+                    <p className="money-ltr text-sm font-bold text-accent-deep mt-1 tabular-nums">
                       {isRamadanSplitCartLine(line) ? (
                         (() => {
                           const installments = [...getRamadanInstallmentsFromLine(line)].sort(
@@ -1186,21 +1188,26 @@ function DonationCheckoutContent() {
             </div>
           )}
 
-          <div className="rounded-3xl gradient-plum text-primary-foreground p-6 lg:p-8 shadow-lift">
+          <div className="rounded-3xl gradient-plum text-primary-foreground p-6 lg:p-8 shadow-lift w-full max-w-full min-w-0 overflow-hidden">
             {ramadanSummary.hasRamadanSplit && ramadanDisplay ? (
               <>
                 <p className="text-xs uppercase tracking-widest text-accent font-bold">
                   First night · {currency}
                 </p>
-                <p className={`${statTotalClass} mt-1`}>
+                <p className={`money-ltr ${statTotalClass} mt-1 break-words`}>
                   {formatMoney(ramadanDisplay.firstNight, { code: displayCurrency })}
                 </p>
                 <p className="text-sm text-primary-foreground/85 mt-2">
-                  {formatMoney(ramadanDisplay.total, { code: displayCurrency })} total across{" "}
-                  {ramadanSummary.installmentCount} nights
+                  <span className="money-ltr">
+                    {formatMoney(ramadanDisplay.total, { code: displayCurrency })}
+                  </span>{" "}
+                  total across {ramadanSummary.installmentCount} nights
                 </p>
                 <p className="text-sm text-primary-foreground/90 mt-3 font-semibold">
-                  Due today: {formatMoney(chargeAmount, { code: displayCurrency })}
+                  Due today:{" "}
+                  <span className="money-ltr">
+                    {formatMoney(chargeAmount, { code: displayCurrency })}
+                  </span>
                   <span className="block text-xs font-normal text-primary-foreground/75 mt-0.5">
                     Night 1 of {ramadanSummary.installmentCount} · saved card used for remaining
                     nights
@@ -1208,23 +1215,28 @@ function DonationCheckoutContent() {
                 </p>
                 {ramadanDisplay.future > 0 && (
                   <p className="text-xs text-primary-foreground/75 mt-1">
-                    {formatMoney(ramadanDisplay.future, { code: displayCurrency })} charged
-                    automatically on nights 2–{ramadanSummary.installmentCount}
+                    <span className="money-ltr">
+                      {formatMoney(ramadanDisplay.future, { code: displayCurrency })}
+                    </span>{" "}
+                    charged automatically on nights 2–{ramadanSummary.installmentCount}
                   </p>
                 )}
               </>
             ) : (
               <>
                 <p className="text-xs uppercase tracking-widest text-accent font-bold">You pay · {currency}</p>
-                <p className={`${statTotalClass} mt-1`}>
+                <p className={`money-ltr ${statTotalClass} mt-1 break-words`}>
                   {formatMoney(chargeAmount, { code: displayCurrency })}
                 </p>
               </>
             )}
             {giftAid && giftAidBoost > 0 && (
               <p className="text-sm text-primary-foreground/80 mt-2">
-                Charity receives {formatMoney(charityValue, { code: displayCurrency })} with Gift Aid
-                (+{formatMoney(giftAidBoost, { code: displayCurrency })} at no extra cost)
+                Charity receives{" "}
+                <span className="money-ltr">{formatMoney(charityValue, { code: displayCurrency })}</span>{" "}
+                with Gift Aid (+
+                <span className="money-ltr">{formatMoney(giftAidBoost, { code: displayCurrency })}</span> at
+                no extra cost)
               </p>
             )}
             {isCartRecurring && (
