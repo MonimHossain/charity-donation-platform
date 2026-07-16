@@ -3,7 +3,7 @@ import { homeOutlineButtonClass } from "@/lib/home-buttons";
 import { imageAltFromSrc } from "@/lib/utils";
 
 const STORY_IMG =
-  "/images/cta-girl-C8v8b8Jp.webp";
+  "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&w=800&q=70";
 
 const StorySection = () => (
   <section className="container-wide py-24 grid lg:grid-cols-12 gap-12 items-center">
