@@ -98,6 +98,29 @@ function parseTimeToMinutes(time24: string): number | null {
   return Number(match[1]) * 60 + Number(match[2]);
 }
 
+/** Minutes since midnight in the prayer location timezone (falls back to local). */
+export function getNowMinutesInTimeZone(timeZone?: string | null): number {
+  const now = new Date();
+  if (timeZone) {
+    try {
+      const parts = new Intl.DateTimeFormat("en-GB", {
+        timeZone,
+        hour: "numeric",
+        minute: "numeric",
+        hourCycle: "h23",
+      }).formatToParts(now);
+      const hour = Number(parts.find((p) => p.type === "hour")?.value ?? NaN);
+      const minute = Number(parts.find((p) => p.type === "minute")?.value ?? NaN);
+      if (Number.isFinite(hour) && Number.isFinite(minute)) {
+        return hour * 60 + minute;
+      }
+    } catch {
+      /* fall through */
+    }
+  }
+  return now.getHours() * 60 + now.getMinutes();
+}
+
 export function formatPrayerTime12h(time24: string): string {
   const mins = parseTimeToMinutes(time24);
   if (mins === null) return time24;
@@ -108,15 +131,17 @@ export function formatPrayerTime12h(time24: string): string {
   return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
 }
 
-export function getNextPrayer(timings: PrayerTimings): {
+export function getNextPrayer(
+  timings: PrayerTimings,
+  timeZone?: string | null
+): {
   name: PrayerName;
   time: string;
   time24: string;
   minutesUntil: number;
   countdownLabel: string;
 } {
-  const now = new Date();
-  const nowMins = now.getHours() * 60 + now.getMinutes();
+  const nowMins = getNowMinutesInTimeZone(timeZone);
 
   for (const name of PRAYER_ORDER) {
     const time24 = timings[name];
@@ -166,13 +191,38 @@ export function formatHijriDateLine(islamicDate: string | null | undefined): str
   return `${islamicDate} AH`;
 }
 
+const COUNTRY_ALIASES: Record<string, string> = {
+  england: "United Kingdom",
+  scotland: "United Kingdom",
+  wales: "United Kingdom",
+  "northern ireland": "United Kingdom",
+  uk: "United Kingdom",
+  "u.k.": "United Kingdom",
+  "u.k": "United Kingdom",
+  gb: "United Kingdom",
+  "great britain": "United Kingdom",
+  britain: "United Kingdom",
+  usa: "United States",
+  us: "United States",
+  "u.s.": "United States",
+  "u.s.a.": "United States",
+  america: "United States",
+  uae: "United Arab Emirates",
+  "u.a.e.": "United Arab Emirates",
+};
+
+export function normalizeCountryName(country: string): string {
+  const key = country.trim().toLowerCase().replace(/\s+/g, " ");
+  return COUNTRY_ALIASES[key] || country.trim();
+}
+
 export function parseCityCountryInput(value: string): { city: string; country: string } | null {
   const trimmed = value.trim();
   if (!trimmed) return null;
   const commaIndex = trimmed.indexOf(",");
   if (commaIndex === -1) return null;
   const city = trimmed.slice(0, commaIndex).trim();
-  const country = trimmed.slice(commaIndex + 1).trim();
+  const country = normalizeCountryName(trimmed.slice(commaIndex + 1));
   if (!city || !country) return null;
   return { city, country };
 }
@@ -182,8 +232,11 @@ export function formatLocationQuery(loc: { city?: string; country?: string; labe
   return loc.label || "";
 }
 
-export function getCurrentPrayer(timings: PrayerTimings): PrayerName | null {
-  const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
+export function getCurrentPrayer(
+  timings: PrayerTimings,
+  timeZone?: string | null
+): PrayerName | null {
+  const nowMins = getNowMinutesInTimeZone(timeZone);
   const ordered = PRAYER_ORDER.map((name) => ({
     name,
     mins: parseTimeToMinutes(timings[name]) ?? -1,

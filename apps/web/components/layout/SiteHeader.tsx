@@ -38,7 +38,12 @@ export default function SiteHeader() {
   const [aboutOpen, setAboutOpen] = useState(false);
   const pathname = usePathname();
   const [isSignedIn, setIsSignedIn] = useState(false);
-  const { islamicDate, nextPrayer, location: prayerLocation } = usePrayerTimes();
+  const {
+    islamicDate,
+    currentPrayer,
+    nextPrayer,
+    location: prayerLocation,
+  } = usePrayerTimes();
   const aboutRef = useRef<HTMLDivElement>(null);
   const aboutButtonRef = useRef<HTMLButtonElement>(null);
   const { data: headerCampaigns } = useHeaderNavCampaigns();
@@ -159,15 +164,20 @@ export default function SiteHeader() {
                 </div>
               </div>
             )}
-            {nextPrayer && (
+            {(currentPrayer || nextPrayer) && (
               <div className="flex items-center gap-2">
                 <Timer className="w-5 h-5 text-accent-deep shrink-0" />
                 <div className="leading-tight">
                   <div className="text-[11px] text-muted-foreground whitespace-nowrap">
-                    Next Prayer{prayerLocation.label ? `: ${prayerLocation.label.split(",")[0]}` : ""}
+                    {currentPrayer ? "Now" : "Next"}
+                    {prayerLocation.label ? `: ${prayerLocation.label.split(",")[0]}` : ""}
                   </div>
                   <div className="font-semibold text-primary whitespace-nowrap">
-                    {nextPrayer.name} at {nextPrayer.time}
+                    {currentPrayer
+                      ? currentPrayer
+                      : nextPrayer
+                        ? `${nextPrayer.name} at ${nextPrayer.time}`
+                        : ""}
                   </div>
                 </div>
               </div>

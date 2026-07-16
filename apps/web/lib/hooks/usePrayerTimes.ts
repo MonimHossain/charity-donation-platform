@@ -9,6 +9,7 @@ import {
   type PrayerLocation,
 } from "@/lib/prayer-location";
 import {
+  getCurrentPrayer,
   getNextPrayer,
   type PrayerTimesResponse,
 } from "@/lib/prayer-times";
@@ -95,7 +96,8 @@ export function usePrayerTimes() {
     return () => clearInterval(id);
   }, []);
 
-  const nextPrayer = data ? getNextPrayer(data.timings) : null;
+  const nextPrayer = data ? getNextPrayer(data.timings, data.timezone) : null;
+  const currentPrayer = data ? getCurrentPrayer(data.timings, data.timezone) : null;
   void tick;
 
   return {
@@ -103,6 +105,7 @@ export function usePrayerTimes() {
     data,
     loading,
     error,
+    currentPrayer,
     nextPrayer,
     islamicDate: data?.islamicDate ?? null,
     updateLocation,

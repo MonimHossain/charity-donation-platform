@@ -20,7 +20,16 @@ import {
 } from "@/lib/prayer-times";
 
 export default function NamazTimesPage() {
-  const { location, data, loading, error, nextPrayer, updateLocation, reload } = usePrayerTimes();
+  const {
+    location,
+    data,
+    loading,
+    error,
+    currentPrayer,
+    nextPrayer,
+    updateLocation,
+    reload,
+  } = usePrayerTimes();
   const [locationQuery, setLocationQuery] = useState(
     formatLocationQuery(location) || formatLocationQuery(DEFAULT_PRAYER_LOCATION)
   );
@@ -125,16 +134,33 @@ export default function NamazTimesPage() {
                   <p className="mt-1 text-sm text-primary-foreground/80">{dateLine}</p>
                 )}
               </div>
-              {nextPrayer && !loading && (
-                <div className="text-right">
-                  <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-accent">
-                    Next prayer
-                  </div>
-                  <div className="font-serif text-2xl mt-1">{nextPrayer.name}</div>
-                  <div className="text-sm text-primary-foreground/80 inline-flex items-center gap-1.5 mt-0.5">
-                    <Clock className="w-3.5 h-3.5" />
-                    {nextPrayer.countdownLabel}
-                  </div>
+              {!loading && (currentPrayer || nextPrayer) && (
+                <div className="text-right space-y-3">
+                  {currentPrayer && (
+                    <div>
+                      <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-accent">
+                        Current waqt
+                      </div>
+                      <div className="font-serif text-2xl mt-1">{currentPrayer}</div>
+                      {data?.timings[currentPrayer] && (
+                        <div className="text-sm text-primary-foreground/80 mt-0.5">
+                          started {formatPrayerTime12h(data.timings[currentPrayer])}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {nextPrayer && (
+                    <div>
+                      <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-accent">
+                        Next prayer
+                      </div>
+                      <div className="font-serif text-2xl mt-1">{nextPrayer.name}</div>
+                      <div className="text-sm text-primary-foreground/80 inline-flex items-center gap-1.5 mt-0.5">
+                        <Clock className="w-3.5 h-3.5" />
+                        {nextPrayer.countdownLabel}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -163,8 +189,12 @@ export default function NamazTimesPage() {
             {DISPLAY_PRAYERS.map((name) => {
               const detail = PRAYER_DETAILS[name];
               const time24 = data.timings[name as keyof typeof data.timings];
+              const isCurrent =
+                name !== "Sunrise" && currentPrayer === (name as PrayerName);
               const isNext =
-                name !== "Sunrise" && nextPrayer?.name === (name as PrayerName);
+                name !== "Sunrise" &&
+                !isCurrent &&
+                nextPrayer?.name === (name as PrayerName);
               const displayName = name === "Sunrise" ? "Sunrise (Ishraq)" : name;
 
               return (
@@ -172,9 +202,11 @@ export default function NamazTimesPage() {
                   key={name}
                   className={cn(
                     "rounded-3xl border p-6 transition-all",
-                    isNext
-                      ? "bg-accent/10 border-accent shadow-glow"
-                      : "bg-card border-border hover:shadow-lift"
+                    isCurrent
+                      ? "bg-accent/15 border-accent shadow-glow ring-1 ring-accent/40"
+                      : isNext
+                        ? "bg-accent/10 border-accent shadow-glow"
+                        : "bg-card border-border hover:shadow-lift"
                   )}
                 >
                   <div className="flex items-baseline justify-between gap-4">
@@ -211,6 +243,11 @@ export default function NamazTimesPage() {
                     </div>
                   )}
 
+                  {isCurrent && (
+                    <div className="mt-3 text-xs font-semibold text-accent-deep">
+                      ↑ Current waqt now
+                    </div>
+                  )}
                   {isNext && nextPrayer && (
                     <div className="mt-3 text-xs font-semibold text-accent-deep">
                       ↑ Up next — {nextPrayer.countdownLabel}
@@ -227,8 +264,8 @@ export default function NamazTimesPage() {
           <p className="mt-3 leading-relaxed">
             Rakat counts above follow the Hanafi school for daily salah. Other schools may differ
             slightly (e.g. Sunnah before Asr is 4 ghair-mu&apos;akkadah). Witr is performed after
-            Isha. Prayer times are calculated using the Islamic Society of North America (ISNA)
-            method via{" "}
+            Isha. Prayer times use the Islamic Society of North America (ISNA) angles with Hanafi
+            Asr via{" "}
             <a
               href="https://aladhan.com"
               target="_blank"
@@ -237,7 +274,7 @@ export default function NamazTimesPage() {
             >
               Aladhan
             </a>
-            .
+            . Searches like &ldquo;London, England&rdquo; resolve to the United Kingdom.
           </p>
         </div>
       </section>
