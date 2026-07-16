@@ -26,12 +26,18 @@ export function buildGtmItemsFromCart(lines: DonationCartItem[]) {
       donationType: line.donationType,
     });
     const frequency = mapFrequencyToGtm(cartLineFrequency(line));
+    const quantity = Math.max(1, Number(line.quantity || 1));
+    const unitPrice =
+      line.unitPrice != null
+        ? Number(line.unitPrice)
+        : Number(line.amount || 0) / quantity;
     return {
       item_id: meta.appealId,
       item_name: meta.appealName,
       item_category: meta.category,
-      price: +Number(line.amount || 0).toFixed(2),
-      quantity: line.quantity || 1,
+      // line.amount is the line total; GA4 multiplies price × quantity
+      price: +unitPrice.toFixed(2),
+      quantity,
       donation_type: cartLineDonationType(line, meta.donationType),
       donation_frequency: frequency,
       appeal_id: meta.appealId,

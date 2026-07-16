@@ -547,6 +547,12 @@ function DonationCheckoutContent() {
             : " · Card saved for scheduled nights")
         : "";
 
+      const lineQty = Math.max(1, Number(primary?.quantity || 1));
+      const chargeHasExtras =
+        upsellTotal > 0 ||
+        adminSavesLifeTotal > 0 ||
+        items.length > 1 ||
+        ramadanSummary.hasRamadanSplit;
       const donation = await createDonation({
         amount: chargeAmount,
         currency,
@@ -560,8 +566,16 @@ function DonationCheckoutContent() {
         campaignId: primary?.campaignId,
         campaignSlug:
           primary?.campaignSlug || (!primary?.campaignId ? primary?.donationPageSlug : undefined),
-        quantity: 1,
-        unitPrice: chargeAmount,
+        quantity: chargeHasExtras ? 1 : lineQty,
+        unitPrice: chargeHasExtras
+          ? chargeAmount
+          : primary?.unitPrice != null
+            ? convertAmount(
+                Number(primary.unitPrice),
+                normalizeCurrencyCode(primary.currency),
+                displayCurrency
+              )
+            : ceilAmount(chargeAmount / lineQty),
         automatedScheduleId: primaryScheduleId,
         message: [
           `Donation cart: ${cartSummary}`,
@@ -607,7 +621,6 @@ function DonationCheckoutContent() {
     ramadanCheckoutCharge,
     ramadanSummary.hasRamadanSplit,
     ramadanSummary.installmentCount,
-    ramadanSummary.installmentCount,
     currency,
     currencyInfo.symbol,
     dedicationEmail,
@@ -624,6 +637,7 @@ function DonationCheckoutContent() {
     showDedication,
     pendingDonationId,
     stripeReady,
+    upsellTotal,
   ]);
 
   useEffect(() => {

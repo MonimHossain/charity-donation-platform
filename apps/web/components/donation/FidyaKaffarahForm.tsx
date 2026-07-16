@@ -27,7 +27,12 @@ export default function FidyaKaffarahForm({
   checkoutUpsells?: CampaignUpsell[];
 }) {
   const router = useRouter();
-  const { formatFromSource, symbol, convertToDisplay, fromDisplayToSource } = useCurrency();
+  const {
+    formatMoney,
+    symbol,
+    convertToDisplay,
+    code: displayCurrency,
+  } = useCurrency();
   const options = experience.options ?? [];
   const initialKey = options[0]?.key ?? "fidya";
   const [selectedKey, setSelectedKey] = useState<string>(initialKey);
@@ -39,7 +44,6 @@ export default function FidyaKaffarahForm({
   const max = experience.quantity?.max ?? 9999;
   const unitPrice = Number(selected?.unitPrice ?? 0);
   const boundedQty = Math.max(min, Math.min(max, Number.isFinite(qty) ? qty : min));
-  const computedTotal = boundedQty * unitPrice;
   const allowCustom = Boolean(experience.allowCustomAmount);
   const customMin = Number(experience.customAmount?.min ?? 1);
   const customMax = Number(experience.customAmount?.max ?? 100000);
@@ -47,13 +51,11 @@ export default function FidyaKaffarahForm({
   const customTotal = customAmount ? Number(customAmount) : NaN;
   const displayCustomMin = convertToDisplay(customMin, sourceCurrency);
   const displayCustomMax = convertToDisplay(customMax, sourceCurrency);
-  const total =
+  const displayUnit = convertToDisplay(unitPrice, sourceCurrency);
+  const displayTotal =
     allowCustom && Number.isFinite(customTotal)
-      ? fromDisplayToSource(
-          Math.max(displayCustomMin, Math.min(displayCustomMax, customTotal)),
-          sourceCurrency
-        )
-      : computedTotal;
+      ? Math.max(displayCustomMin, Math.min(displayCustomMax, customTotal))
+      : displayUnit * boundedQty;
 
   return (
     <div className={cn("space-y-5", embedded ? "" : "rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-soft")}>
@@ -77,7 +79,7 @@ export default function FidyaKaffarahForm({
       </div>
 
       <div className="rounded-full bg-accent text-accent-foreground text-center py-4 text-2xl font-bold tabular-nums">
-        {formatFromSource(Number.isFinite(total) ? total : 0, sourceCurrency)}
+        {formatMoney(Number.isFinite(displayTotal) ? displayTotal : 0)}
       </div>
 
       <div className="flex items-center gap-3">
@@ -120,20 +122,24 @@ export default function FidyaKaffarahForm({
       <Button
         size="lg"
         className="w-full rounded-full bg-accent hover:bg-primary hover:text-primary-foreground h-14 text-base"
-        disabled={!Number.isFinite(total) || total <= 0}
+        disabled={!Number.isFinite(displayTotal) || displayTotal <= 0}
         onClick={() => {
           const label = selected?.label ?? selectedKey;
+          const lineUnit =
+            allowCustom && Number.isFinite(customTotal) && boundedQty > 0
+              ? displayTotal / boundedQty
+              : displayUnit;
           addDonationCartItem({
             kind: "fidya_kaffarah",
             donationPageId: source.id,
             donationPageSlug: source.slug,
             title: source.title,
             category: source.category,
-            amount: total,
-            currency: sourceCurrency,
+            amount: displayTotal,
+            currency: displayCurrency,
             quantity: boundedQty,
-            unitPrice: allowCustom && Number.isFinite(customTotal) ? total / boundedQty : unitPrice,
-            description: `${label} × ${boundedQty} — ${formatFromSource(total, sourceCurrency)}`,
+            unitPrice: lineUnit,
+            description: `${label} × ${boundedQty} — ${formatMoney(displayTotal)}`,
             campaignId: source.campaignId ?? source.id,
             donationType: selectedKey,
             checkoutSettings,

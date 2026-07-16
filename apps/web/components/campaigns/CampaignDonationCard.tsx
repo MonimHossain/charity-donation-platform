@@ -140,7 +140,7 @@ export function CampaignDonationCard({
   showCustomSchedule,
   quantity,
   customFieldValues,
-  finalAmount,
+  finalAmount: _sourceFinalAmount,
   onSelectAttribute,
   onSetSelectedAmount,
   onSetCustomAmount,
@@ -150,9 +150,8 @@ export function CampaignDonationCard({
   onSetCustomFieldValue,
 }: CampaignDonationCardProps) {
   const router = useRouter();
-  const { symbol, formatFromSource } = useCurrency();
+  const { symbol, formatMoney, convertToDisplay, code: displayCurrency } = useCurrency();
   const sourceCurrency = campaign.currency || "GBP";
-  const total = finalAmount;
 
   const isRegular = paymentType === "regular" && selectedAttr?.enableRegularPayment;
   const isSingle = paymentType === "single" && selectedAttr?.enableSinglePayment;
@@ -193,19 +192,28 @@ export function CampaignDonationCard({
     ? scheduleToStripeParams(donorSchedule, adminRecurrence ?? DEFAULT_RECURRENCE)
     : null;
 
+  const effectiveQuantity = selectedAttr?.enableQuantity ? quantity : 1;
+  const displayUnit = customAmount
+    ? Math.max(0, Number(customAmount) || 0)
+    : convertToDisplay(selectedAmount, sourceCurrency);
+  const displayTotal = displayUnit * effectiveQuantity;
+
   function handleProceedToCheckout() {
+    const label = selectedAttr?.name || campaign.title;
+    const qtyNote = effectiveQuantity > 1 ? ` × ${effectiveQuantity}` : "";
     clearDonationCart();
     addDonationCartItem({
       kind: "standard",
       donationPageId: campaign.id,
       donationPageSlug: campaign.slug,
       title: campaign.title,
-      amount: total,
-      currency: campaign.currency,
-      description: `${selectedAttr?.name || campaign.title} — ${formatFromSource(total, sourceCurrency)}`,
+      amount: displayTotal,
+      currency: displayCurrency,
+      unitPrice: displayUnit,
+      description: `${label}${qtyNote} — ${formatMoney(displayTotal)}`,
       campaignId: campaign.id,
       donationType: selectedAttr?.name || campaign.category,
-      quantity: selectedAttr?.enableQuantity && quantity > 1 ? quantity : undefined,
+      quantity: effectiveQuantity > 1 ? effectiveQuantity : undefined,
       recurringFrequency: isRegular ? frequencyParam : undefined,
       recurringInterval: recurringStripeParams?.interval,
       recurringIntervalCount: recurringStripeParams?.intervalCount,
@@ -557,7 +565,7 @@ export function CampaignDonationCard({
         onClick={handleProceedToCheckout}
         className="w-full rounded-full text-base font-bold h-14 bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground shadow-soft hover:shadow-glow px-10"
       >
-        Donate {formatFromSource(total, sourceCurrency)}
+        Donate {formatMoney(displayTotal)}
         {isRegular && intervalLabel ? `/${intervalLabel}` : ""}
       </Button>
 
