@@ -80,6 +80,16 @@ export default function SiteHeader() {
     setIsSignedIn(Boolean(localStorage.getItem("user_token")));
   }, [pathname]);
 
+  // Lock page scroll while the mobile nav is open (menu panel can still scroll).
+  useEffect(() => {
+    if (!open) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [open]);
+
   useEffect(() => {
     const ENTER = 96;
     const LEAVE = 12;
@@ -323,8 +333,10 @@ export default function SiteHeader() {
       </div>
 
       <div
-        className={`lg:hidden overflow-hidden bg-background border-b border-border/40 transition-[max-height,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-          open ? "max-h-[80vh] opacity-100" : "max-h-0 opacity-0"
+        className={`lg:hidden bg-background border-b border-border/40 transition-[max-height,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] overscroll-contain ${
+          open
+            ? "max-h-[80vh] opacity-100 overflow-y-auto"
+            : "max-h-0 opacity-0 overflow-hidden"
         }`}
       >
         <div className="container-wide py-3 flex flex-col gap-0.5">

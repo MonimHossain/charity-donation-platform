@@ -914,8 +914,13 @@ function DonationCheckoutContent() {
               {!items.some((i) => i.recurringFrequency || i.recurringInterval) &&
                 !ramadanSummary.hasRamadanSplit &&
                 checkoutSettings.enablePushRecurringDonation && (
-                <div className="rounded-2xl border border-border bg-secondary/30 px-4 py-3 space-y-3">
-                  <label className="flex items-start gap-3 cursor-pointer">
+                <div
+                  className={cn(
+                    "rounded-2xl border border-border bg-secondary/30 px-4 py-3 space-y-3",
+                    !pushRecurring && "recurring-nudge-effect"
+                  )}
+                >
+                  <label className="flex items-start gap-3 cursor-pointer relative z-[1]">
                     <input
                       type="checkbox"
                       checked={pushRecurring}
@@ -930,7 +935,7 @@ function DonationCheckoutContent() {
                     </span>
                   </label>
                   {pushRecurring && (
-                    <div>
+                    <div className="relative z-[1]">
                       <Label htmlFor="push-recurring-days" className="text-xs">
                         {t("checkout.recurring.days")}
                       </Label>
