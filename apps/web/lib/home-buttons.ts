@@ -8,7 +8,7 @@ export const statValueSmClass =
 
 /** Donation totals and summary amounts on purple panels. */
 export const statTotalClass =
-  "font-serif text-4xl sm:text-5xl font-semibold text-accent tabular-nums leading-none";
+  "font-serif text-3xl sm:text-4xl font-semibold text-accent tabular-nums leading-none max-w-full";
 
 /** Shared pill button styles aligned with yourimpactfdn.vercel.app */
 export const publicButtonHoverClass = "hover:bg-primary hover:text-primary-foreground";

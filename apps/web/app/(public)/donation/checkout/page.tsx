@@ -668,7 +668,7 @@ function DonationCheckoutContent() {
   }
 
   return (
-    <div className="overflow-x-hidden">
+    <div>
       <section className="bg-secondary/40 border-b border-border">
         <div className="container-wide py-4 flex flex-wrap items-center justify-between gap-3">
           <Link
@@ -688,8 +688,9 @@ function DonationCheckoutContent() {
         </div>
       </section>
 
-      <section className="container-wide py-8 lg:py-12 grid lg:grid-cols-12 gap-6 lg:gap-8 min-w-0 w-full max-w-full items-start">
-        <div className="lg:col-span-7 space-y-6 min-w-0 w-full max-w-full">
+      <section className="container-wide py-8 lg:py-12">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+        <div className="lg:col-span-7 min-w-0 space-y-6">
           {flowStep === "gift-aid" && showGiftAidStep && (
             <CheckoutGiftAidStep
               currencySymbol={currencyInfo.symbol}
@@ -709,7 +710,7 @@ function DonationCheckoutContent() {
           )}
 
           {flowStep === "details" && (
-            <div className="rounded-3xl bg-card border border-border p-6 lg:p-8 shadow-soft space-y-6 w-full min-w-0 max-w-full">
+            <div className="rounded-3xl bg-card border border-border p-6 lg:p-8 shadow-soft space-y-6 w-full min-w-0">
               <div className="space-y-1">
                 <h1 className="font-serif text-2xl md:text-3xl text-primary">Your details</h1>
                 <p className="text-sm text-muted-foreground">
@@ -1085,8 +1086,9 @@ function DonationCheckoutContent() {
           )}
         </div>
 
-        <aside className="lg:col-span-5 lg:sticky lg:top-28 self-start space-y-4 min-w-0 w-full max-w-full">
-          <div className="rounded-3xl bg-card border border-border p-6 shadow-soft space-y-4 w-full max-w-full min-w-0">
+        <aside className="lg:col-span-5 min-w-0">
+          <div className="lg:sticky lg:top-28 space-y-4 w-full">
+          <div className="rounded-3xl bg-card border border-border p-6 shadow-soft space-y-4 w-full box-border">
             <p className="text-xs uppercase tracking-widest text-accent-deep font-bold">Your cart</p>
             <ul className="space-y-3">
               {items.map((line) => (
@@ -1188,13 +1190,13 @@ function DonationCheckoutContent() {
             </div>
           )}
 
-          <div className="rounded-3xl gradient-plum text-primary-foreground p-6 lg:p-8 shadow-lift w-full max-w-full min-w-0 overflow-hidden">
+          <div className="rounded-3xl gradient-plum text-primary-foreground p-6 shadow-soft w-full box-border overflow-hidden">
             {ramadanSummary.hasRamadanSplit && ramadanDisplay ? (
               <>
                 <p className="text-xs uppercase tracking-widest text-accent font-bold">
                   First night · {currency}
                 </p>
-                <p className={`money-ltr ${statTotalClass} mt-1 break-words`}>
+                <p className={`money-ltr ${statTotalClass} mt-1`}>
                   {formatMoney(ramadanDisplay.firstNight, { code: displayCurrency })}
                 </p>
                 <p className="text-sm text-primary-foreground/85 mt-2">
@@ -1225,7 +1227,7 @@ function DonationCheckoutContent() {
             ) : (
               <>
                 <p className="text-xs uppercase tracking-widest text-accent font-bold">You pay · {currency}</p>
-                <p className={`money-ltr ${statTotalClass} mt-1 break-words`}>
+                <p className={`money-ltr ${statTotalClass} mt-1`}>
                   {formatMoney(chargeAmount, { code: displayCurrency })}
                 </p>
               </>
@@ -1251,7 +1253,9 @@ function DonationCheckoutContent() {
               </p>
             </div>
           </div>
+          </div>
         </aside>
+        </div>
       </section>
     </div>
   );

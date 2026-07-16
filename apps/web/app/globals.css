@@ -320,7 +320,6 @@
 .money-ltr {
   unicode-bidi: isolate;
   direction: ltr;
-  display: inline-block;
 }
 
 /* Stripe Express Checkout — side-by-side wallet buttons */
